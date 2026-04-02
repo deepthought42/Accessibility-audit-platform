@@ -11,7 +11,7 @@ import org.jsoup.nodes.Attribute;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.safety.Cleaner;
-import org.jsoup.safety.Whitelist;
+import org.jsoup.safety.Safelist;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,7 +111,7 @@ public final class HtmlGeneralizer {
 
 		Document html_doc = Jsoup.parseBodyFragment(outerHtml);
 
-		Cleaner cleaner = new Cleaner(Whitelist.relaxed());
+		Cleaner cleaner = new Cleaner(Safelist.relaxed());
 		html_doc = cleaner.clean(html_doc);
 
 		html_doc.select("script").remove()
@@ -125,6 +125,33 @@ public final class HtmlGeneralizer {
 		}
 
 		return html_doc.html();
+	}
+
+	/**
+	 * Removes scripts, styles, links, and meta tags from HTML source
+	 * and normalizes whitespace.
+	 *
+	 * @param src the source code to clean (must not be null)
+	 * @return the cleaned source code
+	 */
+	public static String cleanSrc(String src) {
+		assert src != null;
+
+		Document html_doc = Jsoup.parse(src);
+		html_doc.select("script").remove();
+		html_doc.select("style").remove();
+		html_doc.select("link").remove();
+		html_doc.select("meta").remove();
+
+		String html = html_doc.html();
+		html = html.replace("\r", "");
+		html = html.replace("\n", "");
+		html = html.replace("\t", " ");
+		html = html.replace("  ", " ");
+		html = html.replace("  ", " ");
+		html = html.replace("  ", " ");
+
+		return html.replace(" style=\"\"", "");
 	}
 
 	/**
