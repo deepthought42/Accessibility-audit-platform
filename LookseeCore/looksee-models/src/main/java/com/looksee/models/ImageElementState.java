@@ -1,7 +1,6 @@
 package com.looksee.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.looksee.gcp.ImageSafeSearchAnnotation;
 import com.looksee.models.enums.ElementClassification;
 import java.util.HashSet;
 import java.util.Map;

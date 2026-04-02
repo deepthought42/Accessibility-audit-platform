@@ -60,6 +60,15 @@
 			<version>1.15.3</version>
 		</dependency>
 
+		<!-- Google Cloud Vision types used in Logo and ImageFaceAnnotation constructors.
+		     Optional: only needed at compile time for these specific model classes. -->
+		<dependency>
+			<groupId>com.google.cloud</groupId>
+			<artifactId>spring-cloud-gcp-starter-vision</artifactId>
+			<version>${spring-cloud-gcp.version}</version>
+			<optional>true</optional>
+		</dependency>
+
 		<!-- Spring Web for RestTemplate used in some models -->
 		<dependency>
 			<groupId>org.springframework</groupId>
