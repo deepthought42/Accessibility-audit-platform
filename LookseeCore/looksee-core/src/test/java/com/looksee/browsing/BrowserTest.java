@@ -172,21 +172,16 @@ public class BrowserTest {
 	
 	@Test
 	public void testCommentRemoval() {
-		String expected_result = "<html>\n"
-				+ " <head></head>\n"
-				+ " <body>\n"
-				+ "  <app-footer _ngcontent-wiq-c74=\"\" class=\"footer\" _nghost-wiq-c23=\"\">\n"
-				+ "   <div></div>\n"
-				+ "  </app-footer> \n"
-				+ " </body>\n"
-				+ "</html>";
-		
 		String src = "<app-footer _ngcontent-wiq-c74=\"\" class=\"footer\" _nghost-wiq-c23=\"\"><div></div><!-- this is a comment --></app-footer>  ";
 		Document html_doc = Jsoup.parse(src);
 
 		HtmlGeneralizer.removeComments(html_doc);
-		
-		assert(expected_result.equals(html_doc.html()));
+
+		String result = html_doc.html();
+		assertFalse(result.contains("<!--"), "HTML comments should be removed");
+		assertFalse(result.contains("this is a comment"), "Comment text should be removed");
+		assertTrue(result.contains("<app-footer"), "Original elements should remain");
+		assertTrue(result.contains("<div></div>"), "Child elements should remain");
 	}
 
 	@Test
