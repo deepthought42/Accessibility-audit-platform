@@ -1,4 +1,4 @@
-package com.looksee.browsing.form;
+package com.looksee.models.form;
 
 import com.looksee.models.ActionOLD;
 import com.looksee.models.Element;

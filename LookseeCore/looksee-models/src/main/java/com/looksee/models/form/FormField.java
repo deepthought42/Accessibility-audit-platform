@@ -1,4 +1,4 @@
-package com.looksee.browsing.form;
+package com.looksee.models.form;
 
 import com.looksee.models.ActionOLD;
 import com.looksee.models.Element;
@@ -18,17 +18,17 @@ import org.springframework.data.neo4j.core.schema.Node;
 @Getter
 @Setter
 public class FormField extends LookseeObject{
-	
+
 	private List<Rule> rules;
 	private Element formField;
-	
+
 	/**
 	 * Constructor
 	 */
 	public FormField() {
 		rules = new ArrayList<>();
 	}
-	
+
 	/**
 	 * Constructs new FormField
 	 *
@@ -42,7 +42,7 @@ public class FormField extends LookseeObject{
 		this.rules = new ArrayList<Rule>();
 		setKey(generateKey());
 	}
-	
+
 	/**
 	 * Generates a key for the form field
 	 *
@@ -68,7 +68,7 @@ public class FormField extends LookseeObject{
 		this.formField = formField;
 		this.rules = rules;
 	}
-	
+
 	/**
 	 * Adds a rule
 	 *
@@ -81,7 +81,7 @@ public class FormField extends LookseeObject{
 		assert rule != null;
 		return this.rules.add(rule);
 	}
-	
+
 	/**
 	 * Adds a Collection of rules
 	 *
@@ -94,7 +94,7 @@ public class FormField extends LookseeObject{
 		assert rules != null;
 		return this.rules.addAll(rules);
 	}
-	
+
 	/**
 	 * This handles the performing of a {@link ActionOLD}
 	 *
