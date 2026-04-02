@@ -1,7 +1,7 @@
 package com.looksee.models.message;
 
 
-import com.looksee.models.enums.BrowserType;
+import com.looksee.browsing.enums.BrowserType;
 import com.looksee.models.journeys.Journey;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

@@ -23,8 +23,8 @@ import com.looksee.models.Logo;
 import com.looksee.models.Page;
 import com.looksee.models.PageState;
 import com.looksee.models.Template;
-import com.looksee.models.enums.BrowserEnvironment;
-import com.looksee.models.enums.BrowserType;
+import com.looksee.browsing.enums.BrowserEnvironment;
+import com.looksee.browsing.enums.BrowserType;
 import com.looksee.models.enums.ElementClassification;
 import com.looksee.models.enums.TemplateType;
 import com.looksee.utils.BrowserUtils;
@@ -125,8 +125,8 @@ public class BrowserService {
 		assert browser_env != null;
 
 		return BrowserConnectionHelper.getConnection(
-				com.looksee.browsing.enums.BrowserType.create(browser.toString()),
-				com.looksee.browsing.enums.BrowserEnvironment.create(browser_env.toString()));
+				BrowserType.create(browser.toString()),
+				BrowserEnvironment.create(browser_env.toString()));
 	}
 
 	/**
