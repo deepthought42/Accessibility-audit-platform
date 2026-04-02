@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.looksee.models.Browser;
 import com.looksee.models.enums.TemplateType;
 import com.looksee.services.BrowserService;
+import com.looksee.utils.HtmlGeneralizer;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.List;
@@ -27,7 +28,7 @@ public class BrowserServiceTest {
 	public void htmlCommentRemoval() {
 		String html = "<html><head></head><body><div><!-- foo --><p>bar<!-- baz --></div><!--qux--></body></html>";
 		
-		html = BrowserService.removeComments(html);
+		html = HtmlGeneralizer.removeComments(html);
 		System.out.println("html :: "+html);
 	}
 	
