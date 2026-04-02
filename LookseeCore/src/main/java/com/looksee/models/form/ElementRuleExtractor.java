@@ -1,13 +1,11 @@
-package com.looksee.browsing.form;
+package com.looksee.models.form;
 
 import com.looksee.models.Element;
 import com.looksee.models.rules.Clickable;
 import com.looksee.models.rules.Rule;
 import com.looksee.models.rules.RuleFactory;
-import com.looksee.services.RuleService;
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -17,9 +15,6 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class ElementRuleExtractor {
-
-	@Autowired
-	private RuleService rule_service;
 
 	/**
 	 * Extracts rules for input {@link Element}s
@@ -37,7 +32,7 @@ public class ElementRuleExtractor {
 			Rule rule = RuleFactory.build(attr.toLowerCase(), elem.getAttributes().get(attr));
 			
 			if(rule != null){
-				rules.add(rule_service.save(rule));
+				rules.add(rule);
 			}
 		}
 

@@ -1,7 +1,7 @@
 package com.looksee.services;
 
 import com.google.cloud.storage.StorageException;
-import com.looksee.browsing.form.ElementRuleExtractor;
+import com.looksee.models.form.ElementRuleExtractor;
 import com.looksee.browsing.helpers.BrowserConnectionHelper;
 import com.looksee.exceptions.ServiceUnavailableException;
 import com.looksee.gcp.CloudVisionUtils;
@@ -124,7 +124,9 @@ public class BrowserService {
 		assert browser != null;
 		assert browser_env != null;
 
-		return BrowserConnectionHelper.getConnection(browser, browser_env);
+		return BrowserConnectionHelper.getConnection(
+				com.looksee.browsing.enums.BrowserType.create(browser.toString()),
+				com.looksee.browsing.enums.BrowserEnvironment.create(browser_env.toString()));
 	}
 
 	/**

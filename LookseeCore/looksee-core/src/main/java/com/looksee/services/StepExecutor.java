@@ -53,13 +53,13 @@ public class StepExecutor {
 				LoginStep login_step = (LoginStep)step;
 				WebElement username_element = browser.getDriver().findElement(By.xpath(login_step.getUsernameElement().getXpath()));
 				ActionFactory action_factory = new ActionFactory(browser.getDriver());
-				action_factory.execAction(username_element, login_step.getTestUser().getUsername(), Action.SEND_KEYS);
-				
+				action_factory.execAction(username_element, login_step.getTestUser().getUsername(), com.looksee.browsing.enums.Action.SEND_KEYS);
+
 				WebElement password_element = browser.getDriver().findElement(By.xpath(login_step.getPasswordElement().getXpath()));
-				action_factory.execAction(password_element, login_step.getTestUser().getPassword(), Action.SEND_KEYS);
-	
+				action_factory.execAction(password_element, login_step.getTestUser().getPassword(), com.looksee.browsing.enums.Action.SEND_KEYS);
+
 				WebElement submit_element = browser.getDriver().findElement(By.xpath(login_step.getSubmitElement().getXpath()));
-				action_factory.execAction(submit_element, "", Action.CLICK);
+				action_factory.execAction(submit_element, "", com.looksee.browsing.enums.Action.CLICK);
 
 				//TimingUtils.pauseThread(5000L);
 			}

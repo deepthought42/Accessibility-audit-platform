@@ -106,7 +106,9 @@ public class TestService {
 		
 		do{
 			try {
-				browser = BrowserConnectionHelper.getConnection(BrowserType.create(browser_name), BrowserEnvironment.TEST);
+				browser = BrowserConnectionHelper.getConnection(
+						com.looksee.browsing.enums.BrowserType.create(browser_name),
+						com.looksee.browsing.enums.BrowserEnvironment.create("test"));
 				//page = crawler.crawlPath(user_id, domain, test.getPathKeys(), test.getPathObjects(), browser, new URL(PathUtils.getFirstPage(test.getPathObjects()).getUrl()).getHost(), visible_element_map, visible_elements);
 			} catch(PagesAreNotMatchingException e){
 				log.warn(e.getMessage());

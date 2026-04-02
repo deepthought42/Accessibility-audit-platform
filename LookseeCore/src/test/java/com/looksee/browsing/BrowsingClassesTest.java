@@ -99,7 +99,7 @@ class BrowsingClassesTest {
     // ===== FormField =====
     @Test
     void formFieldDefaultConstructor() {
-        com.looksee.browsing.form.FormField field = new com.looksee.browsing.form.FormField();
+        com.looksee.models.form.FormField field = new com.looksee.models.form.FormField();
         assertNotNull(field);
     }
 }
