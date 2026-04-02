@@ -1,0 +1,57 @@
+<div class="w-full">
+    <form class="w-full" [formGroup]="form">
+        <div class="w-full flex justify-center pt-8 pb-6 px-4">
+            <div class="w-full max-w-3xl">
+                <div class="card p-1.5 flex items-center gap-2">
+                    <!-- URL Input -->
+                    <div class="flex-1 relative">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                            </svg>
+                        </div>
+                        <input formControlName="url"
+                               name="page_url"
+                               id="page_url"
+                               type="text"
+                               placeholder="Enter website URL (e.g. https://www.example.com)"
+                               class="w-full pl-11 pr-4 py-3 text-sm bg-transparent border-0 focus:ring-0 focus:outline-none placeholder-gray-400"
+                               required />
+                    </div>
+
+                    <!-- Type Select -->
+                    <div class="flex-shrink-0">
+                        <select formControlName="type"
+                                class="border-0 bg-gray-100 rounded-lg text-sm font-medium text-gray-700 py-2.5 px-4 focus:ring-2 focus:ring-brand-500 cursor-pointer">
+                            <option *ngFor="let type of types" [ngValue]="type.toUpperCase()">
+                                {{ type }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Start Button -->
+                    <div class="flex-shrink-0">
+                        <button (click)="startAudit()"
+                                id="start_button"
+                                class="btn-accent px-6 py-2.5 flex items-center gap-2"
+                                [disabled]="isLoading"
+                                [class.opacity-75]="isLoading"
+                                matTooltip="Start audit"
+                                aria-label="Click to start a UX audit">
+                            <span *ngIf="!isLoading" class="font-semibold text-sm whitespace-nowrap">
+                                Start Audit
+                            </span>
+                            <span *ngIf="isLoading" class="flex items-center gap-2">
+                                <fa-icon [icon]="faSpinner" size="sm" [spin]="true"></fa-icon>
+                                <span class="text-sm">Auditing...</span>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 mt-2 ml-1">
+                    Enter a publicly accessible URL to analyze its UX, accessibility, and content quality.
+                </p>
+            </div>
+        </div>
+    </form>
+</div>

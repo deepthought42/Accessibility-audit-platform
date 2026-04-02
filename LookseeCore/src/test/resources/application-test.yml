@@ -1,0 +1,44 @@
+spring:
+  profiles:
+    active: test
+  
+  # Disable Google Cloud Platform features in tests
+  cloud:
+    gcp:
+      pubsub:
+        enabled: false
+      storage:
+        enabled: false
+      vision:
+        enabled: false
+      project-id: test-project
+      credentials:
+        location: ""
+  
+  # Disable Neo4j connections for unit tests
+  data:
+    neo4j:
+      uri: ""
+  
+  # Test logging configuration
+  logging:
+    level:
+      org.springframework.cloud.gcp: OFF
+      com.google.cloud: OFF
+      org.springframework.data.neo4j: ERROR
+
+# Management and health endpoints configuration for tests
+management:
+  health:
+    pubsub:
+      enabled: false
+  server:
+    port: -1  # Disable management server in tests
+
+# LookseeCore test configuration
+looksee:
+  core:
+    enabled: true
+    neo4j:
+      connection-timeout: 1000
+      max-connection-pool-size: 1 

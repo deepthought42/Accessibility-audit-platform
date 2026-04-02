@@ -1,0 +1,27 @@
+{
+  "name": "Look-see",
+  "version": "0.1",
+  "manifest_version": 3,
+  "description": "Look-see helps you find and fix accessibility issues",
+  "homepage_url": "https://look-see.com/",
+  "permissions": [
+    "activeTab"
+  ],
+  "action": {},
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+      {
+        "matches": ["http://*/*", "https://*/*"],
+        "run_at": "document_end",
+        "js": ["content_script.js"]
+      }
+  ],
+  "icons": {
+    "16": "images/Red_16.png",
+    "32": "images/Red_32.png",
+    "48": "images/Red_48.png",
+    "128": "images/Red_128.png"
+  }
+}

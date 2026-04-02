@@ -1,0 +1,265 @@
+name: Release
+
+on:
+  pull_request:
+    branches:
+      - master
+    types: [closed]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.19.3'
+        cache: 'npm'
+        registry-url: 'https://registry.npmjs.org'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run linting
+      run: npm run lint
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.19.3'
+        cache: 'npm'
+        registry-url: 'https://registry.npmjs.org'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Create environment.ts from template
+      run: |
+        cp src/environments/environment.ts.template src/environments/environment.ts
+      
+    - name: Install Chrome
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+        google-chrome --version
+      
+    - name: Run tests
+      env:
+        CHROME_BIN: /usr/bin/google-chrome
+      run: npm run test -- --watch=false --browsers=ChromeHeadless
+
+  bump-version:
+    name: Bump Version
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    if: github.event.pull_request.merged == true
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      packages: write
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.19.3'
+        cache: 'npm'
+        registry-url: 'https://registry.npmjs.org'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      run: npx semantic-release
+      
+    - name: Get version
+      id: get-version
+      run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: bump-version
+    if: github.event.pull_request.merged == true
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Build Docker image
+      run: |
+        VERSION=${{ needs.bump-version.outputs.version }}
+        
+        # Create dummy files for build (only if they don't exist)
+        mkdir -p credentials
+        if [ ! -f credentials/auth_config.json ]; then
+          touch credentials/auth_config.json
+        fi
+        # Create environment.ts from template for Docker build
+        cp src/environments/environment.ts.template src/environments/environment.ts
+        
+        # Build the Docker image with error handling
+        echo "Building Docker image with version $VERSION"
+        docker build -t looksee-ui:$VERSION . || exit 1
+        docker build -t looksee-ui:latest . || exit 1
+        echo "Docker images built successfully"
+        
+    - name: Verify Docker image
+      run: |
+        VERSION=${{ needs.bump-version.outputs.version }}
+        
+        # Verify the images were created successfully
+        echo "Verifying Docker images exist..."
+        if ! docker images | grep -q "looksee-ui.*$VERSION"; then
+          echo "Error: Image looksee-ui:$VERSION not found"
+          docker images
+          exit 1
+        fi
+        if ! docker images | grep -q "looksee-ui.*latest"; then
+          echo "Error: Image looksee-ui:latest not found"
+          docker images
+          exit 1
+        fi
+        echo "Docker images verified"
+        
+        # Test that the images can be run (without actually starting the containers)
+        echo "Testing nginx configuration..."
+        docker run --rm looksee-ui:$VERSION nginx -t || exit 1
+        docker run --rm looksee-ui:latest nginx -t || exit 1
+        echo "Nginx configuration test passed"
+
+  publish-ghcr:
+    name: Publish to GitHub Container Registry
+    runs-on: ubuntu-latest
+    needs: [build, bump-version]
+    if: github.event.pull_request.merged == true
+    permissions:
+      packages: write
+      contents: read
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+      
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Build and push to GHCR
+      run: |
+        VERSION=${{ needs.bump-version.outputs.version }}
+        REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+        
+        # Create dummy SSL files for build
+        mkdir -p credentials
+        touch credentials/auth_config.json
+        # Create environment.ts from template for Docker build
+        cp src/environments/environment.ts.template src/environments/environment.ts
+        
+        # Build and push to GitHub Container Registry
+        docker build -t ghcr.io/$REPO_NAME:$VERSION .
+        docker build -t ghcr.io/$REPO_NAME:latest .
+        docker push ghcr.io/$REPO_NAME:$VERSION
+        docker push ghcr.io/$REPO_NAME:latest
+
+  publish-dockerhub:
+    name: Publish to Docker Hub
+    runs-on: ubuntu-latest
+    needs: [build, bump-version]
+    if: github.event.pull_request.merged == true
+    permissions:
+      contents: read
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+      
+    - name: Validate Docker Hub credentials
+      id: validate-dockerhub
+      run: |
+        if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+          echo "⚠️  Docker Hub credentials not configured. Skipping Docker Hub publish."
+          echo "To enable Docker Hub publishing, set DOCKERHUB_USERNAME and DOCKERHUB_TOKEN secrets in repository settings."
+          echo "skip=true" >> $GITHUB_OUTPUT
+        else
+          echo "✅ Docker Hub credentials found"
+          echo "skip=false" >> $GITHUB_OUTPUT
+        fi
+      
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      if: steps.validate-dockerhub.outputs.skip != 'true'
+      
+    - name: Login to Docker Hub
+      if: steps.validate-dockerhub.outputs.skip != 'true'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        
+    - name: Build and push to Docker Hub
+      if: steps.validate-dockerhub.outputs.skip != 'true'
+      env:
+        DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      run: |
+        VERSION=${{ needs.bump-version.outputs.version }}
+        
+        # Create dummy SSL files for build
+        mkdir -p credentials
+        touch credentials/auth_config.json
+        # Create environment.ts from template for Docker build
+        cp src/environments/environment.ts.template src/environments/environment.ts
+        
+        # Build and push to Docker Hub
+        docker build -t $DOCKERHUB_USERNAME/looksee-ui:$VERSION .
+        docker build -t $DOCKERHUB_USERNAME/looksee-ui:latest .
+        docker push $DOCKERHUB_USERNAME/looksee-ui:$VERSION
+        docker push $DOCKERHUB_USERNAME/looksee-ui:latest

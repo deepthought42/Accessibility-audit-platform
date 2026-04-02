@@ -1,0 +1,4 @@
+CREATE (n:Account {email: 'bkindred@look-see.com', createdAt: '2021-06-01T03:38:45.81222', apiToken: '57cfe607-3476-43f7-9f3f-c191415c91ba', userId:'google-oauth2|106082528258112814805', customerToken: 'cus_LSsZoPoGins0at', subscriptionType: 'FREE', onboardedSteps:[], subscriptionToken: '', name: ""})
+
+CREATE (n:Account {email: 'brandon.kindred@gmail.com', createdAt: '2025-07-09T02:52:58.729Z', apiToken: '58dc26cb-a2f5-4fb0-9044-9457dc1c09ce', userId:'auth0|686dd98ab6f3ba4d3b4f5a45', customerToken: 'stripe customer id goes here', subscriptionType: 'FREE', onboardedSteps:[], subscriptionToken: '', name: ""})
+

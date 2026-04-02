@@ -1,0 +1,28 @@
+<span class="inline-flex items-center gap-1.5">
+  <!-- Loading spinner -->
+  <ng-container *ngIf="loading; else content">
+    <fa-icon
+      [icon]="faSpinner"
+      [class]="iconSizeClass"
+      animation="spin"
+      class="text-gray-400"
+    ></fa-icon>
+  </ng-container>
+
+  <ng-template #content>
+    <!-- Score icon -->
+    <fa-icon
+      *ngIf="showIcon"
+      [icon]="icon"
+      [class]="iconSizeClass"
+      [style.color]="color"
+    ></fa-icon>
+
+    <!-- Score value -->
+    <span
+      *ngIf="showValue"
+      [class]="textSizeClass + ' font-semibold'"
+      [style.color]="color"
+    >{{ score }}%</span>
+  </ng-template>
+</span>

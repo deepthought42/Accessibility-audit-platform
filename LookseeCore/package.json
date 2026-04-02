@@ -1,0 +1,29 @@
+{
+  "name": "core",
+  "version": "0.0.1",
+  "description": "[![Codacy Badge](https://app.codacy.com/project/badge/Grade/e2376d355755402aaa5bf7c533750851)](https://www.codacy.com?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=deepthought42/LookseeCore&amp;utm_campaign=Badge_Grade)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepthought42/LookseeCore.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/deepthought42/LookseeCore/issues"
+  },
+  "homepage": "https://github.com/deepthought42/LookseeCore#readme",
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.0",
+    "@semantic-release/exec": "^7.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.0",
+    "@semantic-release/release-notes-generator": "^14.0.0",
+    "semantic-release": "^24.2.3"
+  }
+}

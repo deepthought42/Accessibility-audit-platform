@@ -1,0 +1,10 @@
+.git
+.gitignore
+node_modules
+target
+README.md
+CHANGELOG.md
+CONTRIBUTING.md
+package.json
+package-lock.json
+Dockerfile

@@ -1,0 +1,13 @@
+<h1 mat-dialog-title>Element Details</h1>
+<div mat-dialog-content>
+  <div>
+    <img src="{{element['screenshotUrl'] || '../assets/placeholder-300x202.jpg'}}" class="element-screenshot" alt="Element screenshot" />
+  </div>
+  <br />
+  <h2>{{ element['cssSelector'] }}</h2>
+</div>
+<div mat-dialog-actions>
+    <button mat-button (click)="onNoClick()">
+        Close
+    </button>
+</div>

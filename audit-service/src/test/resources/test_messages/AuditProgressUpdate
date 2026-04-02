@@ -1,0 +1,57 @@
+####################################
+# Test audit progress update and journey paths
+###################################
+{
+	"messageId": "213e7284-0d3f-40a5-a121-bc94037fc8a8",
+	"publishTime": [2023, 2, 22, 3, 4, 36, 709018000],
+	"accountId": 0,
+	"domainId": 5737,
+	"domainAuditRecordId": 2,
+	"pageAuditId": 8348,
+	"category": "AESTHETICS",
+	"level": "PAGE",
+	"progress": 0.3333333333333333,
+	"message": "Reviewing text contrast"
+}
+
+####################################
+# Schema
+###################################
+
+
+NOTE: THIS SHOULD BE UPDATED TO REFLECT ACTUAL SCHEMA
+{
+  "type": "record",
+  "name": "Body",
+  "fields": [
+    {
+      "name": "message",
+      "type": {
+        "type": "record",
+        "name": "Message",
+        "fields": [
+          {
+            "name": "domainId",
+            "type": "long"
+          },
+          {
+            "name": "accountId",
+            "type": "long"
+          },
+          {
+            "name": "domainAuditRecordId",
+            "type": "long"
+          },
+          {
+            "name": "pageAuditId",
+            "type": "long"
+          },
+          {
+            "name": "url",
+            "type": "string"
+          }
+        ]
+      }
+    }
+  ]
+}

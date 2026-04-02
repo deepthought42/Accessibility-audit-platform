@@ -1,0 +1,167 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+
+      - name: Download core JAR
+        run: bash scripts/download-core.sh
+
+      - name: Configure Maven Central mirror
+        run: |
+          mkdir -p "$HOME/.m2"
+          cat > "$HOME/.m2/settings.xml" <<'EOF'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <mirrors>
+              <mirror>
+                <id>central-direct</id>
+                <name>Central Direct Mirror</name>
+                <url>https://repo1.maven.org/maven2/</url>
+                <mirrorOf>central</mirrorOf>
+              </mirror>
+            </mirrors>
+          </settings>
+          EOF
+
+      - name: Maven install core JAR
+        run: mvn --batch-mode --no-transfer-progress --settings "$HOME/.m2/settings.xml" install:install-file -Dfile=libs/core-0.3.19.jar -DgroupId=com.looksee -DartifactId=core -Dversion=0.3.19 -Dpackaging=jar
+
+      - name: Test with Maven
+        run: mvn --batch-mode --no-transfer-progress --settings "$HOME/.m2/settings.xml" test
+
+  bump-version:
+    needs: test
+    # Run only when PR is merged to master
+    runs-on: ubuntu-latest
+    outputs:
+      VERSION: ${{ steps.get_version.outputs.VERSION }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Determine and bump version with Semantic Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
+
+      - name: Extract new version from pom.xml
+        id: get_version
+        run: |
+          VERSION=$(python - <<'PY'
+          import xml.etree.ElementTree as ET
+          ns = {'m': 'http://maven.apache.org/POM/4.0.0'}
+          root = ET.parse('pom.xml').getroot()
+          print(root.find('m:version', ns).text)
+          PY
+          )
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          
+  build-and-release:
+    needs: bump-version
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.bump-version.outputs.VERSION }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Build Docker image
+        run: |
+          docker build -t deepthought42/information-architecture-audit:${{ env.VERSION }} .
+          docker tag deepthought42/information-architecture-audit:${{ env.VERSION }} deepthought42/information-architecture-audit:latest
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Push Docker image
+        run: |
+          docker push deepthought42/information-architecture-audit:${{ env.VERSION }}
+          docker push deepthought42/information-architecture-audit:latest
+      
+  github-release:
+    needs: bump-version
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.bump-version.outputs.VERSION }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+      
+      - name: Download core JAR
+        run: bash scripts/download-core.sh
+
+      - name: Configure Maven Central mirror
+        run: |
+          mkdir -p "$HOME/.m2"
+          cat > "$HOME/.m2/settings.xml" <<'EOF'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <mirrors>
+              <mirror>
+                <id>central-direct</id>
+                <name>Central Direct Mirror</name>
+                <url>https://repo1.maven.org/maven2/</url>
+                <mirrorOf>central</mirrorOf>
+              </mirror>
+            </mirrors>
+          </settings>
+          EOF
+        
+      - name: Maven install core JAR
+        run: mvn --batch-mode --no-transfer-progress --settings "$HOME/.m2/settings.xml" install:install-file -Dfile=libs/core-0.3.19.jar -DgroupId=com.looksee -DartifactId=core -Dversion=0.3.19 -Dpackaging=jar
+
+      - name: Test with Maven
+        run: mvn --batch-mode --no-transfer-progress --settings "$HOME/.m2/settings.xml" install -DskipTests
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: Release v${{ env.VERSION }}
+          body_path: CHANGELOG.md
+          files: informationArchitectureAudit-${{ env.VERSION }}.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

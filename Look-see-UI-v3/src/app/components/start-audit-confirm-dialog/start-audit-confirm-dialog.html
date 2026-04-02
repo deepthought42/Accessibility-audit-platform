@@ -1,0 +1,15 @@
+<h1 mat-dialog-title>Are you sure that you want to start a new audit?</h1>
+<div mat-dialog-content>
+  <p>Starting a new audit will cause the currently running audit to be abandoned.</p>
+</div>
+<div mat-dialog-actions class="flex items-center justify-end">
+    <button (click)="onNoClick()" class="p-4 rounded-lg border-2 mr-6">
+        Cancel
+    </button>
+    <button class="bg-primary-color text-white rounded-lg p-4"
+            (click)="startSinglePageAudit()"
+            cdkFocusInitial>
+        Start new audit
+    </button>
+</div>
+

@@ -1,0 +1,108 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="styles/bootstrap.min.css">
+    <link rel="stylesheet" href="scripts/fontawesome/css/fontawesome.min.css">
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="scripts/fontawesome/css/solid.min.css">
+  </head>
+  <body id="looksee-ide">
+    <div class="spacer" >
+    </div>
+    
+    <div id="analysis_container">
+      <div class="flex items-center justify-center">
+        <button class="btn" id="analyzeButton">Analyze Page</button>
+      </div>
+    </div>
+
+    <div id="issues_header" class="flex flex-row">
+      <div class="flex justify-center items-center w-30percent">Type</div>
+      <div class="flex justify-center items-center w-60percent">Contrast</div>
+    </div>
+
+    <div  id="contrast_issues" class="path-container">
+      <!-- path element list populates here -->
+    </div>
+
+    <section id="empty_contrast_compliance" class="flex items-center justify-center">
+      Click on a contrast issue above to see results
+    </section>
+
+    <section class="contrast_details" id="contrast_compliance_section">
+      <!-- text color palette box-->
+      <div class="col-xs-3 flex justify-center items-center flex-col">
+        <div class="" id="text_element_label">
+          Text
+        </div>
+        <div class="" id="non_text_element_label">
+          Button
+        </div>
+        <div class="color_container flex items-center justify-center">
+          <div id="text_color" class="border color_box">
+
+          </div>
+        </div>
+        <div id="text_hex_color" class="text-sm flex items-center justify-center">
+          #6649e4
+        </div>
+      </div>
+
+      <!-- bg color palette box-->
+      <div class="col-xs-3">
+        <div class="flex justify-center items-center">
+          Background
+        </div>
+        <div class="color_container flex items-center justify-center">
+          <div id="bg_color" class="border color_box">
+
+          </div>
+        </div>
+        <div id="bg_hex_color" class="text-sm flex items-center justify-center">
+          #6649e4
+        </div>
+      </div>
+
+      <!-- Contrast and compliance section -->
+      <div class="col-xs-3">
+        <div class="flex items-center justify-center">
+          Contrast
+        </div>
+        <div id="contrast" class="text-xl flex items-center justify-center">
+          3.5
+        </div>
+      </div>
+      
+      <div class="col-xs-3 flex flex-col justify-center h-100">
+        <div class="flex flex-row">
+          <div id="aa_compliance" class="flex items-center justify-center icon">
+            <i id="aa_success" class="success fa-solid fa-check"></i>
+            <i id="aa_fail" class="error fa-solid fa-x"></i>
+          </div>
+          <div class="">
+            <span class="text-md">AA</span> - 
+            <span id="aa_non_text" class="text-sm">3:1</span>
+            <span id="aa_small_text" class="text-sm">4.5:1</span>
+            <span id="aa_large_text" class="text-sm">3:1</span>
+          </div>
+        </div>
+        <div class="flex flex-row">
+          <div id="aaa_compliance" class="flex items-center justify-center icon">
+            <i id="aaa_success" class="success fa-solid fa-check"></i>
+            <i id="aaa_fail" class="error fa-solid fa-x"></i>
+          </div>
+          <div >
+            <span class="text-md">AAA</span> - 
+            <span id="aaa_non_text" class="text-sm">3:1</span>
+            <span id="aaa_small_text" class="text-sm">7:1</span>
+            <span id="aaa_large_text" class="text-sm">4.5:1</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </body>
+  <script src="./scripts/jquery.js"></script>
+  <script src="./scripts/fontawesome/js/fontawesome.min.js"></script>
+  <script src="./scripts/fontawesome/js/solid.min.js"></script>
+  <script src="./scripts/bootstrap.min.js"></script>
+  <script src="./scripts/color-contrast.js"></script>
+</html>

@@ -1,0 +1,132 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # This job runs only when code is pushed to main
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Test with Maven
+        run: mvn -B -ntp test -Dspring.profiles.active=test -Dspring.cloud.gcp.pubsub.enabled=false -Dspring.cloud.gcp.storage.enabled=false -Dspring.cloud.gcp.vision.enabled=false -Dspring.cloud.gcp.project-id=test-project -Dtest='!browser.BrowserTest'
+        env:
+          SPRING_PROFILES_ACTIVE: test
+  
+
+  bump-version-and-release:
+    needs: test
+    # Run only when code is pushed to main
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: read
+    outputs:
+      VERSION: ${{ steps.get_version.outputs.VERSION }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Cache Node.js dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run semantic-release to get next version
+        id: semantic
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx semantic-release --dry-run > release.log
+          echo "--- $(cat release.log)"
+          version=$(grep -oP 'next release version is \K[0-9]+\.[0-9]+\.[0-9]+' release.log)
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+      - name: Update pom.xml with new version
+        run: |
+          mvn versions:set -DnewVersion=${{ steps.semantic.outputs.version }}
+          mvn versions:commit
+
+      - name: Commit and push new version to main
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add pom.xml
+          git commit -m "ci: bump pom.xml to version ${{ steps.semantic.outputs.version }} [skip ci]" || echo "No changes to commit"
+          git push origin main
+          git log -n 1
+
+      - name: Extract new version from pom.xml
+        id: get_version
+        run: |
+          echo "--- $(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)"
+          echo "VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> "$GITHUB_OUTPUT"
+      
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      
+      - name: Build with Maven
+        run: |
+          echo "--- $(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)"
+          mvn -B -ntp install -DskipTests
+          echo "--- $(ls -la)"
+          echo "--- $(ls -la target)"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.semantic.outputs.version }}
+          name: Release v${{ steps.semantic.outputs.version }}
+          body_path: CHANGELOG.md
+          files: target/core-${{ steps.semantic.outputs.version }}.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

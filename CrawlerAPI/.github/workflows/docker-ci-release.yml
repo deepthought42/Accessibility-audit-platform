@@ -1,0 +1,123 @@
+name: Build and Release
+
+on:
+  pull_request:
+    branches:
+      - master
+    types: [closed]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # This job runs only when a PR is merged to master
+    if: github.event.action == 'closed' && github.event.pull_request.merged == true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Download core JAR
+        run: bash scripts/download-core.sh
+
+      - name: Test with Maven
+        run: mvn test
+
+  bump-version:
+    needs: test
+    # Run only when PR is merged to master
+    if: github.event.action == 'closed' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    outputs:
+      VERSION: ${{ steps.get_version.outputs.VERSION }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Determine and bump version with Semantic Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
+
+      - name: Extract new version from pom.xml
+        id: get_version
+        run: echo "VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> "$GITHUB_OUTPUT"
+          
+  build-and-release:
+    needs: bump-version
+    # Run only when PR is merged to master
+    if: github.event.action == 'closed' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.bump-version.outputs.VERSION }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Build Docker image
+        run: |
+          docker build -t deepthought42/looksee-api:${{ env.VERSION }} .
+          docker tag deepthought42/looksee-api:${{ env.VERSION }} deepthought42/looksee-api:latest
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Push Docker image
+        run: |
+          docker push deepthought42/looksee-api:${{ env.VERSION }}
+          docker push deepthought42/looksee-api:latest
+      
+  github-release:
+    needs: bump-version
+    # Run only when PR is merged to master
+    if: github.event.action == 'closed' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.bump-version.outputs.VERSION }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      
+      - name: Download core JAR
+        run: bash scripts/download-core.sh
+      - name: Test with Maven
+        run: mvn install -DskipTests
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: Release v${{ env.VERSION }}
+          body_path: CHANGELOG.md
+          files: looksee-api-${{ env.VERSION }}.jar
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

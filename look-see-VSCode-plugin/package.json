@@ -1,0 +1,154 @@
+{
+  "name": "look-see-accessibility",
+  "displayName": "Look-See Accessibility Analyzer",
+  "description": "Real-time WCAG 2.2 accessibility analysis for React, Angular, Vue.js, and HTML",
+  "version": "0.1.0",
+  "publisher": "look-see",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "accessibility",
+    "a11y",
+    "wcag",
+    "react",
+    "angular",
+    "vue",
+    "html",
+    "jsx",
+    "tsx"
+  ],
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescriptreact",
+    "onLanguage:html",
+    "onLanguage:vue"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Look-See Accessibility",
+      "properties": {
+        "lookSee.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable Look-See accessibility analysis"
+        },
+        "lookSee.severity": {
+          "type": "string",
+          "enum": ["error", "warning", "info"],
+          "default": "warning",
+          "description": "Default severity level for accessibility violations"
+        },
+        "lookSee.rules": {
+          "type": "object",
+          "default": {
+            "altText": { "enabled": true, "severity": "error" },
+            "ariaLabels": { "enabled": true, "severity": "warning" },
+            "headingStructure": { "enabled": true, "severity": "warning" },
+            "colorContrast": { "enabled": true, "severity": "info" },
+            "focusOrder": { "enabled": true, "severity": "warning" }
+          },
+          "description": "Configure individual accessibility rules"
+        },
+        "lookSee.frameworks": {
+          "type": "object",
+          "default": {
+            "react": { "enabled": true },
+            "angular": { "enabled": true },
+            "vue": { "enabled": true }
+          },
+          "description": "Enable/disable framework-specific analysis"
+        },
+        "lookSee.quickFix": {
+          "type": "object",
+          "default": {
+            "enabled": true,
+            "showPreview": true,
+            "autoApply": false
+          },
+          "description": "Quick fix behavior configuration"
+        },
+        "lookSee.education": {
+          "type": "object",
+          "default": {
+            "showImpactExplanations": true,
+            "showWcagReferences": true,
+            "showExamples": true
+          },
+          "description": "Educational feature configuration"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "lookSee.analyzeWorkspace",
+        "title": "Analyze Workspace for Accessibility Issues",
+        "category": "Look-See"
+      },
+      {
+        "command": "lookSee.fixAllInFile",
+        "title": "Fix All Accessibility Issues in Current File",
+        "category": "Look-See"
+      },
+      {
+        "command": "lookSee.generateReport",
+        "title": "Generate Accessibility Report",
+        "category": "Look-See"
+      },
+      {
+        "command": "lookSee.toggleAnalysis",
+        "title": "Toggle Accessibility Analysis",
+        "category": "Look-See"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "lookSee.fixAllInFile",
+          "when": "resourceExtname =~ /\\.(jsx?|tsx?|vue|html)$/",
+          "group": "1_modification"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "lookSee.analyzeWorkspace",
+          "group": "2_workspace"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@types/node": "18.x",
+    "@types/mocha": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^6.4.1",
+    "@typescript-eslint/parser": "^6.4.1",
+    "eslint": "^8.47.0",
+    "mocha": "^10.2.0",
+    "@vscode/test-electron": "^2.3.4",
+    "@vscode/vsce": "^2.19.0",
+    "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "@typescript-eslint/parser": "^6.4.1",
+    "@angular/compiler": "^16.2.0",
+    "@vue/compiler-sfc": "^3.3.4",
+    "html-parse-stringify": "^3.0.1"
+  }
+}

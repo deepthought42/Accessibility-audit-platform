@@ -1,0 +1,47 @@
+name: Test
+
+on:
+  pull_request:
+    branches:
+      - master
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # This job runs on PR creation and updates
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Download core JAR
+        run: bash scripts/download-core.sh
+  
+      - name: Install core JAR to local repository
+        run: mvn install:install-file -Dfile=libs/core-0.3.20.jar -DgroupId=com.looksee -DartifactId=core -Dversion=0.3.20 -Dpackaging=jar
+      
+      - name: Test with Maven
+        run: mvn test
+        
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Sanitize branch name
+        run: echo "BRANCH_TAG=$(echo '${{ github.head_ref }}' | sed 's/[^a-zA-Z0-9._-]/-/g')" >> $GITHUB_ENV
+
+      - name: Build Docker image
+        run: |
+          docker build -t deepthought42/visual-design-audit:${{ env.BRANCH_TAG }} .
+          docker tag deepthought42/visual-design-audit:${{ env.BRANCH_TAG }} deepthought42/visual-design-audit:latest

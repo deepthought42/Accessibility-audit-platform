@@ -1,0 +1,157 @@
+---
+openapi: 2.0.0
+info:
+  version: 1.0.0
+  title: Look-see API
+  description: API for analyzing website accessibility
+servers:
+  - url: '{server}/v1'
+    variables:
+      server:
+        default: https://api.look-see.com  # SaaS server
+schemes:
+  - "https"
+components:
+  securitySchemes:
+    auth0_jwk:
+      authorizationUrl: "https://look-see.us.auth0.com/authorize"
+      flow: "implicit"
+      type: "oauth2"
+      x-google-issuer: "https://look-see.us.auth0.com/"
+      x-google-jwks_uri: "https://look-see.us.auth0.com/.well-known/jwks.json"
+      # Optional. Replace YOUR-CLIENT-ID with your client ID
+      x-google-audiences: "YOUR-CLIENT-ID"
+
+paths:
+  /domains:
+    get:
+      summary: returns list of domains
+      operationID: domain-list-v1
+      x-google-backend:
+        address: https://api-stage-uydih6tjpa-uc.a.run.app
+      responses:
+        200:
+          description: A successful response
+          content:
+            application/json:  # Media type
+              schema:          # Must-have
+                type: array   # Data type
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    url:
+                      type: string
+                  required:
+                    - id
+                    - url
+                  
+        400:
+          description: "Error occurred while retrieving domains"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        parameters:
+          - name: limit
+            in: query
+            description: Limits the number of items on a page
+            schema:
+              type: integer
+          - name: offset
+            in: query
+            description: Specifies the page number of the domains to be displayed
+            schema:
+              type: integer
+      security:
+        - auth0_jwk: []
+    post:
+      description: Create a new domain
+      requrestBody:
+        required: true
+        content:
+          application/json
+          schema:
+            type: object
+            required:
+              - url
+            properties:
+              url:
+                type: string
+      parameters:
+          - name: limit
+            in: query
+            description: Limits the number of items on a page
+            schema:
+              type: integer
+          - name: offset
+            in: query
+            description: Specifies the page number of the domains to be displayed
+            schema:
+              type: integer
+      responses:
+        200:
+          description: Successfully create a new domain
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        400:
+          description: "Error occurred while creating a new domain"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+      security:
+        - auth0_jwk: []
+  /domain/{id}/auditRecords:
+    get:
+      description: Retrieve audit records for a given domain
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: successfully returned audit records for a domain
+          content:
+            application/json:
+              schema:          # Must-have
+                type: array   # Data type
+                items:
+                  type: object
+                  properties:
+                    auditId: integer
+                    contentScore: number
+                    inforArchitectureScore: number
+                    visualDesignScore: number
+                    accessibilityScore: number
+                  required:
+                    - auditId
+        400:
+          description: "Error occurred while retrieving domain audit records"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  
+
+
+
+
+

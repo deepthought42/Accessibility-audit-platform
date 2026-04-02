@@ -1,0 +1,44 @@
+resilience4j.retry:
+    configs:
+        default:
+            maxAttempts: 1
+            waitDuration: 5s
+            retryExceptions:
+                - org.springframework.web.client.HttpServerErrorException
+                - java.util.concurrent.TimeoutException
+                - java.io.IOException
+                - java.net.SocketException
+                - java.net.ConnectException
+                - java.lang.Exception
+        neoforj:
+            maxAttempts: 10
+            waitDuration: 10s
+            retryExceptions:
+                - org.neo4j.ogm.exception.ConnectionException
+                - org.neo4j.driver.exceptions.SessionExpiredException
+                - org.neo4j.driver.exceptions.DiscoveryException
+                - org.neo4j.driver.exceptions.TransientException
+                - org.neo4j.driver.exceptions.ServiceUnavailableException
+                - org.neo4j.ogm.exception.TransactionException
+                - org.neo4j.ogm.exception.CypherException
+                - java.net.SocketException
+                - java.util.NoSuchElementException
+        gcp:
+            maxAttempts: 5
+            waitDuration: 5s
+            retryExceptions:
+                - java.io.IOException
+                - com.google.cloud.storage.StorageException
+                - com.google.api.gax.rpc.ResourceExhaustedException
+                - io.grpc.StatusRuntimeException
+                - com.google.api.gax.rpc.UnknownException
+                - java.nio.channels.ClosedChannelException
+                - java.lang.RuntimeException
+                - javax.imageio.IIOException
+    instances:
+        neoforj:
+            baseConfig: neoforj
+        gcp:
+            baseConfig: gcp
+        default:
+            baseConfig: default

@@ -1,0 +1,62 @@
+<main *ngIf="(auth.isAuthenticated$ | async) === false">
+    <div class="max-w-4xl mx-auto px-6 py-16">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-2xl font-bold text-gray-900 mb-3">
+                Domain Management
+            </h1>
+            <p class="text-gray-500 mb-6">
+                Create a free account to audit entire domains and track UX improvements over time.
+            </p>
+            <app-auth-button></app-auth-button>
+        </div>
+
+        <!-- Feature cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="card p-6 text-center card-hover">
+                <div class="w-12 h-12 rounded-xl bg-brand-50 flex items-center justify-center mx-auto mb-4">
+                    <span class="text-brand-500 font-bold text-lg">1</span>
+                </div>
+                <h3 class="font-semibold text-gray-900 mb-2">Customize</h3>
+                <div class="flex justify-center mb-4">
+                    <img src="https://assets.look-see.com/illustrations/Audit_website.jpg"
+                         alt="Customize audit settings to match your target audience"
+                         class="h-20 object-contain"/>
+                </div>
+                <p class="text-sm text-gray-500">
+                    Your website is made for a particular target audience. Look-see tailors results to your business needs.
+                </p>
+            </div>
+
+            <div class="card p-6 text-center card-hover">
+                <div class="w-12 h-12 rounded-xl bg-brand-50 flex items-center justify-center mx-auto mb-4">
+                    <span class="text-brand-500 font-bold text-lg">2</span>
+                </div>
+                <h3 class="font-semibold text-gray-900 mb-2">Review</h3>
+                <div class="flex justify-center mb-4">
+                    <img src="https://storage.googleapis.com/look-see-inc-assets/illustrations/review_audit.png"
+                         alt="Review UX issues"
+                         class="h-20 object-contain"/>
+                </div>
+                <p class="text-sm text-gray-500">
+                    Learn which pages need the most attention and how to improve ADA compliance.
+                </p>
+            </div>
+
+            <div class="card p-6 text-center card-hover">
+                <div class="w-12 h-12 rounded-xl bg-brand-50 flex items-center justify-center mx-auto mb-4">
+                    <span class="text-brand-500 font-bold text-lg">3</span>
+                </div>
+                <h3 class="font-semibold text-gray-900 mb-2">Share</h3>
+                <div class="flex justify-center mb-4">
+                    <img src="https://storage.googleapis.com/look-see-inc-assets/illustrations/share_illustration.png"
+                         alt="Share with your team!"
+                         class="h-20 object-contain"/>
+                </div>
+                <p class="text-sm text-gray-500">
+                    Share UX audit results with your team and key stakeholders.
+                </p>
+            </div>
+        </div>
+    </div>
+</main>

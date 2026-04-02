@@ -1,0 +1,75 @@
+/* Score indicator colors (legacy support) */
+.delightful-icon { color: #10b981; }
+.meh-icon { color: #f59e0b; }
+.sadface-icon { color: #ef4444; }
+.dark-gray { color: #6b7280; }
+.cherise-red { color: #FF0050; }
+
+/* Element overlay styles */
+.element-container:hover {
+    background: rgba(255, 0, 80, 0.08);
+    border-radius: 4px;
+}
+
+.active_element {
+    border: 2px solid #FF0050;
+    border-radius: 4px;
+    background: rgba(255, 0, 80, 0.05);
+}
+
+.issue-icon-container {
+    position: absolute;
+    left: -12px;
+    top: -12px;
+}
+
+.issue-icon {
+    width: 24px;
+    height: 24px;
+    z-index: 10;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.15));
+}
+
+.issue_row:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Scrollbar for issue panel */
+#issue_details_panel {
+    color: #1f2937;
+}
+
+/* Screenshot iframe */
+iframe {
+    pointer-events: none;
+}
+
+/* Issue nav selected state */
+#issue_nav > .selected {
+    background-color: rgba(255, 0, 80, 0.05);
+}
+
+/* Vertical centering utility */
+.vertical-centered {
+    margin: auto;
+}
+
+.bg-light-gray {
+    background-color: #f9fafb;
+}
+
+.bg-light-gray-1 {
+    background-color: #f3f4f6;
+}
+
+.bg-light-gray-2 {
+    background-color: #e5e7eb;
+}
+
+.bg-selected {
+    background-color: #FF0050;
+}
+
+h2 {
+    margin: 0 !important;
+}

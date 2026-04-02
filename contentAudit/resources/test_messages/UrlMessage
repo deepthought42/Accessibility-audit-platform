@@ -1,0 +1,52 @@
+####################################
+# Test page audit and journey paths
+###################################
+{
+	"messageId": "920a3228-ef87-4aab-bdc0-d2a87a12fa97",
+	"publishTime": "2023-01-28T00:48:48.595",
+	"accountId": 0,
+	"domainId": 10859,
+	"domainAuditRecordId": 4237,
+	"pageId": 4660
+}
+
+####################################
+# Test single page audit path
+###################################
+
+
+{
+  "type": "record",
+  "name": "Body",
+  "fields": [
+    {
+      "name": "message",
+      "type": {
+        "type": "record",
+        "name": "Message",
+        "fields": [
+          {
+            "name": "domainId",
+            "type": "long"
+          },
+          {
+            "name": "accountId",
+            "type": "long"
+          },
+          {
+            "name": "domainAuditRecordId",
+            "type": "long"
+          },
+          {
+            "name": "pageAuditId",
+            "type": "long"
+          },
+          {
+            "name": "url",
+            "type": "string"
+          }
+        ]
+      }
+    }
+  ]
+}

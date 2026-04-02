@@ -1,0 +1,59 @@
+####################################
+# Test page audit and journey paths
+###################################
+{
+	"domainId": 10859,
+	"accountId": 0,
+	"domainAuditRecordId": 4237,
+	"pageAuditId": -1,
+	"url": "look-see.com"
+}
+
+####################################
+# Test single page audit path
+###################################
+{
+	"domainId": -1,
+	"accountId": 5,
+	"domainAuditRecordId": 11,
+	"pageAuditId": -1,
+	"url": "https://look-see.com"
+}
+
+
+
+{
+  "type": "record",
+  "name": "Body",
+  "fields": [
+    {
+      "name": "message",
+      "type": {
+        "type": "record",
+        "name": "Message",
+        "fields": [
+          {
+            "name": "domainId",
+            "type": "long"
+          },
+          {
+            "name": "accountId",
+            "type": "long"
+          },
+          {
+            "name": "domainAuditRecordId",
+            "type": "long"
+          },
+          {
+            "name": "pageAuditId",
+            "type": "long"
+          },
+          {
+            "name": "url",
+            "type": "string"
+          }
+        ]
+      }
+    }
+  ]
+}

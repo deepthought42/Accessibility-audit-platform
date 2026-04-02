@@ -1,0 +1,61 @@
+####################################
+# Test page audit and journey paths
+###################################
+ {
+ 	"messageId": "103a02de-139a-4d93-a45a-fddf4b6cca43",
+ 	"publishTime": "2023-01-28T02:26:19.505",
+ 	"accountId": 0,
+ 	"domainId": 10859,
+ 	"domainAuditRecordId": 4237,
+ 	"pageId": 4651,
+ 	"pageAuditId": 6283
+ }
+
+####################################
+# Test single page audit path
+###################################
+{
+	"domainId": -1,
+	"accountId": 5,
+	"domainAuditRecordId": 11,
+	"pageAuditId": -1,
+	"url": "https://look-see.com"
+}
+
+
+
+{
+  "type": "record",
+  "name": "Body",
+  "fields": [
+    {
+      "name": "message",
+      "type": {
+        "type": "record",
+        "name": "Message",
+        "fields": [
+          {
+            "name": "domainId",
+            "type": "long"
+          },
+          {
+            "name": "accountId",
+            "type": "long"
+          },
+          {
+            "name": "domainAuditRecordId",
+            "type": "long"
+          },
+          {
+            "name": "pageAuditId",
+            "type": "long"
+          },
+          {
+            "name": "url",
+            "type": "string"
+          }
+        ]
+      }
+    }
+  ]
+}

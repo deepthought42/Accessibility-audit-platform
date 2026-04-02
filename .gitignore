@@ -1,0 +1,51 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+
+# Java / Maven / Gradle
+**/target/
+**/build/
+*.class
+*.jar
+*.war
+*.ear
+.gradle/
+
+# Node / front-end
+**/node_modules/
+**/dist/
+npm-debug.log*
+yarn-error.log*
+.pnpm-store/
+
+# Logs & temp
+*.log
+*.tmp
+*.swp
+*~
+
+# Terraform
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+
+# Local env & secrets (never commit real values)
+.env
+.env.*
+!.env.example
+**/*.pem
+**/*credentials*.json
+!**/test/**/credentials*.json
+
+# Coverage / caches
+coverage/
+.nyc_output/
+**/.angular/cache

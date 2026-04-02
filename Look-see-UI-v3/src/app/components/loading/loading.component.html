@@ -1,0 +1,324 @@
+<div class="h-70vh">
+    <div class="h-full flex items-center justify-center">
+        <div class="w-full h-2/3">
+            <div class="bg-gray-100 lg:w-4/5 md:w-4/5 sm:w-full m-auto rounded-lg carousel h-full">
+                <div class="carousel-inner pl-20 pr-20 h-full">
+
+                    <!-- review issues slide -->
+                    <input class="carousel-open hidden" type="radio" id="carousel-1" name="carousel" aria-hidden="true" hidden="true" [checked]="visible_slide==='carousel-1'">
+                    <section class="carousel-item w-3/4" >
+                        <header class="h-1/6">
+                            <h1 class="h-full flex items-center justify-center">
+                                Review issues
+                            </h1>
+                        </header>
+                        <div class="h-4/6 grid grid-cols-2 gap-10">
+                            <div class="flex items-center justify-center">
+                                <img src="https://storage.googleapis.com/look-see-inc-assets/illustrations/review_audit.png"
+                                     alt="Review UX issues"
+                                     class="w-1/2"/>
+                            </div>
+                            <div class="flex h-full items-center justify-center text-left pl-8 pr-8">
+                                Review UX audit results across categories such as content, information architecture, visual design and accessibility. 
+                                <br />
+                                <br />
+                                Discover ways to improve your UX and learn which improvements will have the greatest impact.
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- review issues slide -->
+                    <input class="carousel-open hidden" type="radio" id="carousel-2" name="carousel" aria-hidden="true" hidden="true" [checked]="visible_slide==='carousel-2'">
+                    <section class="carousel-item w-3/4" >
+                        <header class="h-1/6">
+                            <h1 class="h-full flex items-center justify-center">
+                                Accessibility
+                            </h1>
+                        </header>
+                        <div class="h-4/6 grid grid-cols-2 gap-10">
+                            <div class="flex items-center justify-center">
+                                <img src="https://assets.look-see.com/illustrations/Review_data_transparent.png" 
+                                     alt="Accessibility review illustration"
+                                     class="w-1/2"/>
+                            </div>
+                            <div class="flex h-full items-center justify-center text-left pl-8 pr-8">
+                                Quickly find accessibility violations and get recommendations on what improvements to make to become compliant.
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Share reports slide -->
+                    <input class="carousel-open hidden" type="radio" id="carousel-3" name="carousel" aria-hidden="true" hidden="true" [checked]="visible_slide==='carousel-3'">
+
+                    <section class="carousel-item w-3/4" >
+                        <header class="h-1/6">
+                            <h1 class="h-full flex items-center justify-center">
+                                Share Reports
+                            </h1>
+                        </header>
+                        <div class="h-4/6 grid grid-cols-2 gap-10">
+                            <div class="flex items-center justify-center">
+                                <img src="https://storage.googleapis.com/look-see-inc-assets/illustrations/share_illustration.png"
+                                      alt="Share with your team!"
+                                      class="w-1/2"/>
+                            </div>
+                            <div class="flex h-full items-center justify-center text-left pl-8 pr-8">
+                                Share results with your team and stakeholders to help them understand the importance of UX improvements.
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Usability score tracking -->
+                    <input class="carousel-open hidden" type="radio" id="carousel-4" name="carousel" aria-hidden="true" hidden="true" [checked]="visible_slide==='carousel-4'">
+                    <section class="carousel-item w-3/4" >
+                        <header class="h-1/6">
+                            <h1 class="h-full flex items-center justify-center">
+                                Track Usability Score
+                            </h1>
+                        </header>
+                        <div class="h-4/6 grid grid-cols-2 gap-10">
+                            <div class="flex items-center justify-center">
+                                <img src="https://assets.look-see.com/illustrations/Review_data_transparent.png" 
+                                     alt="Track usability in dashboard charts"
+                                     class="w-1/2"/>
+                            </div>
+                            <div class="flex h-full items-center justify-center text-left pl-8 pr-8">
+                                Perform UX Audits on new releases to keep track of how changes affect the usability score.
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- slide 4 -->
+                    <input class="carousel-open hidden" type="radio" id="carousel-5" name="carousel" aria-hidden="true" hidden="true" [checked]="visible_slide==='carousel-5'" >
+                    <section class="carousel-item w-3/4" >
+                        <header class="h-1/6">
+                            <h1 class="h-full flex items-center justify-center">
+                                Single Page Audit
+                            </h1>
+                        </header>
+                        <div class="h-4/6 grid grid-cols-2 gap-10">
+                            <div class="flex items-center justify-center">
+                                <img src="https://storage.googleapis.com/look-see-inc-assets/illustrations/look-see_target_check.png"
+                                     alt="Ensure you are creating a delightful experience"
+                                     class="w-1/2" />
+                            </div>
+                            <div class="flex h-full items-center justify-center text-left pl-8 pr-8">
+                                Sometimes you only need to audit an individual page. We have you covered with our single page audits. 
+                            </div>
+                        </div>
+                    </section>
+
+
+                    <!-- Scoring slide -->
+                    <input class="carousel-open hidden" type="radio" id="carousel-6" name="carousel" aria-hidden="true" hidden="true"  [checked]="visible_slide==='carousel-6'">
+                    <section class="carousel-item w-3/4" >
+                        <header class="h-1/6">
+                            <h1 class="h-full flex items-center justify-center">
+                                Domain Audit
+                            </h1>
+                        </header>
+                        <div class="h-4/6 w-full grid grid-cols-2 gap-10">
+                            <div class="flex items-center justify-center">
+                                <img src="https://assets.look-see.com/illustrations/Share_2_transparent.png" 
+                                     alt="Review multiple pages within a website"
+                                     class="w-1/2"/>
+                            </div>
+                            <div class="w-full h-full">
+                                <div class="flex h-2/3 items-center justify-center text-left pl-8 pr-8">
+                                    Get insights across an entire website and learn which pages are impacting your experience most.
+                                    <br/>
+                                    <br/>
+                                    Create an account to check it out.
+                                </div>
+                                <div class="flex h-1/3 items-center justify-center">
+                                    <app-auth-button></app-auth-button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Scoring slide -->
+                    <input class="carousel-open hidden" type="radio" id="carousel-7" name="carousel" aria-hidden="true" [checked]="visible_slide==='carousel-7'"  >
+                    <section class="carousel-item w-3/4" >
+                        <header class="h-1/6">
+                            <h1 class="w-full h-full flex items-center justify-center">
+                                Scoring Levels
+                            </h1>
+                        </header>
+                        <div class="w-full h-4/6 grid grid-rows-3">
+                            <div class="grid grid-cols-7 flex items-center">
+                                <div class="col-span-3 text-right pr-20 flex justify-end h-1/2">
+                                    <img src="https://storage.googleapis.com/look-see-inc-assets/icons/C-Happy-Face-128px.png"
+                                         alt="Wow! This is great" />
+                                </div>
+                                <div class="col-span-4 text-left ">
+                                    <b class="delightful text-2xl">
+                                        Above 80%
+                                    </b>
+                                    <div class="text-base">
+                                        Your experience is “delightful”
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-7 flex items-center">
+                                <div class="col-span-3 text-right pr-20 flex justify-end h-1/2">
+                                    <img src="https://storage.googleapis.com/look-see-inc-assets/icons/C-Average-Face-128px-2.png" 
+                                         alt="Meh. It's ok I guess"/>
+                                </div>
+                                <div class="col-span-4 text-left">
+                                    <b class="meh text-2xl">
+                                        Between 60% to 80%
+                                    </b>
+                                    <div class="text-base">
+                                        Your experience is “almost there”
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-7 flex items-center">
+                                <div class="col-span-3 text-right pr-20 flex justify-end h-1/2">
+                                    <img src="https://storage.googleapis.com/look-see-inc-assets/icons/C-Sad-Face-128px.png" 
+                                         alt="Sad face"/>
+                                </div>
+                                <div class="col-span-4 text-left">
+                                    <b class="sadface text-2xl">
+                                        Below 60%
+                                    </b>
+                                    <div class="text-base">
+                                        Your experience “needs work”
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <label for="carousel-7" class="carousel-control prev control-1">‹</label>
+                    <label for="carousel-2" class="carousel-control next control-1">›</label>
+
+                    <label for="carousel-1" class="carousel-control prev control-2">‹</label>
+                    <label for="carousel-3" class="carousel-control next control-2">›</label>
+                    
+                    <label for="carousel-2" class="carousel-control prev control-3">‹</label>
+                    <label for="carousel-4" class="carousel-control next control-3">›</label>
+
+                    <label for="carousel-3" class="carousel-control prev control-4">‹</label>
+                    <label for="carousel-5" class="carousel-control next control-4">›</label>
+
+                    <label for="carousel-4" class="carousel-control prev control-5">‹</label>
+                    <label for="carousel-6" class="carousel-control next control-5">›</label>
+
+                    <label for="carousel-5" class="carousel-control prev control-6">‹</label>
+                    <label for="carousel-7" class="carousel-control next control-6">›</label>
+
+                    <label for="carousel-6" class="carousel-control prev control-7">‹</label>
+                    <label for="carousel-1" class="carousel-control next control-7">›</label>
+
+                    <ol class="carousel-indicators">
+                        <li>
+                            <label for="carousel-1" class="carousel-bullet" (clicK)="selectSlide('carousel-5')">•</label>
+                        </li>
+                        <li>
+                            <label for="carousel-2" class="carousel-bullet" (clicK)="selectSlide('carousel-2')">•</label>
+                        </li>
+                        <li>
+                            <label for="carousel-3" class="carousel-bullet" (clicK)="selectSlide('carousel-3')">•</label>
+                        </li>
+                        <li>
+                            <label for="carousel-4" class="carousel-bullet" (clicK)="selectSlide('carousel-4')">•</label>
+                        </li>
+                        <li>
+                            <label for="carousel-5" class="carousel-bullet" (clicK)="selectSlide('carousel-5')">•</label>
+                        </li>
+                        <li>
+                            <label for="carousel-6" class="carousel-bullet" (clicK)="selectSlide('carousel-6')">•</label>
+                        </li>
+                        <li>
+                            <label for="carousel-7" class="carousel-bullet" (clicK)="selectSlide('carousel-7')">•</label>
+                        </li>
+                    </ol>
+                </div>
+
+                <!-- carousel slide 1 -->
+                <!--
+                <div>
+                    <div class="w-full h-14 text-xl flex items-center justify-center">
+                        We group scores into the following three categories
+                    </div>
+                    <div class="grid grid-cols-7 flex items-center pb-5">
+                        <div class="col-span-3 text-right pr-20 flex justify-end h-1/2">
+                            <img src="https://storage.googleapis.com/look-see-inc-assets/icons/C-Happy-Face-128px.png" />
+                        </div>
+                        <div class="col-span-4 text-left ">
+                            <b class="delightful text-4xl">
+                                Above 80%
+                            </b>
+                            <div class="text-lg">
+                                Your experience is “delightful”
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-7 flex items-center pb-5">
+                        <div class="col-span-3 text-right pr-20 flex justify-end h-1/2">
+                            <img src="https://storage.googleapis.com/look-see-inc-assets/icons/C-Average-Face-128px.png/C-Average-Face-128px.png" />
+                        </div>
+                        <div class="col-span-4 text-left">
+                            <b class="meh text-4xl">
+                                Between 60% to 80%
+                            </b>
+                            <div class="text-lg">
+                                Your experience is “almost there”
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-7 flex items-center pb-5">
+                        <div class="col-span-3 text-right pr-20 flex justify-end h-1/2">
+                            <img src="https://storage.googleapis.com/look-see-inc-assets/icons/C-Sad-Face-128px.png" />
+                        </div>
+                        <div class="col-span-4 text-left">
+                            <b class="sadface text-4xl">
+                                Below 60%
+                            </b>
+                            <div class="text-lg">
+                                Your experience “needs work”
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                -->
+                
+                <!-- Carousel slide 2 -->
+                <!--
+                <div>
+                    
+                </div>
+                -->
+                <!-- Carousel slide 3 -->
+                <!--
+                <div>
+                    
+                </div>
+                -->
+                <!-- Carousel slide 4 -->
+                <!--
+                <div>
+                    <h1>
+                        Sharing is caring...
+                    </h1>
+                    <div>
+                        Easily export the issues we identified to an Excel file that you can share with your team and stakeholders
+                    </div>
+                </div>
+                -->
+            </div>
+        </div>
+    </div>
+    <!--
+    <h2 class="text-center p-20">
+        Our comprehensive scoring criteria is based on scientific 
+        research, best practices, and ADA (Americans with Disabilities 
+        Act) compliance guidelines.
+    </h2>
+-->
+</div>
+
+
+

@@ -1,0 +1,72 @@
+name: Test
+
+on:
+  pull_request:
+    branches:
+      - master
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # This job runs on PR creation and updates
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+
+      - name: Download core JAR
+        run: bash scripts/download-core.sh
+
+      - name: Configure Maven Central mirror
+        run: |
+          mkdir -p "$HOME/.m2"
+          cat > "$HOME/.m2/settings.xml" <<'EOF'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <mirrors>
+              <mirror>
+                <id>central-direct</id>
+                <name>Central Direct Mirror</name>
+                <url>https://repo1.maven.org/maven2/</url>
+                <mirrorOf>central</mirrorOf>
+              </mirror>
+            </mirrors>
+          </settings>
+          EOF
+
+      - name: Maven install core JAR
+        run: mvn --batch-mode --no-transfer-progress --settings "$HOME/.m2/settings.xml" install:install-file -Dfile=libs/core-0.3.19.jar -DgroupId=com.looksee -DartifactId=core -Dversion=0.3.19 -Dpackaging=jar
+
+      - name: Test with Maven
+        run: mvn --batch-mode --no-transfer-progress --settings "$HOME/.m2/settings.xml" test
+        
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Sanitize branch name for Docker tag
+        run: |
+          SANITIZED_TAG=$(echo "${{ github.head_ref }}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9._-]+/-/g' | sed -E 's/^-+|-+$//g' | cut -c1-128)
+          if [ -z "$SANITIZED_TAG" ]; then
+            SANITIZED_TAG="pr-${{ github.event.number }}"
+          fi
+          echo "SANITIZED_TAG=$SANITIZED_TAG" >> "$GITHUB_ENV"
+
+      - name: Build Docker image
+        run: |
+          docker build -t deepthought42/information-architecture-audit:${SANITIZED_TAG} .
+          docker tag deepthought42/information-architecture-audit:${SANITIZED_TAG} deepthought42/information-architecture-audit:latest

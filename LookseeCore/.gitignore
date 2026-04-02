@@ -1,0 +1,15 @@
+.vscode/
+.idea/
+.classpath
+.project
+
+target/*
+node_modules/
+*.stage
+*.prod
+
+.settings/
+
+LOG_FILE_IS_UNDEFINED*
+JavaBooks.xlsx
+

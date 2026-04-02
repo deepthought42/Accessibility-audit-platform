@@ -1,0 +1,234 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  	<modelVersion>4.0.0</modelVersion>
+  	<groupId>com.looksee</groupId>
+  	<artifactId>audit-manager</artifactId>
+  	<version>1.0.11</version>
+	<packaging>jar</packaging>
+
+  	<properties>
+	    <maven.compiler.source>17</maven.compiler.source>
+	    <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <java.version>17</java.version>
+	    <springboot.version>2.6.13</springboot.version>
+		<core.version>0.3.1</core.version>
+    </properties>
+
+    <dependencyManagement>
+	    <dependencies>
+			<dependency>
+				<!-- Import dependency management from Spring Boot -->
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-dependencies</artifactId>
+				<version>${springboot.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>2021.0.0</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+			<dependency>
+				<groupId>com.google.cloud</groupId>
+				<artifactId>spring-cloud-gcp-dependencies</artifactId>
+				<version>3.0.0</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+	    </dependencies>
+	  </dependencyManagement>
+
+	  <dependencies>
+	    <dependency>
+	      <groupId>org.springframework.boot</groupId>
+	      <artifactId>spring-boot-starter-web</artifactId>
+	    </dependency>
+	    
+		<!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-data-neo4j -->
+		<dependency>
+		    <groupId>org.springframework.boot</groupId>
+		    <artifactId>spring-boot-starter-data-neo4j</artifactId>
+		    <version>${springboot.version}</version>
+		</dependency>
+
+
+	    <dependency>
+	      	<groupId>com.google.cloud</groupId>
+	      	<artifactId>spring-cloud-gcp-pubsub-stream-binder</artifactId>
+			<version>3.2.1</version>
+	    </dependency>
+	    
+		<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-annotations -->
+		<dependency>
+		    <groupId>com.fasterxml.jackson.core</groupId>
+		    <artifactId>jackson-annotations</artifactId>
+		    <version>2.12.2</version>
+		</dependency>
+		
+		<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core -->
+		<dependency>
+		    <groupId>com.fasterxml.jackson.core</groupId>
+		    <artifactId>jackson-core</artifactId>
+		    <version>2.12.2</version>
+		</dependency>
+				
+		<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind -->
+		<dependency>
+		    <groupId>com.fasterxml.jackson.core</groupId>
+		    <artifactId>jackson-databind</artifactId>
+		    <version>2.12.2</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.datatype/jackson-datatype-jsr310 -->
+		<dependency>
+		    <groupId>com.fasterxml.jackson.datatype</groupId>
+		    <artifactId>jackson-datatype-jsr310</artifactId>
+		    <version>2.12.2</version>
+		</dependency>
+
+		<!-- Add Secret Manager Starter -->
+	    <dependency>
+			<groupId>com.google.cloud</groupId>
+			<artifactId>spring-cloud-gcp-starter-secretmanager</artifactId>
+	    </dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-inline</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Direct JAR from GitHub release -->
+		<dependency>
+            <groupId>com.looksee</groupId>
+            <artifactId>core</artifactId>
+            <version>${core.version}</version>
+        </dependency>
+	</dependencies>
+
+	<build>
+	    <plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.11.0</version>
+				<configuration>
+					<source>${maven.compiler.source}</source>
+					<target>${maven.compiler.target}</target>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>3.1.0</version>
+				<executions>
+					<execution>
+						<id>download-core-jar</id>
+						<phase>validate</phase>
+						<goals>
+							<goal>exec</goal>
+						</goals>
+						<configuration>
+							<executable>bash</executable>
+							<arguments>
+								<argument>scripts/download-core.sh</argument>
+							</arguments>
+							<workingDirectory>${project.basedir}</workingDirectory>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>com.google.cloud.tools</groupId>
+				<artifactId>jib-maven-plugin</artifactId>
+				<version>3.2.1</version>
+				<configuration>
+					<to>
+						<image>gcr.io/PROJECT_ID/pubsub</image>
+					</to>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<version>${springboot.version}</version>
+				<configuration>
+					<fork>true</fork>
+					<mainClass>com.looksee.auditManager.Application</mainClass>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>repackage</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.8.11</version>
+				<configuration>
+					<excludes>
+						<exclude>com/looksee/auditManager/Application.class</exclude>
+					</excludes>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>test</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>check</id>
+						<phase>test</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<rule>
+									<element>BUNDLE</element>
+									<limits>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.90</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+    
+        <repositories>
+        <repository>
+            <id>central</id>
+            <name>Maven Central</name>
+            <url>https://repo.maven.apache.org/maven2</url>
+            <layout>default</layout>
+        </repository>
+    </repositories>
+</project>

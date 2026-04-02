@@ -1,0 +1,76 @@
+resilience4j.retry:
+    configs:
+        default:
+            maxAttempts: 1
+            waitDuration: 5s
+            retryExceptions:
+                - org.springframework.web.client.HttpServerErrorException
+                - java.util.concurrent.TimeoutException
+                - java.io.IOException
+                - java.net.SocketException
+                - java.net.ConnectException
+                - java.lang.Exception
+        webdriver:
+            maxAttempts: 1
+            waitDuration: 1s
+            retryExceptions:
+                - org.openqa.selenium.WebDriverException
+                - org.openqa.selenium.remote.UnreachableBrowserException
+                - org.openqa.selenium.NoSuchSessionException
+                - org.openqa.selenium.NoSuchElementException
+                - org.openqa.selenium.ScriptTimeoutException
+                - java.lang.Exception
+                - java.io.IOException
+                - java.net.ConnectException
+                - java.net.SocketException
+                - java.lang.NullPointerException
+        neoforj:
+            maxAttempts: 10
+            waitDuration: 1s
+            retryExceptions:
+                - org.neo4j.ogm.exception.ConnectionException
+                - org.neo4j.driver.exceptions.SessionExpiredException
+                - org.neo4j.driver.exceptions.DiscoveryException
+                - org.neo4j.driver.exceptions.TransientException
+                - org.neo4j.ogm.exception.TransactionException
+                - org.neo4j.ogm.exception.CypherException
+                - java.net.SocketException
+                - java.util.NoSuchElementException
+        gcp:
+            maxAttempts: 10
+            waitDuration: 1s
+            retryExceptions:
+                - java.io.IOException
+                - com.google.cloud.storage.StorageException
+                - com.google.api.gax.rpc.ResourceExhaustedException
+                - io.grpc.StatusRuntimeException
+                - com.google.api.gax.rpc.UnknownException
+                - java.nio.channels.ClosedChannelException
+                - java.lang.RuntimeException
+                - javax.imageio.IIOException
+        builder:
+            maxAttempts: 5
+            waitDuration: 2s
+            retryExceptions:
+                - org.openqa.selenium.WebDriverException
+                - org.openqa.selenium.remote.UnreachableBrowserException
+                - org.openqa.selenium.NoSuchSessionException
+                - java.io.IOException
+                - java.net.ConnectException
+                - java.net.SocketException
+    instances:
+        neoforj:
+            baseConfig: neoforj
+        webdriver:
+            baseConfig: webdriver
+        gcp:
+            baseConfig: gcp
+        default:
+            baseConfig: default
+
+okta:
+  oauth2:
+    # Replace with the domain of your Auth0 tenant.
+    issuer: https://look-see.us.auth0.com/
+    # Replace with the API Identifier for your Auth0 API.
+    audience: https://api.look-see.com

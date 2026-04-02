@@ -1,0 +1,15 @@
+/node_modules
+
+GCP-MyFirstProject-1c31159db52c.json
+gmail_credentials.json
+/target
+
+.classpath
+.project
+.settings/
+/.vscode
+
+*.prod
+*.stage
+
+/libs

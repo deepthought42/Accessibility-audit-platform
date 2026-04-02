@@ -1,0 +1,49 @@
+<div class="flex flex-col items-center">
+  <svg
+    [attr.width]="size"
+    [attr.height]="size"
+    [attr.viewBox]="'0 0 ' + size + ' ' + size"
+  >
+    <!-- Background circle -->
+    <circle
+      [attr.cx]="size / 2"
+      [attr.cy]="size / 2"
+      [attr.r]="radius"
+      fill="none"
+      stroke="#e5e7eb"
+      [attr.stroke-width]="strokeWidth"
+    />
+    <!-- Score arc -->
+    <circle
+      [attr.cx]="size / 2"
+      [attr.cy]="size / 2"
+      [attr.r]="radius"
+      fill="none"
+      [attr.stroke]="strokeColor"
+      [attr.stroke-width]="strokeWidth"
+      stroke-linecap="round"
+      [attr.stroke-dasharray]="circumference"
+      [attr.stroke-dashoffset]="dashoffset"
+      transform="rotate(-90)"
+      [attr.transform-origin]="(size / 2) + ' ' + (size / 2)"
+    />
+    <!-- Score text -->
+    <text
+      [attr.x]="size / 2"
+      [attr.y]="size / 2"
+      text-anchor="middle"
+      dominant-baseline="central"
+      class="font-semibold"
+      [attr.font-size]="size * 0.25"
+      fill="#1f2937"
+    >
+      {{ score }}%
+    </text>
+  </svg>
+  <span
+    *ngIf="label"
+    class="mt-1 text-sm text-gray-600"
+  >
+    {{ label }}
+  </span>
+</div>

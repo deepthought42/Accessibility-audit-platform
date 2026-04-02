@@ -1,0 +1,89 @@
+{
+    "audit_categories_config": [
+        {
+        "name": "Visual Design",
+        "label": "VISUAL DESIGN",
+        "icon_src": "https://storage.googleapis.com/look-see-inc-assets/icons/color-management-icon.png",
+        "description": "Colors, typography, and use of whitespace",
+        "scoring_description": "A thorough review of the foundational elements of design to determine how well a brand uses color, typography, whitespace. We even check for WCAG 2.1 accessibility requirements for color contrast.",
+        "loading_msg": "",
+        "audits": [
+            {
+            "name": "Color",
+            "description": "Color palette and accessibility of the colors used",
+            "label": "COLOR_MANAGEMENT"
+            },
+            {
+            "name": "Typography",
+            "description": "Clarity, consistency and legibility of text styles",
+            "label": "TYPOGRAPHY"
+            },
+            {
+            "name": "Whitespace",
+            "description": "Margin and Padding values",
+            "label": "WHITESPACE"
+            },
+            {
+            "name": "Branding",
+            "description": "Visibility and scalability of your logo",
+            "label": "BRANDING"
+            }
+        ]
+        },
+        {
+        "name": "Information Architecture",
+        "label": "INFORMATION_ARCHITECTURE",
+        "icon_src": "https://storage.googleapis.com/look-see-inc-assets/icons/info-architecture-icon.png",
+        "description": "Content structure, menus, links and buttons",
+        "scoring_description": "Reviews content and website structure for SEO, dead links, performance, as well as the number of pages a user has to go to find any given piece of information",
+        "loading_msg": "",
+        "audits": [
+            {
+            "name": "SEO",
+            "description": "The meta data that needs to be mentioned about a web page",
+            "label": "SEO"
+            },
+            {
+            "name": "Menu Analysis",
+            "description": "Evaluation of the menu heirarchy, placement, and complexity",
+            "label": "MENU_ANALYSIS"
+            },
+            {
+            "name": "Performance",
+            "description": "How fast the content loads on webpages",
+            "label": "PERFORMANCE"
+            }
+        ]
+        },
+        {
+        "name": "Content",
+        "label": "CONTENT",
+        "icon_src": "https://storage.googleapis.com/look-see-inc-assets/icons/written-content-icon.png",
+        "description": "Readability and organization of text",
+        "scoring_description": "Evaluates written content for accessibility requirements around radability. We also review images and other media for relevance to written content",
+        "loading_msg": "",
+        "audits": [
+            {
+            "name": "Written Content",
+            "description": "Readibility, tone, vocabulary, and grammar",
+            "label": "WRITTEN_CONTENT"
+            },
+            {
+            "name": "Imagery",
+            "description": "Check that images reflect your written content and are SEO friendly",
+            "label": "IMAGERY"
+            },
+            {
+            "name": "Videos",
+            "description": "Evaluation of videos and their accessibility",
+            "label": "VIDEOS"
+            },
+            {
+            "name": "Audio",
+            "description": "Evaluation of Audio tracks and their accessibility",
+            "label": "AUDIO"
+            }
+        ]
+        }
+    ]
+}

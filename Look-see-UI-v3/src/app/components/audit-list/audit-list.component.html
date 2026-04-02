@@ -1,0 +1,106 @@
+<!-- Empty state -->
+<div class="flex flex-col items-center justify-center py-16 px-6" *ngIf="!audit_records && !is_loading_audits">
+    <div class="w-16 h-16 rounded-2xl bg-brand-50 flex items-center justify-center mb-4">
+        <fa-icon [icon]="faMagnifyingGlass" class="text-brand-500 text-2xl"></fa-icon>
+    </div>
+    <h1 class="text-xl font-semibold text-gray-900 mb-2">
+        No audits yet
+    </h1>
+    <p class="text-sm text-gray-500 text-center max-w-md">
+        Enter a website URL above to run your first UX audit. We'll analyze accessibility, content quality, and visual design.
+    </p>
+</div>
+
+<!-- Audit form -->
+<app-audit-form (auditRecordData)="addItem($event)"></app-audit-form>
+
+<!-- Audit table -->
+<div class="px-6 pb-6">
+    <!-- Table header -->
+    <div class="grid grid-cols-12 gap-4 px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+        <div class="col-span-4">URL</div>
+        <div class="col-span-2 text-center">Type</div>
+        <div class="col-span-2 text-center">Content</div>
+        <div class="col-span-2 text-center">Info Architecture</div>
+        <div class="col-span-1 text-center">Aesthetic</div>
+        <div class="col-span-1"></div>
+    </div>
+
+    <!-- Loading state -->
+    <div *ngIf="is_loading_audits" class="space-y-3 mt-2">
+        <div class="card px-5 py-4 animate-pulse" *ngFor="let i of [1,2,3]">
+            <div class="grid grid-cols-12 gap-4 items-center">
+                <div class="col-span-4"><div class="h-4 bg-gray-200 rounded w-3/4"></div></div>
+                <div class="col-span-2"><div class="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div></div>
+                <div class="col-span-2"><div class="h-4 bg-gray-200 rounded w-1/3 mx-auto"></div></div>
+                <div class="col-span-2"><div class="h-4 bg-gray-200 rounded w-1/3 mx-auto"></div></div>
+                <div class="col-span-1"><div class="h-4 bg-gray-200 rounded w-1/3 mx-auto"></div></div>
+                <div class="col-span-1"><div class="h-4 bg-gray-200 rounded-full w-6 h-6 mx-auto"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audit rows -->
+    <div class="space-y-2 mt-2">
+        <div *ngFor="let audit_record of audit_records"
+             class="card-interactive px-5 py-4"
+             (click)="selectAudit(audit_record)"
+             (keydown.enter)="selectAudit(audit_record)"
+             (keydown.space)="selectAudit(audit_record)"
+             tabindex="0"
+             role="button"
+             [attr.aria-label]="'Select audit for ' + audit_record.url">
+            <div class="grid grid-cols-12 gap-4 items-center">
+                <!-- URL -->
+                <div class="col-span-4">
+                    <p class="text-sm font-medium text-gray-900 truncate">
+                        {{ audit_record.url }}
+                    </p>
+                </div>
+
+                <!-- Type -->
+                <div class="col-span-2 flex justify-center">
+                    <span class="badge"
+                          [ngClass]="{
+                              'bg-blue-50 text-blue-700': audit_record.level === 'PAGE',
+                              'bg-purple-50 text-purple-700': audit_record.level === 'DOMAIN'
+                          }">
+                        {{ audit_record.level }}
+                    </span>
+                </div>
+
+                <!-- Content Score -->
+                <div class="col-span-2 flex justify-center">
+                    <app-score-badge
+                        [score]="audit_record.contentAuditScore"
+                        [loading]="audit_record.contentAuditScore < 1"
+                        size="sm">
+                    </app-score-badge>
+                </div>
+
+                <!-- Info Architecture Score -->
+                <div class="col-span-2 flex justify-center">
+                    <app-score-badge
+                        [score]="audit_record.infoArchScore"
+                        [loading]="audit_record.infoArchScore < 1"
+                        size="sm">
+                    </app-score-badge>
+                </div>
+
+                <!-- Aesthetic Score -->
+                <div class="col-span-1 flex justify-center">
+                    <app-score-badge
+                        [score]="audit_record.aestheticScore"
+                        [loading]="audit_record.aestheticScore < 1"
+                        size="sm">
+                    </app-score-badge>
+                </div>
+
+                <!-- Chevron -->
+                <div class="col-span-1 flex justify-center">
+                    <fa-icon [icon]="faChevronRight" class="text-gray-400 text-sm"></fa-icon>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

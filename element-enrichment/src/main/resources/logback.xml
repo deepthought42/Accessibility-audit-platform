@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+    <include resource="org/springframework/boot/logging/logback/file-appender.xml" />
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml" />
+
+    <appender name="SENTRY" class="com.getsentry.raven.logback.SentryAppender">
+        <dsn>https://ee9029ae37804d358cfb2e9893ef0300:10844eb595ce4592adc565a8390069c7@sentry.io/165519</dsn>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+    </appender>
+    <root level="WARN">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
+		<!--  <appender-ref ref="SENTRY" /> -->
+    </root>
+
+</configuration>

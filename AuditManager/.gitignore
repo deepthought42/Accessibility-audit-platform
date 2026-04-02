@@ -1,0 +1,22 @@
+.classpath
+/target/
+/node_modules/
+/libs/
+
+*.p12
+*.xlsx
+
+
+gmail_credentials.json
+GCP-MyFirstProject-1c31159db52c.json
+
+src/main/resources/application.conf
+
+*.prod
+*.stage
+
+
+LOG_FILE_IS_UNDEFINED
+
+# Maven shade output
+/dependency-reduced-pom.xml

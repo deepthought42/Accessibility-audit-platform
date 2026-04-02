@@ -1,0 +1,84 @@
+<div class="relative flex top-0 left-0 w-full h-screen">
+    <app-nav-bar id="nav-bar" class="hidden sm:block"></app-nav-bar>
+    <main class="flex-1 h-full overflow-y-auto bg-gray-50 sm:ml-64">
+        <router-outlet></router-outlet>
+    </main>
+</div>
+
+<!-- Mobile device modal -->
+<div class="modal modal-active fixed w-full h-full top-0 left-0 flex items-center justify-center z-30"
+     *ngIf="isMobileDevice && !isAcknowledged">
+    <div class="modal-overlay absolute w-full h-full bg-gray-900/60 backdrop-blur-sm z-50"></div>
+    <section class="modal-container bg-white w-[90vw] max-w-md rounded-2xl shadow-elevated overflow-hidden z-50 animate-fade-in">
+        <header class="px-6 pt-6 pb-2">
+            <h2 class="text-xl font-semibold text-gray-900">Mobile Experience</h2>
+        </header>
+        <div class="px-6 py-4">
+            <p class="text-sm text-gray-600 leading-relaxed">
+                Look-see is optimized for desktop browsers. You may experience layout issues on smaller screens.
+            </p>
+            <p class="text-sm text-gray-600 leading-relaxed mt-2">
+                For the best experience, please visit us on a laptop or desktop computer.
+            </p>
+        </div>
+        <footer class="px-6 pb-6 pt-2">
+            <button class="btn-primary w-full py-3" (click)="acknowledge()">
+                Continue anyway
+            </button>
+        </footer>
+    </section>
+</div>
+
+<!-- Beta acknowledgment modal -->
+<div class="modal modal-active fixed w-full h-full top-0 left-0 flex items-center justify-center z-30"
+     *ngIf="(this.auth.isAuthenticated$ | async) && !isBetaAcknowledged">
+    <div class="modal-overlay absolute w-full h-full bg-gray-900/60 backdrop-blur-sm z-50"></div>
+    <section class="modal-container bg-white w-[90vw] max-w-lg rounded-2xl shadow-elevated overflow-hidden z-50 animate-fade-in">
+        <header class="px-6 pt-6 pb-2">
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-brand-50 text-brand-600">Early Access</span>
+            </div>
+            <h2 class="text-xl font-semibold text-gray-900 mt-3">Welcome to Look-see Beta</h2>
+        </header>
+        <div class="px-6 py-4 space-y-4">
+            <p class="text-sm text-gray-600 leading-relaxed">
+                Thank you for being an early adopter. Some features are still under development.
+            </p>
+            <div>
+                <h4 class="text-sm font-semibold text-gray-900 mb-2">Available features</h4>
+                <ul class="space-y-1.5">
+                    <li class="flex items-center gap-2 text-sm text-gray-600">
+                        <svg class="w-4 h-4 text-emerald-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                        Single page review and scoring
+                    </li>
+                    <li class="flex items-center gap-2 text-sm text-gray-600">
+                        <svg class="w-4 h-4 text-emerald-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                        Full site review and scoring
+                    </li>
+                    <li class="flex items-center gap-2 text-sm text-gray-600">
+                        <svg class="w-4 h-4 text-emerald-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                        Domain management
+                    </li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-sm font-semibold text-gray-900 mb-2">Known limitations</h4>
+                <ul class="space-y-1.5">
+                    <li class="flex items-start gap-2 text-sm text-gray-500">
+                        <svg class="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                        Site audit progress indicators may be inaccurate
+                    </li>
+                    <li class="flex items-start gap-2 text-sm text-gray-500">
+                        <svg class="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                        Dashboard for in-progress audits may have limited detail
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <footer class="px-6 pb-6 pt-2">
+            <button class="btn-primary w-full py-3" (click)="acknowledgeBeta()">
+                Get started
+            </button>
+        </footer>
+    </section>
+</div>

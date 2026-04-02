@@ -1,0 +1,75 @@
+// This is a template file. Copy this to environment.ts and it will work.
+// The actual environment.ts file is gitignored to prevent secrets from being committed.
+// This file contains default/fallback values.
+// At runtime, these values are overridden by loading /config.json which is generated
+// from system environment variables when the Docker container starts.
+
+export const environment = {
+  production: false,
+  base_url: '',
+  api_url: '',
+  auth: {
+    domain: '',
+    clientId: '',
+    authorizationParams: {
+      audience: undefined,
+      redirect_uri: '',
+    },
+    errorPath: '/error',
+  },
+  httpInterceptor: {
+    allowedList: [],
+    /*
+          // Attach access tokens to any calls to '/api' (exact match)
+          {
+            uri: '"/audits',
+            tokenOptions: {
+              authorizationParams: {
+                audience: authConfig.authorizationParams.audience,
+              }
+            },
+          },
+          {
+            uri: '/audits/start-individual',
+            tokenOptions: {
+              authorizationParams: {
+                audience: authConfig.authorizationParams.audience,
+              }
+            },
+          },
+          {
+            uri: '/auditor/start-individual',
+            tokenOptions: {
+              authorizationParams: {
+                audience: authConfig.authorizationParams.audience
+              }
+            },
+          },
+          {
+            uri: 'https://api-stage.look-see.com"/audits/*',
+            tokenOptions: {
+              authorizationParams: {
+                audience: authConfig.authorizationParams.audience,
+              }
+            },
+          },
+        ],
+        */
+  },
+  pusher: {
+    app_id: '',
+    key: '',
+    secret: '',
+    cluster: ''
+  },
+  segment_key: ''
+};
+
+/*
+ * For easier debugging in development mode, you can import the following file
+ * to ignore zone related error stack frames such as `zone.run`, `zoneDelegate.invokeTask`.
+ *
+ * This import should be commented out in production mode because it will have a negative impact
+ * on performance if an error is thrown.
+ */
+// import 'zone.js/plugins/zone-error';  // Included with Angular CLI.

@@ -1,0 +1,17 @@
+<h1 mat-dialog-title>Are you sure that you want to start a new audit?</h1>
+<div mat-dialog-content>
+  <p>
+      It looks like you haven't logged in yet. Unfortunately we only provide 1 free audit for visitors without an account. 
+      <br/><br/>
+      On the bright side, we allow up to 10 free audits to users that create a FREE account. 
+      <br/><br/>
+      You can create a FREE account by clicking the login button in the top right of the screen to create a new account.
+  </p>
+</div>
+<div mat-dialog-actions class="flex items-center justify-end">
+    <button (click)="onNoClick()" class="p-4 rounded-lg border-2 mr-6">
+        Cancel
+    </button>
+    <app-auth-button></app-auth-button>
+</div>
+

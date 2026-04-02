@@ -1,0 +1,63 @@
+name: Test
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # This job runs on PR creation and updates
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Test with Maven
+        run: mvn -B -ntp test -Dspring.profiles.active=test -Dspring.cloud.gcp.pubsub.enabled=false -Dspring.cloud.gcp.storage.enabled=false -Dspring.cloud.gcp.vision.enabled=false -Dspring.cloud.gcp.project-id=test-project -Dtest='!browser.BrowserTest'
+        env:
+          SPRING_PROFILES_ACTIVE: test
+        
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      BRANCH_NAME: ${{ github.head_ref }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Maven install
+        run: mvn -B -ntp clean install -DskipTests -Dspring.profiles.active=test
+        env:
+          SPRING_PROFILES_ACTIVE: test

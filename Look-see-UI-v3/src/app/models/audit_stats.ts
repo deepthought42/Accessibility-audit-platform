@@ -1,0 +1,27 @@
+
+export interface AuditStats {
+    id: number,
+    startTime: string,
+    endTime: string,
+    journeysExplored: number,
+    journeysTotal: number,
+    pageCount: number,
+    accessibilityScore: number,
+    contentScore: number,
+    writtenContentScore: number,
+    imageryScore: number,
+    videosScore: number,
+    audioScore: number,
+    infoArchitectureScore: number,
+    seoScore: number,
+    menuAnalysisScore: number,
+    performanceScore: number,
+    aestheticsScore: number,
+    textContrastScore: number,
+    nonTextContrastScore: number,
+    typographyScore: number,
+    whitespaceScore: number,
+    brandingScore: number,
+    linkScore: number,
+    status: string
+}

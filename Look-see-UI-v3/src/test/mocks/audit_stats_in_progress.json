@@ -1,0 +1,22 @@
+{
+    "audit_stats": {
+        "a11yScore": 0,
+        "journeysExplored": 24,
+        "journeysTotal": 300,
+        "pageCount": 1,
+        "infoArchitectureScore": 0,
+        "seoScore": 0,
+        "linkScore": 0,
+        "contentScore": 0,
+        "writtenContentScore": 0,
+        "imageryScore": 0,
+        "aestheticsScore": 0,
+        "textContrastScore": 0,
+        "nonTextContrastScore": 0,
+        "status": "IN_PROGRESS",
+        "contentAuditProgress": 0.1,
+        "infoArchitectureAuditProgress": 0.3,
+        "aestheticAuditProgress": 0.3,
+        "dataExtractionProgress": 0.9
+    }
+}
