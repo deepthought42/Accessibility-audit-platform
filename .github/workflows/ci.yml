@@ -134,20 +134,28 @@ jobs:
         include:
           - project: AuditManager
             flag: audit-manager
+            core-version: '0.3.1'
           - project: PageBuilder
             flag: page-builder
+            core-version: '0.3.16'
           - project: audit-service
             flag: audit-service
+            core-version: '0.3.13'
           - project: contentAudit
             flag: content-audit
+            core-version: '0.3.20'
           - project: informationArchitectureAudit
             flag: info-arch-audit
+            core-version: '0.3.19'
           - project: journeyExecutor
             flag: journey-executor
+            core-version: '0.3.21'
           - project: journeyExpander
             flag: journey-expander
+            core-version: '0.3.21'
           - project: visualDesignAudit
             flag: visual-design-audit
+            core-version: '0.3.20'
     if: >
       needs.changes.outputs.audit-manager == 'true' ||
       needs.changes.outputs.page-builder == 'true' ||
@@ -180,11 +188,17 @@ jobs:
           cache: maven
           cache-dependency-path: ${{ matrix.project }}/pom.xml
 
-      - name: Download LookseeCore JAR
+      - name: Download and install LookseeCore JAR
         if: steps.should-run.outputs.run == 'true'
         run: |
           if [ -f scripts/download-core.sh ]; then
             bash scripts/download-core.sh
+            mvn -B -ntp install:install-file \
+              -Dfile=libs/core-${{ matrix.core-version }}.jar \
+              -DgroupId=com.looksee \
+              -DartifactId=core \
+              -Dversion=${{ matrix.core-version }} \
+              -Dpackaging=jar
           fi
 
       - name: Test
@@ -196,7 +210,7 @@ jobs:
         run: mvn -B -ntp package -DskipTests
 
   # ---------------------------------------------------------------------------
-  # CrawlerAPI (Java 21)
+  # CrawlerAPI (Java 21, system-scoped core JAR)
   # ---------------------------------------------------------------------------
   crawler-api:
     needs: changes
