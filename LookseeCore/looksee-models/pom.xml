@@ -12,6 +12,12 @@
 	<description>Core domain models, enums, DTOs, exceptions, and messages</description>
 
 	<dependencies>
+		<!-- Browser enums (BrowserType, BrowserEnvironment) -->
+		<dependency>
+			<groupId>com.looksee</groupId>
+			<artifactId>looksee-browser</artifactId>
+		</dependency>
+
 		<!-- Spring Data Neo4j annotations -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

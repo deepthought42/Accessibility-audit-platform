@@ -14,8 +14,8 @@ import com.looksee.models.PageLoadAnimation;
 import com.looksee.models.PageState;
 import com.looksee.models.Test;
 import com.looksee.models.TestRecord;
-import com.looksee.models.enums.BrowserEnvironment;
-import com.looksee.models.enums.BrowserType;
+import com.looksee.browsing.enums.BrowserEnvironment;
+import com.looksee.browsing.enums.BrowserType;
 import com.looksee.models.enums.TestStatus;
 import com.looksee.models.journeys.Redirect;
 import com.looksee.models.repository.GroupRepository;
@@ -107,8 +107,8 @@ public class TestService {
 		do{
 			try {
 				browser = BrowserConnectionHelper.getConnection(
-						com.looksee.browsing.enums.BrowserType.create(browser_name),
-						com.looksee.browsing.enums.BrowserEnvironment.create("test"));
+						BrowserType.create(browser_name),
+						BrowserEnvironment.create("test"));
 				//page = crawler.crawlPath(user_id, domain, test.getPathKeys(), test.getPathObjects(), browser, new URL(PathUtils.getFirstPage(test.getPathObjects()).getUrl()).getHost(), visible_element_map, visible_elements);
 			} catch(PagesAreNotMatchingException e){
 				log.warn(e.getMessage());

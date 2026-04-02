@@ -4,7 +4,7 @@ import com.looksee.models.ColorData;
 import com.looksee.models.ColorUsageStat;
 import com.looksee.models.ElementState;
 import com.looksee.models.PageState;
-import com.looksee.models.enums.BrowserType;
+import com.looksee.browsing.enums.BrowserType;
 import io.github.resilience4j.retry.annotation.Retry;
 import java.awt.Graphics2D;
 import java.awt.Image;
