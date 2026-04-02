@@ -32,7 +32,6 @@ import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.retry.annotation.Retryable;
 import ru.yandex.qatools.ashot.AShot;
 import ru.yandex.qatools.ashot.shooting.ShootingStrategies;
 
@@ -199,7 +198,6 @@ public class Browser {
 	 * @return the full page screenshot
 	 * @throws IOException if an error occurs while getting the screenshot
 	 */
-	@Retryable
 	public BufferedImage getFullPageScreenshotShutterbug() throws IOException {
 		return Shutterbug.shootPage(driver, Capture.FULL, 1000, true).getImage();
 	}
@@ -259,9 +257,10 @@ public class Browser {
 	 *
 	 * precondition: element != null
 	 */
-	public boolean isDisplayed(ElementState element) {
-		assert element != null;
-		WebElement web_element = driver.findElement(By.xpath(element.getXpath()));
+	public boolean isDisplayed(String xpath) {
+		assert xpath != null;
+		assert !xpath.isEmpty();
+		WebElement web_element = driver.findElement(By.xpath(xpath));
 		return web_element.isDisplayed();
 	}
 
