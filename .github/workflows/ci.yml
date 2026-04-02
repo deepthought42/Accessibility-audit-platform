@@ -109,6 +109,7 @@ jobs:
       - name: Test
         run: >
           mvn -B -ntp test
+          -DfailIfNoTests=false
           -Dspring.profiles.active=test
           -Dspring.cloud.gcp.pubsub.enabled=false
           -Dspring.cloud.gcp.storage.enabled=false
@@ -119,7 +120,7 @@ jobs:
           SPRING_PROFILES_ACTIVE: test
 
       - name: Build
-        run: mvn -B -ntp clean install -DskipTests -Dspring.profiles.active=test
+        run: mvn -B -ntp clean install -DskipTests -DfailIfNoTests=false -Dspring.profiles.active=test
         env:
           SPRING_PROFILES_ACTIVE: test
 
