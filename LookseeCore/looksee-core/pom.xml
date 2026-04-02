@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>com.looksee</groupId>
+		<artifactId>looksee-parent</artifactId>
+		<version>0.5.0</version>
+	</parent>
+
+	<artifactId>core</artifactId>
+	<name>LookseeCore (Umbrella)</name>
+	<description>Backward-compatible umbrella module that re-exports all LookseeCore sub-libraries.
+		Consumers should migrate to depending on individual sub-modules instead.</description>
+
+	<dependencies>
+		<dependency>
+			<groupId>com.looksee</groupId>
+			<artifactId>looksee-models</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.looksee</groupId>
+			<artifactId>looksee-persistence</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.looksee</groupId>
+			<artifactId>looksee-browser</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.looksee</groupId>
+			<artifactId>looksee-messaging</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.looksee</groupId>
+			<artifactId>looksee-gcp</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.looksee</groupId>
+			<artifactId>looksee-nlp</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.looksee</groupId>
+			<artifactId>looksee-utils</artifactId>
+		</dependency>
+	</dependencies>
+</project>

@@ -1,0 +1,3 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.looksee.config.LookseeCoreAutoConfiguration,\
+com.looksee.config.MessageBroadcasterAutoConfiguration

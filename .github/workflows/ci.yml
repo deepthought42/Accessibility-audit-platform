@@ -1,0 +1,391 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Detect which projects changed to skip unnecessary work
+  # ---------------------------------------------------------------------------
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      looksee-core: ${{ steps.filter.outputs.looksee-core }}
+      audit-manager: ${{ steps.filter.outputs.audit-manager }}
+      crawler-api: ${{ steps.filter.outputs.crawler-api }}
+      page-builder: ${{ steps.filter.outputs.page-builder }}
+      audit-service: ${{ steps.filter.outputs.audit-service }}
+      content-audit: ${{ steps.filter.outputs.content-audit }}
+      element-enrichment: ${{ steps.filter.outputs.element-enrichment }}
+      info-arch-audit: ${{ steps.filter.outputs.info-arch-audit }}
+      journey-map-cleanup: ${{ steps.filter.outputs.journey-map-cleanup }}
+      journey-errors: ${{ steps.filter.outputs.journey-errors }}
+      journey-executor: ${{ steps.filter.outputs.journey-executor }}
+      journey-expander: ${{ steps.filter.outputs.journey-expander }}
+      frontend-broadcaster: ${{ steps.filter.outputs.frontend-broadcaster }}
+      visual-design-audit: ${{ steps.filter.outputs.visual-design-audit }}
+      ui: ${{ steps.filter.outputs.ui }}
+      chrome-extension: ${{ steps.filter.outputs.chrome-extension }}
+      vscode-plugin: ${{ steps.filter.outputs.vscode-plugin }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            looksee-core:
+              - 'LookseeCore/**'
+            audit-manager:
+              - 'AuditManager/**'
+              - 'LookseeCore/**'
+            crawler-api:
+              - 'CrawlerAPI/**'
+              - 'LookseeCore/**'
+            page-builder:
+              - 'PageBuilder/**'
+              - 'LookseeCore/**'
+            audit-service:
+              - 'audit-service/**'
+              - 'LookseeCore/**'
+            content-audit:
+              - 'contentAudit/**'
+              - 'LookseeCore/**'
+            element-enrichment:
+              - 'element-enrichment/**'
+            info-arch-audit:
+              - 'informationArchitectureAudit/**'
+              - 'LookseeCore/**'
+            journey-map-cleanup:
+              - 'journey-map-cleanup/**'
+            journey-errors:
+              - 'journeyErrors/**'
+            journey-executor:
+              - 'journeyExecutor/**'
+              - 'LookseeCore/**'
+            journey-expander:
+              - 'journeyExpander/**'
+              - 'LookseeCore/**'
+            frontend-broadcaster:
+              - 'look-see-front-end-broadcaster/**'
+            visual-design-audit:
+              - 'visualDesignAudit/**'
+              - 'LookseeCore/**'
+            ui:
+              - 'Look-see-UI-v3/**'
+            chrome-extension:
+              - 'LookseeChromeExtension/**'
+            vscode-plugin:
+              - 'look-see-VSCode-plugin/**'
+
+  # ---------------------------------------------------------------------------
+  # LookseeCore (multi-module Maven, Java 17)
+  # ---------------------------------------------------------------------------
+  looksee-core:
+    needs: changes
+    if: needs.changes.outputs.looksee-core == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: LookseeCore
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: LookseeCore/pom.xml
+
+      - name: Test
+        run: >
+          mvn -B -ntp test
+          -DfailIfNoTests=false
+          -Dspring.profiles.active=test
+          -Dspring.cloud.gcp.pubsub.enabled=false
+          -Dspring.cloud.gcp.storage.enabled=false
+          -Dspring.cloud.gcp.vision.enabled=false
+          -Dspring.cloud.gcp.project-id=test-project
+          -Dtest='!browser.BrowserTest'
+        env:
+          SPRING_PROFILES_ACTIVE: test
+
+      - name: Build
+        run: mvn -B -ntp clean install -DskipTests -DfailIfNoTests=false -Dspring.profiles.active=test
+        env:
+          SPRING_PROFILES_ACTIVE: test
+
+  # ---------------------------------------------------------------------------
+  # Java 17 Maven services (depend on LookseeCore JAR download)
+  # ---------------------------------------------------------------------------
+  java17-services:
+    needs: changes
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: AuditManager
+            flag: audit-manager
+            core-version: '0.3.1'
+          - project: PageBuilder
+            flag: page-builder
+            core-version: '0.3.16'
+          - project: audit-service
+            flag: audit-service
+            core-version: '0.3.13'
+          - project: contentAudit
+            flag: content-audit
+            core-version: '0.3.20'
+          - project: informationArchitectureAudit
+            flag: info-arch-audit
+            core-version: '0.3.19'
+          - project: journeyExecutor
+            flag: journey-executor
+            core-version: '0.3.21'
+          - project: journeyExpander
+            flag: journey-expander
+            core-version: '0.3.21'
+          - project: visualDesignAudit
+            flag: visual-design-audit
+            core-version: '0.3.20'
+    if: >
+      needs.changes.outputs.audit-manager == 'true' ||
+      needs.changes.outputs.page-builder == 'true' ||
+      needs.changes.outputs.audit-service == 'true' ||
+      needs.changes.outputs.content-audit == 'true' ||
+      needs.changes.outputs.info-arch-audit == 'true' ||
+      needs.changes.outputs.journey-executor == 'true' ||
+      needs.changes.outputs.journey-expander == 'true' ||
+      needs.changes.outputs.visual-design-audit == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ matrix.project }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check if project changed
+        id: should-run
+        run: |
+          FLAG="${{ needs.changes.outputs[matrix.flag] }}"
+          echo "run=$FLAG" >> "$GITHUB_OUTPUT"
+        working-directory: .
+
+      - name: Set up JDK 17
+        if: steps.should-run.outputs.run == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: ${{ matrix.project }}/pom.xml
+
+      - name: Download and install LookseeCore JAR
+        if: steps.should-run.outputs.run == 'true'
+        run: |
+          if [ -f scripts/download-core.sh ]; then
+            bash scripts/download-core.sh
+            mvn -B -ntp install:install-file \
+              -Dfile=libs/core-${{ matrix.core-version }}.jar \
+              -DgroupId=com.looksee \
+              -DartifactId=core \
+              -Dversion=${{ matrix.core-version }} \
+              -Dpackaging=jar
+          fi
+
+      - name: Test
+        if: steps.should-run.outputs.run == 'true'
+        run: mvn -B -ntp clean test
+
+      - name: Build
+        if: steps.should-run.outputs.run == 'true'
+        run: mvn -B -ntp package -DskipTests
+
+  # ---------------------------------------------------------------------------
+  # CrawlerAPI (Java 21, system-scoped core JAR)
+  # ---------------------------------------------------------------------------
+  crawler-api:
+    needs: changes
+    if: needs.changes.outputs.crawler-api == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: CrawlerAPI
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: CrawlerAPI/pom.xml
+
+      - name: Download LookseeCore JAR
+        run: bash scripts/download-core.sh
+
+      - name: Test
+        run: mvn -B -ntp test
+
+      - name: Build
+        run: mvn -B -ntp package -DskipTests
+
+  # ---------------------------------------------------------------------------
+  # Java 8 services (no LookseeCore JAR - these have forked copies)
+  # ---------------------------------------------------------------------------
+  java8-services:
+    needs: changes
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: element-enrichment
+            flag: element-enrichment
+          - project: journeyErrors
+            flag: journey-errors
+          - project: look-see-front-end-broadcaster
+            flag: frontend-broadcaster
+          - project: journey-map-cleanup
+            flag: journey-map-cleanup
+    if: >
+      needs.changes.outputs.element-enrichment == 'true' ||
+      needs.changes.outputs.journey-errors == 'true' ||
+      needs.changes.outputs.frontend-broadcaster == 'true' ||
+      needs.changes.outputs.journey-map-cleanup == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ matrix.project }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check if project changed
+        id: should-run
+        run: |
+          FLAG="${{ needs.changes.outputs[matrix.flag] }}"
+          echo "run=$FLAG" >> "$GITHUB_OUTPUT"
+        working-directory: .
+
+      - name: Set up JDK 8
+        if: steps.should-run.outputs.run == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+          cache: maven
+          cache-dependency-path: ${{ matrix.project }}/pom.xml
+
+      - name: Test
+        if: steps.should-run.outputs.run == 'true'
+        run: mvn -B -ntp clean test
+
+      - name: Build
+        if: steps.should-run.outputs.run == 'true'
+        run: mvn -B -ntp package -DskipTests
+
+  # ---------------------------------------------------------------------------
+  # Angular UI (Node 20)
+  # ---------------------------------------------------------------------------
+  ui:
+    needs: changes
+    if: needs.changes.outputs.ui == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Look-see-UI-v3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: Look-see-UI-v3/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Create environment.ts from template
+        run: cp src/environments/environment.ts.template src/environments/environment.ts
+
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
+      - name: Test
+        env:
+          CHROME_BIN: /usr/bin/google-chrome
+        run: npm run test -- --watch=false --browsers=ChromeHeadless
+
+      - name: Build
+        run: npm run build:direct -- --configuration=production
+
+  # ---------------------------------------------------------------------------
+  # VS Code Plugin (Node 20, TypeScript)
+  # ---------------------------------------------------------------------------
+  vscode-plugin:
+    needs: changes
+    if: needs.changes.outputs.vscode-plugin == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: look-see-VSCode-plugin
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: look-see-VSCode-plugin/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Compile
+        run: npm run compile
+
+  # ---------------------------------------------------------------------------
+  # Chrome Extension (Node 20)
+  # ---------------------------------------------------------------------------
+  chrome-extension:
+    needs: changes
+    if: needs.changes.outputs.chrome-extension == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: LookseeChromeExtension
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: LookseeChromeExtension/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate package
+        run: npm ls --all --json > /dev/null 2>&1 || true

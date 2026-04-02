@@ -9,6 +9,7 @@ import com.looksee.models.Browser;
 import com.looksee.models.enums.BrowserEnvironment;
 import com.looksee.models.enums.BrowserType;
 import com.looksee.services.BrowserService;
+import com.looksee.utils.HtmlGeneralizer;
 import com.looksee.utils.HtmlUtils;
 import com.looksee.utils.NetworkUtils;
 import java.awt.image.BufferedImage;
@@ -164,7 +165,7 @@ public class BrowserTest {
 	public void testGeneralizeSrc() {
 		String expected_result = "<html><head></head><body><app-footer></app-footer></body></html>";
 		String src = "<app-footer _ngcontent-wiq-c74=\"\" class=\"footer\" _nghost-wiq-c23=\"\"></app-footer>  ";
-		String generalized_src = BrowserService.generalizeSrc(src);
+		String generalized_src = HtmlGeneralizer.generalizeSrc(src);
 		System.out.println(generalized_src);
 		assertTrue(expected_result.equals(generalized_src));
 	}
@@ -183,7 +184,7 @@ public class BrowserTest {
 		String src = "<app-footer _ngcontent-wiq-c74=\"\" class=\"footer\" _nghost-wiq-c23=\"\"><div></div><!-- this is a comment --></app-footer>  ";
 		Document html_doc = Jsoup.parse(src);
 
-		BrowserService.removeComments(html_doc);
+		HtmlGeneralizer.removeComments(html_doc);
 		
 		assert(expected_result.equals(html_doc.html()));
 	}

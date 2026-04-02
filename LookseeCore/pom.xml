@@ -2,9 +2,22 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.looksee</groupId>
-	<artifactId>core</artifactId>
-	<version>0.4.1</version>
-	<packaging>jar</packaging>
+	<artifactId>looksee-parent</artifactId>
+	<version>0.5.0</version>
+	<packaging>pom</packaging>
+	<name>LookseeCore Parent</name>
+	<description>Parent POM for the modularized LookseeCore library</description>
+
+	<modules>
+		<module>looksee-models</module>
+		<module>looksee-persistence</module>
+		<module>looksee-browser</module>
+		<module>looksee-messaging</module>
+		<module>looksee-gcp</module>
+		<module>looksee-nlp</module>
+		<module>looksee-utils</module>
+		<module>looksee-core</module>
+	</modules>
 
 	<properties>
 		<selenium-version>3.141.59</selenium-version>
@@ -16,12 +29,12 @@
 		<springboot.version>2.6.13</springboot.version>
 		<lombok.version>1.18.30</lombok.version>
 		<spring-cloud-gcp.version>3.9.5</spring-cloud-gcp.version>
+		<looksee.version>0.5.0</looksee.version>
 	</properties>
-	
+
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
-				<!-- Import dependency management from Spring Boot -->
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-dependencies</artifactId>
 				<version>${springboot.version}</version>
@@ -36,7 +49,6 @@
 				<scope>import</scope>
 			</dependency>
 			<dependency>
-				<!-- Import Spring Cloud GCP BOM -->
 				<groupId>com.google.cloud</groupId>
 				<artifactId>spring-cloud-gcp-dependencies</artifactId>
 				<version>${spring-cloud-gcp.version}</version>
@@ -44,375 +56,123 @@
 				<scope>import</scope>
 			</dependency>
 			<dependency>
-				<!-- Google Cloud Libraries BOM -->
 				<groupId>com.google.cloud</groupId>
 				<artifactId>libraries-bom</artifactId>
 				<version>26.63.0</version>
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+
+			<!-- Internal module versions -->
+			<dependency>
+				<groupId>com.looksee</groupId>
+				<artifactId>looksee-models</artifactId>
+				<version>${looksee.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.looksee</groupId>
+				<artifactId>looksee-persistence</artifactId>
+				<version>${looksee.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.looksee</groupId>
+				<artifactId>looksee-browser</artifactId>
+				<version>${looksee.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.looksee</groupId>
+				<artifactId>looksee-messaging</artifactId>
+				<version>${looksee.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.looksee</groupId>
+				<artifactId>looksee-gcp</artifactId>
+				<version>${looksee.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.looksee</groupId>
+				<artifactId>looksee-nlp</artifactId>
+				<version>${looksee.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.looksee</groupId>
+				<artifactId>looksee-utils</artifactId>
+				<version>${looksee.version}</version>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 
 	<dependencies>
-		<!-- https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml -->
 		<dependency>
-			<groupId>org.apache.poi</groupId>
-			<artifactId>poi-ooxml</artifactId>
-			<version>4.1.2</version>
-		</dependency>
-
-		<!--  GOOGLE CLOUD -->
-		<!-- https://mvnrepository.com/artifact/com.google.apis/google-api-services-pagespeedonline -->
-		<!-- https://mvnrepository.com/artifact/com.google.apis/google-api-services-pagespeedonline -->
-		<dependency>
-		    <groupId>com.google.apis</groupId>
-		    <artifactId>google-api-services-pagespeedonline</artifactId>
-		    <version>v5-rev19-1.25.0</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.json</groupId>
-			<artifactId>json</artifactId>
-			<version>20240303</version>
-		</dependency>
-
-		<!-- Google API Client -->
-		<dependency>
-			<groupId>com.google.api-client</groupId>
-			<artifactId>google-api-client</artifactId>
-			<version>1.31.1</version>
-		</dependency>
-
-		<!-- Replace with minimal web support -->
-		<dependency>
-			<groupId>org.springframework</groupId>
-			<artifactId>spring-web</artifactId>
-		</dependency>
-		
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/org.apache.httpcomponents.client5/httpclient5 -->
-		<dependency>
-			<groupId>org.apache.httpcomponents.client5</groupId>
-			<artifactId>httpclient5</artifactId>
-			<version>5.3.1</version>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/io.whelk.flesch.kincaid/whelk-flesch-kincaid -->
-		<dependency>
-		    <groupId>io.whelk.flesch.kincaid</groupId>
-		    <artifactId>whelk-flesch-kincaid</artifactId>
-		    <version>0.1.6</version>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/edu.stanford.nlp/stanford-corenlp -->
-		<dependency>
-		    <groupId>edu.stanford.nlp</groupId>
-		    <artifactId>stanford-corenlp</artifactId>
-		    <version>4.2.2</version>
-		</dependency>
-		
-		<!-- https://mvnrepository.com/artifact/edu.stanford.nlp/stanford-pos-tagger -->
-		<dependency>
-		    <groupId>edu.stanford.nlp</groupId>
-		    <artifactId>stanford-corenlp</artifactId>
-			<version>4.2.2</version>
-		    <classifier>models</classifier>
-		</dependency>
-
-		<!--  APACHE COMMONS PACKAGES -->
-		<!-- https://mvnrepository.com/artifact/commons-io/commons-io -->
-		<dependency>
-			<groupId>commons-io</groupId>
-			<artifactId>commons-io</artifactId>
-			<version>2.8.0</version>
-		</dependency>
-		
-		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-collections4 -->
-		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-collections4</artifactId>
-			<version>4.4</version>
-		</dependency>
-		
-		<!-- https://mvnrepository.com/artifact/commons-codec/commons-codec -->
-		<dependency>
-			<groupId>commons-codec</groupId>
-			<artifactId>commons-codec</artifactId>
-			<version>1.15</version>
-		</dependency>
-		
-		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-text -->
-		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-text</artifactId>
-			<version>1.13.1</version>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-data-neo4j -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-neo4j</artifactId>
-			<version>${springboot.version}</version>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/org.neo4j/neo4j-ogm-bolt-driver -->
-		<dependency>
-			<groupId>org.neo4j</groupId>
-			<artifactId>neo4j-ogm-bolt-driver</artifactId>
-			<version>3.2.38</version>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/org.springframework.retry/spring-retry -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-aop</artifactId>
-			<version>${springboot.version}</version>
-		</dependency>
-		
-		<dependency>
-			<groupId>org.springframework.cloud</groupId>
-			<artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
-			<version>2.1.5</version>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-annotations -->
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-annotations</artifactId>
-		</dependency>
-		
-		<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core -->
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-core</artifactId>
-		</dependency>
-				
-		<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind -->
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-databind</artifactId>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.datatype/jackson-datatype-jsr310 -->
-		<dependency>
-			<groupId>com.fasterxml.jackson.datatype</groupId>
-			<artifactId>jackson-datatype-jsr310</artifactId>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.datatype/jackson-datatype-jdk8 -->
-		<dependency>
-			<groupId>com.fasterxml.jackson.datatype</groupId>
-			<artifactId>jackson-datatype-jdk8</artifactId>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/us.codecraft/xsoup -->
-		<dependency>
-			<groupId>us.codecraft</groupId>
-			<artifactId>xsoup</artifactId>
-			<version>0.3.1</version>
-		</dependency>
-
-		<!-- Removed duplicate spring-cloud-gcp-dependencies - now managed by libraries-bom -->
-
-		<!-- https://mvnrepository.com/artifact/com.google.cloud/spring-cloud-gcp-starter-storage -->
-		<dependency>
-			<groupId>com.google.cloud</groupId>
-			<artifactId>spring-cloud-gcp-starter-vision</artifactId>
-			<version>3.9.5</version>
-		</dependency>
-
-				
-		<!-- https://mvnrepository.com/artifact/com.google.cloud/spring-cloud-gcp-starter-storage -->
-		<dependency>
-			<groupId>com.google.cloud</groupId>
-			<artifactId>spring-cloud-gcp-starter-storage</artifactId>
-			<version>3.9.5</version>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/net.sourceforge.cssparser/cssparser -->
-		<!--  uncomment this when ready to convert to css parser. JSTYLEPARSER swallows errors and that's not cool -->
-		<dependency>
-			<groupId>net.sourceforge.cssparser</groupId>
-			<artifactId>cssparser</artifactId>
-			<version>0.9.30</version>
-		</dependency>
-		
-		<dependency>
-			<groupId>xml-apis</groupId>
-			<artifactId>xml-apis</artifactId>
-			<version>1.4.01</version>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/net.sf.jtidy/jtidy -->
-		<dependency>
-			<groupId>net.sf.jtidy</groupId>
-			<artifactId>jtidy</artifactId>
-			<version>r938</version>
-		</dependency>
-
-		<dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>${lombok.version}</version>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<version>${lombok.version}</version>
 			<scope>provided</scope>
-        </dependency>
-
-		<!-- https://mvnrepository.com/artifact/org.seleniumhq.selenium/selenium-java -->
-		<dependency>
-			<groupId>org.seleniumhq.selenium</groupId>
-			<artifactId>selenium-java</artifactId>
-			<version>${selenium-version}</version>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/org.seleniumhq.selenium/selenium-server -->
-		<dependency>
-		    <groupId>org.seleniumhq.selenium</groupId>
-		    <artifactId>selenium-server</artifactId>
-		    <version>${selenium-version}</version>
-		    <exclusions>
-			    <exclusion>
-			        <groupId>javax.servlet</groupId>
-			        <artifactId>servlet-api</artifactId>
-			    </exclusion>
-			</exclusions>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/com.assertthat/selenium-shutterbug -->
-		
-		<dependency>
-			<groupId>com.assertthat</groupId>
-			<artifactId>selenium-shutterbug</artifactId>
-			<version>1.6</version>
-			<exclusions>
-				<exclusion>
-					<groupId>org.seleniumhq.selenium</groupId>
-					<artifactId>selenium-java</artifactId>
-				</exclusion>
-			</exclusions>
 		</dependency>
 
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter</artifactId>
+			<version>5.8.2</version>
 			<scope>test</scope>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>org.mockito</groupId>
 			<artifactId>mockito-junit-jupiter</artifactId>
+			<version>4.5.1</version>
 			<scope>test</scope>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/com.google.cloud/google-cloud-language -->
-		<dependency>
-			<groupId>com.google.cloud</groupId>
-			<artifactId>google-cloud-language</artifactId>
-			<!-- Version managed by libraries-bom -->
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/ru.yandex.qatools.ashot/ashot -->
-		<dependency>
-			<groupId>ru.yandex.qatools.ashot</groupId>
-			<artifactId>ashot</artifactId>
-			<version>1.5.4</version>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/net.sf.cssbox/jstyleparser -->
-		<dependency>
-			<groupId>net.sf.cssbox</groupId>
-			<artifactId>jstyleparser</artifactId>
-			<version>3.5</version>
-		</dependency>
-		
-		<!-- [START pubsub_spring_cloud_stream_binder] -->
-		<dependency>
-			<groupId>com.google.cloud</groupId>
-			<artifactId>spring-cloud-gcp-pubsub-stream-binder</artifactId>
-			<version>3.9.5</version>
-		</dependency>
-
-		<!-- Google Cloud Pub/Sub -->
-		<dependency>
-			<groupId>com.google.cloud</groupId>
-			<artifactId>spring-cloud-gcp-starter-pubsub</artifactId>
-			<version>3.9.5</version>
-		</dependency>
-
-		<dependency>
-			<groupId>com.pusher</groupId>
-			<artifactId>pusher-http-java</artifactId>
-			<version>1.0.0</version>
 		</dependency>
 	</dependencies>
 
 	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.13.0</version>
-				<configuration>
-					<source>${java.version}</source>
-					<target>${java.version}</target>
-					<encoding>UTF-8</encoding>
-					<annotationProcessorPaths>
-						<path>
-							<groupId>org.projectlombok</groupId>
-							<artifactId>lombok</artifactId>
-							<version>${lombok.version}</version>
-						</path>
-					</annotationProcessorPaths>
-				</configuration>
-			</plugin>
-			
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-				<version>2.22.2</version>
-				<configuration>
-					<includes>
-						<include>**/*Test.java</include>
-						<include>**/*Tests.java</include>
-					</includes>
-					<excludes>
-						<exclude>**/Abstract*.java</exclude>
-					</excludes>
-				</configuration>
-			</plugin>
-			
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-source-plugin</artifactId>
-				<version>3.2.1</version>
-				<executions>
-					<execution>
-						<id>attach-sources</id>
-						<goals>
-							<goal>jar-no-fork</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>3.4.1</version>
-				<executions>
-					<execution>
-						<id>attach-javadocs</id>
-						<goals>
-							<goal>jar</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-		</plugins>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-compiler-plugin</artifactId>
+					<version>3.13.0</version>
+					<configuration>
+						<source>${java.version}</source>
+						<target>${java.version}</target>
+						<encoding>UTF-8</encoding>
+						<annotationProcessorPaths>
+							<path>
+								<groupId>org.projectlombok</groupId>
+								<artifactId>lombok</artifactId>
+								<version>${lombok.version}</version>
+							</path>
+						</annotationProcessorPaths>
+					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-surefire-plugin</artifactId>
+					<version>2.22.2</version>
+					<configuration>
+						<includes>
+							<include>**/*Test.java</include>
+							<include>**/*Tests.java</include>
+						</includes>
+						<excludes>
+							<exclude>**/Abstract*.java</exclude>
+						</excludes>
+					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-source-plugin</artifactId>
+					<version>3.2.1</version>
+					<executions>
+						<execution>
+							<id>attach-sources</id>
+							<goals>
+								<goal>jar-no-fork</goal>
+							</goals>
+						</execution>
+					</executions>
+				</plugin>
+			</plugins>
+		</pluginManagement>
 	</build>
 </project>
