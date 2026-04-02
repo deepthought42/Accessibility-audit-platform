@@ -9,6 +9,40 @@ LookseeCore (`com.looksee:core`, 381 Java files) is a monolithic shared library 
 - **Tight coupling**: Changes to any part of LookseeCore force a new release that all consumers must adopt
 - **Slow builds**: Every consumer compiles against the entire library
 
+## Critical Blocker: Model-to-Service Coupling
+
+Before any modularization can proceed, the following architectural violations must be fixed. Domain models currently depend on services and infrastructure, creating circular dependencies that would prevent clean library extraction.
+
+1. **`PageState.getSrc()`** calls `googleCloudStorage.getHtmlContent()` and `setSrc()` calls `googleCloudStorage.uploadHtmlContent()`. The model has an `@Autowired GoogleCloudStorage` field. **Fix**: Make `src` a plain field getter/setter; move GCS read/write logic to `PageStateService`.
+
+2. **`PageState` constructor** calls `BrowserService.generalizeSrc(src)` and `BrowserService.extractHost(urlString)`. **Fix**: Extract these static string/HTML transformation methods into a new `HtmlGeneralizer` utility class in the models package.
+
+3. **`ElementState.generateKey()`** calls `BrowserService.generalizeSrc()`. **Fix**: Same as above - use `HtmlGeneralizer`.
+
+4. **`Page`** imports `BrowserService` for the same static utility methods. **Fix**: Same as above.
+
+5. **`BrowserService`** is ~1800 lines and mixes static utilities with service logic. **Fix**: Decompose into (a) `HtmlGeneralizer` for static methods called by models, (b) element extraction service, (c) page capture service, (d) screenshot service.
+
+These fixes can all be done within the existing monolith before any library extraction begins.
+
+### Key files requiring Phase 0 refactoring:
+- `LookseeCore/src/main/java/com/looksee/models/PageState.java`
+- `LookseeCore/src/main/java/com/looksee/models/ElementState.java`
+- `LookseeCore/src/main/java/com/looksee/models/Page.java`
+- `LookseeCore/src/main/java/com/looksee/services/BrowserService.java`
+- `LookseeCore/src/main/java/com/looksee/config/LookseeCoreAutoConfiguration.java`
+- `LookseeCore/src/main/java/com/looksee/config/LookseeCoreComponentConfiguration.java`
+
+## Additional Finding: Forked Consumers
+
+About half the consumer modules have **copied/forked LookseeCore source code** into their own packages rather than using it as a Maven dependency:
+- `element-enrichment` (100 files)
+- `look-see-front-end-broadcaster` (91 files)
+- `journeyErrors` (54 files)
+- `journey-map-cleanup` (15 files)
+
+These forks may have diverged from the canonical LookseeCore. Before these modules can consume the new sub-libraries, their duplicated code must be reconciled and replaced with proper Maven dependencies.
+
 ## Current Package Structure (381 files)
 
 | Package | Files | Responsibility |
@@ -190,6 +224,12 @@ Key win: services like `contentAudit` and `informationArchitectureAudit` no long
 
 ## Migration Strategy
 
+### Phase 0: Fix Architectural Violations (prerequisite)
+- Extract `generalizeSrc()` and `extractHost()` from `BrowserService` into a new `HtmlGeneralizer` utility
+- Remove `@Autowired GoogleCloudStorage` from `PageState`; make `src` a plain field; move GCS logic to `PageStateService`
+- Update `ElementState.generateKey()` and `Page` to use `HtmlGeneralizer`
+- All changes within the existing monolith - no consumer changes required
+
 ### Phase 1: Extract `looksee-models`
 - Move enums, domain models, DTOs, exceptions into new module
 - This is the safest first step since models have no dependencies on services/utils
@@ -209,10 +249,34 @@ Key win: services like `contentAudit` and `informationArchitectureAudit` no long
 - `looksee-nlp` (Stanford NLP deps)
 - `looksee-utils` (remaining utilities)
 
-### Phase 5: Deprecate `looksee-core`
+### Phase 5: Backward-compatible `looksee-core` umbrella
 - Create a transitional `looksee-core` that re-exports all sub-libraries
 - Consumers migrate at their own pace
 - Eventually remove the umbrella dependency
+
+### Phase 6: Reconcile forked consumers
+- Diff each forked consumer's model classes against canonical LookseeCore to identify drift
+- Upstream any intentional feature additions
+- Replace duplicated code with proper Maven dependencies on new sub-libraries
+- This is the hardest phase - forks may have diverged intentionally
+
+## Maven Structure
+
+Convert to a multi-module reactor build:
+```xml
+<modules>
+  <module>looksee-models</module>
+  <module>looksee-persistence</module>
+  <module>looksee-gcp</module>
+  <module>looksee-browser</module>
+  <module>looksee-messaging</module>
+  <module>looksee-nlp</module>
+  <module>looksee-utils</module>
+  <module>looksee-core</module>  <!-- backward compat umbrella -->
+</modules>
+```
+
+Each sub-library should have its own Spring Boot auto-configuration class registered in `META-INF/spring.factories`, replacing the current blanket `@ComponentScan` in `LookseeCoreComponentConfiguration`.
 
 ## Verification
 
