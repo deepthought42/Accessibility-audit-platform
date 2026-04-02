@@ -4,6 +4,8 @@ Monorepo for Look-see / accessibility audit services: APIs, workers, UI, extensi
 
 Each top-level directory is a former standalone repository. Former `origin` URLs are listed in `LEGACY_REMOTES.txt` for reference.
 
+This migration uses a **single new history** at the root (previous per-repo commit histories are not included). To keep old SHAs, clone the URLs in `LEGACY_REMOTES.txt` into separate folders or use `git filter-repo` to replay histories under subdirectories.
+
 ## Packages (top-level folders)
 
 | Directory | Role |
