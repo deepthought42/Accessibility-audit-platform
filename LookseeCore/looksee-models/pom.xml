@@ -52,6 +52,11 @@
 			<artifactId>commons-text</artifactId>
 			<version>1.13.1</version>
 		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-collections4</artifactId>
+			<version>4.4</version>
+		</dependency>
 
 		<!-- Jsoup for HtmlGeneralizer -->
 		<dependency>
