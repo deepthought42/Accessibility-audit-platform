@@ -87,7 +87,6 @@ public class SimpleStep extends Step {
 	 * precondition: start_page != null
 	 * precondition: action != null
 	 * precondition: action_input != null
-	 * precondition: end_page != null
 	 * precondition: status != null
 	 */
 	@JsonCreator
@@ -101,7 +100,6 @@ public class SimpleStep extends Step {
 		assert start_page != null;
 		assert action != null;
 		assert action_input != null;
-		assert end_page != null;
 		assert status != null;
 		setStartPage(start_page);
 		setElementState(element);
