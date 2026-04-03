@@ -70,7 +70,7 @@ export interface AccessibilityRule {
   readonly description: string;
   readonly severity: ViolationSeverity;
   readonly wcagReference: WcagReference;
-  readonly frameworks: FrameworkType[];
+  readonly frameworks: readonly FrameworkType[];
   
   check(context: DocumentContext): Promise<AccessibilityViolation[]>;
   generateFixes?(violation: AccessibilityViolation): Promise<QuickFix[]>;

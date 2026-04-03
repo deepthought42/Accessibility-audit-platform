@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { parse } from '@typescript-eslint/parser';
+const { parse } = require('@typescript-eslint/parser');
 import { BaseParser } from './base';
 import { DocumentContext, ParsedElement, ImportInfo } from '../types';
 

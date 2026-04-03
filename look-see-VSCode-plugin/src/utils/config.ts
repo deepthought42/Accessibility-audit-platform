@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { ExtensionConfig, RuleConfig, FrameworkConfig, QuickFixConfig, EducationConfig } from '../types';
+import { ExtensionConfig, RuleConfig, FrameworkConfig, FrameworkType, QuickFixConfig, EducationConfig } from '../types';
 
 export class ConfigurationManager {
   private static readonly CONFIG_SECTION = 'lookSee';
@@ -36,7 +36,7 @@ export class ConfigurationManager {
 
   static isFrameworkEnabled(framework: string): boolean {
     const config = this.getConfiguration();
-    const frameworkConfig = config.frameworks[framework];
+    const frameworkConfig = config.frameworks[framework as FrameworkType];
     return frameworkConfig ? frameworkConfig.enabled : true;
   }
 
@@ -110,7 +110,7 @@ export class ConfigurationManager {
 
   static getWorkspaceConfiguration(): ExtensionConfig | null {
     // Try to load workspace-specific configuration from .vscode/settings.json
-    const workspaceConfig = vscode.workspace.getConfiguration(this.CONFIG_SECTION, vscode.ConfigurationTarget.Workspace);
+    const workspaceConfig = vscode.workspace.getConfiguration(this.CONFIG_SECTION, null);
     
     const inspect = workspaceConfig.inspect('enabled');
     if (inspect?.workspaceValue !== undefined) {
