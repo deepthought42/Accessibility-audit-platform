@@ -3,22 +3,22 @@
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>com.looksee</groupId>
-		<artifactId>looksee-parent</artifactId>
+		<artifactId>LookseeParent</artifactId>
 		<version>0.5.0</version>
 	</parent>
 
-	<artifactId>looksee-persistence</artifactId>
+	<artifactId>LookseePersistence</artifactId>
 	<name>LookseeCore Persistence</name>
 	<description>Neo4j repositories and service layer</description>
 
 	<dependencies>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>looksee-models</artifactId>
+			<artifactId>LookseeModels</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>looksee-gcp</artifactId>
+			<artifactId>LookseeGcp</artifactId>
 		</dependency>
 
 		<dependency>

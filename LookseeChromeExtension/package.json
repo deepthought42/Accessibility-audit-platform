@@ -1,5 +1,5 @@
 {
-  "name": "look-see",
+  "name": "LookSee",
   "version": "0.1",
   "description": "Look-see helps find and fix accessibility issues",
   "main": "background.js",

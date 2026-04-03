@@ -3,18 +3,18 @@
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>com.looksee</groupId>
-		<artifactId>looksee-parent</artifactId>
+		<artifactId>LookseeParent</artifactId>
 		<version>0.5.0</version>
 	</parent>
 
-	<artifactId>looksee-utils</artifactId>
+	<artifactId>LookseeUtils</artifactId>
 	<name>LookseeCore Utils</name>
 	<description>Shared utilities, configuration, VS Code plugin support, and integrations</description>
 
 	<dependencies>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>looksee-models</artifactId>
+			<artifactId>LookseeModels</artifactId>
 		</dependency>
 
 		<dependency>
@@ -54,11 +54,11 @@
 		<!-- GCS Properties for auto-configuration -->
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>looksee-gcp</artifactId>
+			<artifactId>LookseeGcp</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>looksee-messaging</artifactId>
+			<artifactId>LookseeMessaging</artifactId>
 		</dependency>
 
 		<dependency>
