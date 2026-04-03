@@ -22,16 +22,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Resolve core version
-        id: core_version
-        run: echo "LOOKSEE_CORE_VERSION=$(mvn help:evaluate -Dexpression=looksee-core.version -q -DforceStdout)" >> "$GITHUB_ENV"
+      - name: Build and install LookseeCore
+        run: mvn -B -ntp clean install -DskipTests -Dspring.profiles.active=test
+        working-directory: LookseeCore
 
-      - name: Download core JAR
-        run: bash scripts/download-core.sh "${LOOKSEE_CORE_VERSION}"
-
-      - name: Install core JAR
-        run: mvn install:install-file -Dfile=libs/core-${LOOKSEE_CORE_VERSION}.jar -DgroupId=com.looksee -DartifactId=core -Dversion=${LOOKSEE_CORE_VERSION} -Dpackaging=jar
-      
       - name: Test with Maven
         run: mvn test
 
@@ -72,12 +66,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         
-      - name: Resolve core version
-        run: echo "LOOKSEE_CORE_VERSION=$(sed -n 's:.*<looksee-core.version>\(.*\)</looksee-core.version>.*:\1:p' pom.xml | head -n1)" >> "$GITHUB_ENV"
-
       - name: Build Docker image
         run: |
-          docker build --build-arg LOOKSEE_CORE_VERSION=${LOOKSEE_CORE_VERSION} -t deepthought42/page-builder:${{ env.VERSION }} .
+          docker build -t deepthought42/page-builder:${{ env.VERSION }} .
           docker tag deepthought42/page-builder:${{ env.VERSION }} deepthought42/page-builder:latest
 
       - name: Login to DockerHub
@@ -107,15 +98,9 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Resolve core version
-        id: core_version
-        run: echo "LOOKSEE_CORE_VERSION=$(mvn help:evaluate -Dexpression=looksee-core.version -q -DforceStdout)" >> "$GITHUB_ENV"
-
-      - name: Download core JAR
-        run: bash scripts/download-core.sh "${LOOKSEE_CORE_VERSION}"
-
-      - name: Install core JAR
-        run: mvn install:install-file -Dfile=libs/core-${LOOKSEE_CORE_VERSION}.jar -DgroupId=com.looksee -DartifactId=core -Dversion=${LOOKSEE_CORE_VERSION} -Dpackaging=jar
+      - name: Build and install LookseeCore
+        run: mvn -B -ntp clean install -DskipTests -Dspring.profiles.active=test
+        working-directory: LookseeCore
 
       - name: Test with Maven
         run: mvn install -DskipTests
