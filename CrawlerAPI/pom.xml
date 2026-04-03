@@ -421,7 +421,7 @@
 
 		<dependency>
             <groupId>com.looksee</groupId>
-            <artifactId>A11yCore</artifactId>
+            <artifactId>core</artifactId>
             <version>${looksee-core.version}</version>
             <scope>system</scope>
             <systemPath>${project.basedir}/libs/core-${looksee-core.version}.jar</systemPath>

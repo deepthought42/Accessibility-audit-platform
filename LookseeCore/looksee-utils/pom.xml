@@ -3,18 +3,18 @@
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>com.looksee</groupId>
-		<artifactId>A11yParent</artifactId>
+		<artifactId>looksee-parent</artifactId>
 		<version>0.5.0</version>
 	</parent>
 
-	<artifactId>A11yUtils</artifactId>
-	<name>A11y Core Utils</name>
+	<artifactId>looksee-utils</artifactId>
+	<name>A11yUtils</name>
 	<description>Shared utilities, configuration, VS Code plugin support, and integrations</description>
 
 	<dependencies>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>A11yModels</artifactId>
+			<artifactId>looksee-models</artifactId>
 		</dependency>
 
 		<dependency>
@@ -54,11 +54,11 @@
 		<!-- GCS Properties for auto-configuration -->
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>A11yGcp</artifactId>
+			<artifactId>looksee-gcp</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>A11yMessaging</artifactId>
+			<artifactId>looksee-messaging</artifactId>
 		</dependency>
 
 		<dependency>

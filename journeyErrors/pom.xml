@@ -179,6 +179,48 @@
 		    <groupId>org.openimaj</groupId>
 		    <artifactId>image-processing</artifactId>
 		    <version>1.3.10</version>
+		    <exclusions>
+		        <exclusion>
+		            <groupId>org.openimaj</groupId>
+		            <artifactId>*</artifactId>
+		        </exclusion>
+		        <exclusion>
+		            <groupId>org.jbibtex</groupId>
+		            <artifactId>jbibtex</artifactId>
+		        </exclusion>
+		        <exclusion>
+		            <groupId>vigna.dsi.unimi.it</groupId>
+		            <artifactId>jal</artifactId>
+		        </exclusion>
+		        <exclusion>
+		            <groupId>jgrapht</groupId>
+		            <artifactId>jgrapht</artifactId>
+		        </exclusion>
+		        <exclusion>
+		            <groupId>net.sourceforge.jmatio</groupId>
+		            <artifactId>jmatio</artifactId>
+		        </exclusion>
+		        <exclusion>
+		            <groupId>com.lowagie</groupId>
+		            <artifactId>itext</artifactId>
+		        </exclusion>
+		        <exclusion>
+		            <groupId>org.bethecoder</groupId>
+		            <artifactId>ascii-table</artifactId>
+		        </exclusion>
+		        <exclusion>
+		            <groupId>uk.ac.ed.ph.snuggletex</groupId>
+		            <artifactId>*</artifactId>
+		        </exclusion>
+		        <exclusion>
+		            <groupId>com.flickr4java</groupId>
+		            <artifactId>flickr4java</artifactId>
+		        </exclusion>
+		        <exclusion>
+		            <groupId>com.sun.media</groupId>
+		            <artifactId>jai-codec</artifactId>
+		        </exclusion>
+		    </exclusions>
 		</dependency>
 		
 		<dependency>
