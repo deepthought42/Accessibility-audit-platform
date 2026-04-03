@@ -19,8 +19,8 @@ import org.springframework.retry.annotation.EnableRetry;
 @PropertySources({
 	@PropertySource("classpath:application.properties")
 })
-@EnableNeo4jRepositories("com.looksee.journeyMapCleanup.models.repository")
-@EntityScan(basePackages = { "com.looksee.journeyMapCleanup.models"} )
+@EnableNeo4jRepositories("com.looksee.models.repository")
+@EntityScan(basePackages = { "com.looksee.models"} )
 @EnableRetry
 public class Application {
 	@SuppressWarnings("unused")

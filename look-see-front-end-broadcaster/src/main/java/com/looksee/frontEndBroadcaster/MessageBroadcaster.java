@@ -9,12 +9,12 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.looksee.dto.PageStateDto;
-import com.looksee.frontEndBroadcaster.models.Account;
-import com.looksee.frontEndBroadcaster.models.Audit;
-import com.looksee.frontEndBroadcaster.models.AuditRecord;
-import com.looksee.frontEndBroadcaster.models.Form;
-import com.looksee.frontEndBroadcaster.models.UXIssueMessage;
+import com.looksee.models.dto.PageStateDto;
+import com.looksee.models.Account;
+import com.looksee.models.audit.Audit;
+import com.looksee.models.audit.AuditRecord;
+import com.looksee.models.Form;
+import com.looksee.models.audit.messages.UXIssueMessage;
 import com.looksee.frontEndBroadcaster.models.message.AuditProgressUpdate;
 
 /**

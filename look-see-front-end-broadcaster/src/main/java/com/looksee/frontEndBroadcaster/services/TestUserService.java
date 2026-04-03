@@ -5,8 +5,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.looksee.frontEndBroadcaster.models.TestUser;
-import com.looksee.frontEndBroadcaster.models.repository.TestUserRepository;
+import com.looksee.models.TestUser;
+import com.looksee.models.repository.TestUserRepository;
 
 import io.github.resilience4j.retry.annotation.Retry;
 
