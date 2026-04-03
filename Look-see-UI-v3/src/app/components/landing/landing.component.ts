@@ -38,7 +38,7 @@ export class LandingComponent {
 
     this.error = '';
     this.isLoading = true;
-    this.segmentio.sendDomainUxAuditStartedMessage(url);
+    this.segmentio.sendUxAuditStartedMessage(url);
 
     this.auditorService.startAudit(url, 'PAGE').subscribe(
       (data) => {
