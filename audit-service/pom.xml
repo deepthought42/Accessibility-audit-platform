@@ -1,7 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.looksee</groupId>
-	<artifactId>AuditUpdateService</artifactId>
+	<artifactId>A11yAuditUpdateService</artifactId>
 	<version>1.0.33</version>
 	<packaging>jar</packaging>
 
@@ -85,7 +85,7 @@
 		<!-- Direct JAR from GitHub release -->
 		<dependency>
             <groupId>com.looksee</groupId>
-            <artifactId>core</artifactId>
+            <artifactId>A11yCore</artifactId>
             <version>${core.version}</version>
         </dependency>
 

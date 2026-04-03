@@ -1,5 +1,5 @@
 {
-  "name": "Accessibility",
+  "name": "A11yAccessibility",
   "displayName": "Look-See Accessibility Analyzer",
   "description": "Real-time WCAG 2.2 accessibility analysis for React, Angular, Vue.js, and HTML",
   "version": "0.1.0",
