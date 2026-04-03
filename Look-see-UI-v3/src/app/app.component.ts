@@ -1,7 +1,8 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
 import { AuthService } from '@auth0/auth0-angular';
 import { initFlowbite } from 'flowbite';
+import { filter } from 'rxjs/operators';
 import { environment as env } from '../environments/environment';
 import { SegmentIOService } from './services/segmentio.service';
 
@@ -13,9 +14,10 @@ import { SegmentIOService } from './services/segmentio.service';
 })
 export class AppComponent implements OnInit{
   isBetaAcknowledged = false;
-
   isMobileDevice = false;
-  env = env
+  isLandingPage = false;
+  isReviewPage = false;
+  env = env;
 
   router = inject(Router);
   auth = inject(AuthService);
@@ -29,7 +31,13 @@ export class AppComponent implements OnInit{
       this.isBetaAcknowledged = JSON.parse(sessionStorage.getItem("isBetaAcknowledged") || "false")
     }
 
-
+    this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe((event) => {
+      const navEvent = event as NavigationEnd;
+      this.isLandingPage = navEvent.urlAfterRedirects === '/' || navEvent.urlAfterRedirects === '';
+      this.isReviewPage = navEvent.urlAfterRedirects.includes('/review');
+    });
   }
 
   ngOnInit(): void {
