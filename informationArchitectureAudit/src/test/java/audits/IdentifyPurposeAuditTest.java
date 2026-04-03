@@ -36,14 +36,14 @@ public class IdentifyPurposeAuditTest {
 
     @Test
     void checkCompliance_imagesWithEmptyAlt() {
-        // In Jsoup 1.8.3, the selector img[alt=''] does not match empty alt attributes,
-        // so an image with alt="" is not flagged as non-compliant by the current implementation.
+        // An image with alt="" is flagged because the selector img[alt=''] matches
+        // empty alt attributes in modern jsoup versions.
         String html = "<html><body><img src=\"photo.jpg\" alt=\"\"></body></html>";
         Document doc = Jsoup.parse(html);
 
         List<GenericIssue> issues = IdentifyPurposeAudit.checkCompliance(doc);
 
-        assertTrue(issues.stream().noneMatch(i -> i.getDescription().contains("Image element is missing a valid alt attribute")));
+        assertTrue(issues.stream().anyMatch(i -> i.getDescription().contains("Image element is missing a valid alt attribute")));
     }
 
     @Test
