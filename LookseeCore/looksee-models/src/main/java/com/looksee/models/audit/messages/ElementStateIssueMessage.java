@@ -96,7 +96,6 @@ public class ElementStateIssueMessage extends UXIssueMessage {
 	 * precondition: element != null
 	 */
 	public void setElement(ElementState element) {
-		assert element != null;
 		this.element = element;
 	}
 	
