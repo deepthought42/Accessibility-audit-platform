@@ -6,6 +6,7 @@ import java.net.MalformedURLException;
 
 import com.looksee.browsing.enums.BrowserEnvironment;
 import com.looksee.browsing.enums.BrowserType;
+import com.looksee.config.BrowserStackProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +14,8 @@ public class BrowserConnectionHelperTest {
 
     @BeforeEach
     public void setUp() {
-        // Reset state before each test
+        // Reset BrowserStack state before each test to avoid cross-test interference
+        BrowserConnectionHelper.clearBrowserStackConfig();
     }
 
     @Test
@@ -43,5 +45,46 @@ public class BrowserConnectionHelperTest {
 
         assertThrows(IllegalStateException.class,
                 () -> BrowserConnectionHelper.getMobileConnection(BrowserType.IOS, BrowserEnvironment.DISCOVERY));
+    }
+
+    @Test
+    public void testSetBrowserStackConfig() {
+        BrowserStackProperties props = new BrowserStackProperties(
+                "testuser", "testaccesskey", null, null,
+                null, null, null, null,
+                null, null, null, null, null, null, null);
+
+        assertDoesNotThrow(() -> BrowserConnectionHelper.setBrowserStackConfig(
+                "https://hub-cloud.browserstack.com/wd/hub", props));
+    }
+
+    @Test
+    public void testClearBrowserStackConfig() {
+        BrowserStackProperties props = new BrowserStackProperties(
+                "testuser", "testaccesskey", null, null,
+                null, null, null, null,
+                null, null, null, null, null, null, null);
+
+        BrowserConnectionHelper.setBrowserStackConfig(
+                "https://hub-cloud.browserstack.com/wd/hub", props);
+
+        assertDoesNotThrow(() -> BrowserConnectionHelper.clearBrowserStackConfig());
+    }
+
+    @Test
+    public void testGetMobileConnectionWithoutUrlsWhenBrowserStackCleared() {
+        // Ensure that after clearing BrowserStack, mobile connections still require Appium URLs
+        BrowserStackProperties props = new BrowserStackProperties(
+                "testuser", "testaccesskey", null, null,
+                null, null, null, null,
+                null, "Samsung Galaxy S23", null, null, null, null, null);
+
+        BrowserConnectionHelper.setBrowserStackConfig(
+                "https://hub-cloud.browserstack.com/wd/hub", props);
+        BrowserConnectionHelper.clearBrowserStackConfig();
+        BrowserConnectionHelper.setConfiguredAppiumUrls(new String[]{});
+
+        assertThrows(IllegalStateException.class,
+                () -> BrowserConnectionHelper.getMobileConnection(BrowserType.ANDROID, BrowserEnvironment.DISCOVERY));
     }
 }
