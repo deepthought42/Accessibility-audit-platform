@@ -382,17 +382,18 @@
                      [class]="selected_element === element.key ? 'active_element' : ''">
 
                     <!-- Issue bubble -->
-                    <div class="issue-bubble"
-                         *ngIf="getVisibleElementIssueCount(element.key) > 0"
-                         (click)="selectElementIssues(element.key)"
-                         [ngClass]="{
-                             'issue-bubble-high': getHighestPriority(element.key) === 'HIGH',
-                             'issue-bubble-medium': getHighestPriority(element.key) === 'MEDIUM',
-                             'issue-bubble-low': getHighestPriority(element.key) === 'LOW'
-                         }"
-                         matTooltip="{{getVisibleElementIssueCount(element.key)}} issue(s) — click to view">
+                    <button class="issue-bubble"
+                            *ngIf="getVisibleElementIssueCount(element.key) > 0"
+                            (click)="selectElementIssues(element.key)"
+                            [ngClass]="{
+                                'issue-bubble-high': getHighestPriority(element.key) === 'HIGH',
+                                'issue-bubble-medium': getHighestPriority(element.key) === 'MEDIUM',
+                                'issue-bubble-low': getHighestPriority(element.key) === 'LOW'
+                            }"
+                            [attr.aria-label]="getVisibleElementIssueCount(element.key) + ' issue(s) — click to view'"
+                            matTooltip="{{getVisibleElementIssueCount(element.key)}} issue(s) — click to view">
                         <span class="issue-bubble-count">{{ getVisibleElementIssueCount(element.key) }}</span>
-                    </div>
+                    </button>
                 </div>
             </div>
 
@@ -417,7 +418,12 @@
 <div class="modal modal-active fixed w-full h-full top-0 left-0 flex items-center justify-center z-30"
      *ngIf="isReportDownloadDialogDisplayed">
     <div class="modal-overlay absolute w-full h-full bg-gray-900/60 backdrop-blur-sm z-50"
-         (click)="isReportDownloadDialogDisplayed = false"></div>
+         role="button"
+         tabindex="0"
+         aria-label="Close report dialog"
+         (click)="isReportDownloadDialogDisplayed = false"
+         (keydown.enter)="isReportDownloadDialogDisplayed = false"
+         (keydown.escape)="isReportDownloadDialogDisplayed = false"></div>
     <div class="modal-container bg-white w-[90vw] max-w-md rounded-2xl shadow-elevated z-50 overflow-hidden animate-fade-in">
         <div class="p-6">
             <div class="flex items-center gap-3 mb-4">
@@ -444,7 +450,12 @@
 <div class="modal modal-active fixed w-full h-full top-0 left-0 flex items-center justify-center z-30"
      *ngIf="showLoginRequiredMessage">
     <div class="modal-overlay absolute w-full h-full bg-gray-900/60 backdrop-blur-sm z-30"
-         (click)="showLoginRequiredMessage = false"></div>
+         role="button"
+         tabindex="0"
+         aria-label="Close login dialog"
+         (click)="showLoginRequiredMessage = false"
+         (keydown.enter)="showLoginRequiredMessage = false"
+         (keydown.escape)="showLoginRequiredMessage = false"></div>
     <div class="modal-container bg-white w-[90vw] max-w-md rounded-2xl shadow-elevated z-50 overflow-hidden animate-fade-in">
         <div class="p-6">
             <h3 class="text-gray-900 mb-3">Sign in required</h3>

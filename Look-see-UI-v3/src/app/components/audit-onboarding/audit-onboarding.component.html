@@ -104,14 +104,15 @@
 
                 <!-- Carousel dots -->
                 <div class="flex items-center gap-1.5 mt-4">
-                    <div *ngFor="let preview of featurePreviews; let i = index"
-                         class="h-1 rounded-full transition-all duration-300 cursor-pointer"
-                         [ngClass]="{
-                             'w-6 bg-brand-400': i === currentFeatureIndex,
-                             'w-1.5 bg-white/20': i !== currentFeatureIndex
-                         }"
-                         (click)="currentFeatureIndex = i">
-                    </div>
+                    <button *ngFor="let preview of featurePreviews; let i = index"
+                            class="h-1 rounded-full transition-all duration-300 cursor-pointer border-0 p-0"
+                            [ngClass]="{
+                                'w-6 bg-brand-400': i === currentFeatureIndex,
+                                'w-1.5 bg-white/20': i !== currentFeatureIndex
+                            }"
+                            (click)="currentFeatureIndex = i"
+                            [attr.aria-label]="'Show feature ' + (i + 1)">
+                    </button>
                 </div>
             </div>
 
