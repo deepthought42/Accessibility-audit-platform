@@ -125,7 +125,7 @@ jobs:
           SPRING_PROFILES_ACTIVE: test
 
   # ---------------------------------------------------------------------------
-  # Java 17 Maven services (depend on LookseeCore JAR download)
+  # Java 17 Maven services (depend on LookseeCore source build)
   # ---------------------------------------------------------------------------
   java17-services:
     needs: changes
@@ -135,28 +135,20 @@ jobs:
         include:
           - project: AuditManager
             flag: audit-manager
-            core-version: '0.3.1'
           - project: PageBuilder
             flag: page-builder
-            core-version: '0.3.16'
           - project: audit-service
             flag: audit-service
-            core-version: '0.3.13'
           - project: contentAudit
             flag: content-audit
-            core-version: '0.3.20'
           - project: informationArchitectureAudit
             flag: info-arch-audit
-            core-version: '0.3.19'
           - project: journeyExecutor
             flag: journey-executor
-            core-version: '0.3.21'
           - project: journeyExpander
             flag: journey-expander
-            core-version: '0.3.21'
           - project: visualDesignAudit
             flag: visual-design-audit
-            core-version: '0.3.20'
     if: >
       needs.changes.outputs.audit-manager == 'true' ||
       needs.changes.outputs.page-builder == 'true' ||
@@ -189,18 +181,10 @@ jobs:
           cache: maven
           cache-dependency-path: ${{ matrix.project }}/pom.xml
 
-      - name: Download and install LookseeCore JAR
+      - name: Build and install LookseeCore
         if: steps.should-run.outputs.run == 'true'
-        run: |
-          if [ -f scripts/download-core.sh ]; then
-            bash scripts/download-core.sh
-            mvn -B -ntp install:install-file \
-              -Dfile=libs/core-${{ matrix.core-version }}.jar \
-              -DgroupId=com.looksee \
-              -DartifactId=core \
-              -Dversion=${{ matrix.core-version }} \
-              -Dpackaging=jar
-          fi
+        run: mvn -B -ntp clean install -DskipTests -Dspring.profiles.active=test
+        working-directory: LookseeCore
 
       - name: Test
         if: steps.should-run.outputs.run == 'true'
@@ -211,7 +195,7 @@ jobs:
         run: mvn -B -ntp package -DskipTests
 
   # ---------------------------------------------------------------------------
-  # CrawlerAPI (Java 21, system-scoped core JAR)
+  # CrawlerAPI (Java 21, depends on LookseeCore source build)
   # ---------------------------------------------------------------------------
   crawler-api:
     needs: changes
@@ -231,8 +215,9 @@ jobs:
           cache: maven
           cache-dependency-path: CrawlerAPI/pom.xml
 
-      - name: Download LookseeCore JAR
-        run: bash scripts/download-core.sh
+      - name: Build and install LookseeCore
+        run: mvn -B -ntp clean install -DskipTests -Dspring.profiles.active=test
+        working-directory: LookseeCore
 
       - name: Test
         run: mvn -B -ntp test
@@ -352,11 +337,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: npm
-          cache-dependency-path: look-see-VSCode-plugin/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Lint
         run: npm run lint

@@ -13,8 +13,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.looksee.models.Browser;
 import com.looksee.models.ElementState;
+import com.looksee.utils.HtmlUtils;
 import com.looksee.models.PageState;
 import com.looksee.models.audit.Audit;
 import com.looksee.models.audit.AuditRecord;
@@ -62,7 +62,7 @@ public class TypefacesAudit implements IExecutablePageStateAudit {
 		
 		List<String> font_families = new ArrayList<>();
 		Set<UXIssueMessage> issue_messages = new HashSet<>();
-		List<String> raw_stylesheets = Browser.extractStylesheets(page_state.getSrc()); 
+		List<String> raw_stylesheets = HtmlUtils.extractStylesheets(page_state.getSrc()); 
 		
 		//open stylesheet
 		for(String stylesheet : raw_stylesheets) {

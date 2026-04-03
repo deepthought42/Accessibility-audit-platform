@@ -1,7 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.looksee</groupId>
-	<artifactId>audit-update-service</artifactId>
+	<artifactId>A11yAuditUpdateService</artifactId>
 	<version>1.0.33</version>
 	<packaging>jar</packaging>
 
@@ -12,7 +12,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>17</java.version>
 	    <springboot.version>2.6.13</springboot.version>
-		<core.version>0.3.13</core.version>
+		<core.version>0.5.0</core.version>
 		<spring-cloud-gcp.version>3.1.0</spring-cloud-gcp.version>
 		<google-cloud-bom.version>24.4.0</google-cloud-bom.version>    </properties>
 
@@ -85,7 +85,7 @@
 		<!-- Direct JAR from GitHub release -->
 		<dependency>
             <groupId>com.looksee</groupId>
-            <artifactId>core</artifactId>
+            <artifactId>A11yCore</artifactId>
             <version>${core.version}</version>
         </dependency>
 
@@ -108,28 +108,6 @@
 					<target>${maven.compiler.target}</target>
 				</configuration>
 			</plugin>
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>exec-maven-plugin</artifactId>
-				<version>3.1.0</version>
-				<executions>
-					<execution>
-						<id>download-core-jar</id>
-						<phase>validate</phase>
-						<goals>
-							<goal>exec</goal>
-						</goals>
-						<configuration>
-							<executable>bash</executable>
-							<arguments>
-								<argument>scripts/download-core.sh</argument>
-							</arguments>
-							<workingDirectory>${project.basedir}</workingDirectory>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-
 			<plugin>
 				<groupId>com.google.cloud.tools</groupId>
 				<artifactId>jib-maven-plugin</artifactId>

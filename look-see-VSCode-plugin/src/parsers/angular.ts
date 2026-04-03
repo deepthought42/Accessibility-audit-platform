@@ -43,7 +43,7 @@ export class AngularParser extends BaseParser {
         /\*ngFor/,
         /\*ngIf/,
         /\[(ngModel|value|checked)\]/,
-        /\(click|change|submit)\)=/,
+        /\(click|change|submit\)\)=/,
         /{{.*}}/,
         /\[attr\./,
         /\[class\./,
@@ -74,7 +74,7 @@ export class AngularParser extends BaseParser {
     try {
       const parsed = parseTemplate(template, document.uri.fsPath, {
         preserveWhitespaces: true,
-        interpolationConfig: ['{{', '}}']
+        interpolationConfig: { start: '{{', end: '}}' }
       });
 
       if (parsed.errors && parsed.errors.length > 0) {
@@ -103,7 +103,7 @@ export class AngularParser extends BaseParser {
       try {
         const parsed = parseTemplate(templateContent, document.uri.fsPath + '#inline', {
           preserveWhitespaces: true,
-          interpolationConfig: ['{{', '}}']
+          interpolationConfig: { start: '{{', end: '}}' }
         });
 
         const templateElements = this.convertAngularNodesToElements(parsed.nodes, document, templateStart);

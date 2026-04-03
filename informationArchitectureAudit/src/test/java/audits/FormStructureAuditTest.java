@@ -9,8 +9,6 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.junit.jupiter.api.Test;
 
-import org.jsoup.select.Selector.SelectorParseException;
-
 import com.looksee.audit.informationArchitecture.audits.FormStructureAudit;
 import com.looksee.models.audit.GenericIssue;
 
@@ -113,8 +111,6 @@ public class FormStructureAuditTest {
 
     @Test
     void validateFieldsetGrouping_properFieldsetAndLegend() {
-        // Note: The source method uses "> input" CSS selector which throws SelectorParseException
-        // in Jsoup 1.8.3 because the ">" combinator at selector start is unsupported.
         String html = "<form>"
                 + "<fieldset><legend>Personal Info</legend>"
                 + "<input id=\"name\" type=\"text\">"
@@ -123,36 +119,36 @@ public class FormStructureAuditTest {
         Document doc = Jsoup.parse(html);
         Element form = doc.select("form").first();
 
-        assertThrows(SelectorParseException.class, () -> {
-            FormStructureAudit.validateFieldsetGrouping(form);
-        });
+        List<String> messages = FormStructureAudit.validateFieldsetGrouping(form);
+
+        assertFalse(messages.isEmpty());
+        assertTrue(messages.stream().anyMatch(m -> m.contains("Fieldset with <legend>: 'Personal Info' found.")));
     }
 
     @Test
     void validateFieldsetGrouping_noFieldset() {
-        // Note: The source method uses "> input" CSS selector which throws SelectorParseException
-        // in Jsoup 1.8.3 because the ">" combinator at selector start is unsupported.
         String html = "<form><input id=\"name\" type=\"text\"></form>";
         Document doc = Jsoup.parse(html);
         Element form = doc.select("form").first();
 
-        assertThrows(SelectorParseException.class, () -> {
-            FormStructureAudit.validateFieldsetGrouping(form);
-        });
+        List<String> messages = FormStructureAudit.validateFieldsetGrouping(form);
+
+        assertFalse(messages.isEmpty());
+        assertTrue(messages.stream().anyMatch(m -> m.contains("No <fieldset> elements found")));
+        assertTrue(messages.stream().anyMatch(m -> m.contains("Form controls found outside of fieldsets")));
     }
 
     @Test
     void validateFieldsetGrouping_fieldsetWithoutLegend() {
-        // Note: The source method uses "> input" CSS selector which throws SelectorParseException
-        // in Jsoup 1.8.3 because the ">" combinator at selector start is unsupported.
         String html = "<form>"
                 + "<fieldset><input id=\"name\" type=\"text\"></fieldset>"
                 + "</form>";
         Document doc = Jsoup.parse(html);
         Element form = doc.select("form").first();
 
-        assertThrows(SelectorParseException.class, () -> {
-            FormStructureAudit.validateFieldsetGrouping(form);
-        });
+        List<String> messages = FormStructureAudit.validateFieldsetGrouping(form);
+
+        assertFalse(messages.isEmpty());
+        assertTrue(messages.stream().anyMatch(m -> m.contains("Fieldset without a <legend> found")));
     }
 }

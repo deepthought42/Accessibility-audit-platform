@@ -3,18 +3,18 @@
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>com.looksee</groupId>
-		<artifactId>looksee-parent</artifactId>
+		<artifactId>A11yParent</artifactId>
 		<version>0.5.0</version>
 	</parent>
 
-	<artifactId>looksee-nlp</artifactId>
-	<name>LookseeCore NLP</name>
+	<artifactId>A11yNlp</artifactId>
+	<name>A11y Core NLP</name>
 	<description>Natural language processing and text analysis utilities</description>
 
 	<dependencies>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>looksee-models</artifactId>
+			<artifactId>A11yModels</artifactId>
 		</dependency>
 
 		<!-- Stanford CoreNLP -->

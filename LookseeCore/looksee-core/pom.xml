@@ -3,43 +3,43 @@
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>com.looksee</groupId>
-		<artifactId>looksee-parent</artifactId>
+		<artifactId>A11yParent</artifactId>
 		<version>0.5.0</version>
 	</parent>
 
-	<artifactId>core</artifactId>
-	<name>LookseeCore (Umbrella)</name>
+	<artifactId>A11yCore</artifactId>
+	<name>A11y Core (Umbrella)</name>
 	<description>Backward-compatible umbrella module that re-exports all LookseeCore sub-libraries.
 		Consumers should migrate to depending on individual sub-modules instead.</description>
 
 	<dependencies>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>looksee-models</artifactId>
+			<artifactId>A11yModels</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>looksee-persistence</artifactId>
+			<artifactId>A11yPersistence</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>looksee-browser</artifactId>
+			<artifactId>A11yBrowser</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>looksee-messaging</artifactId>
+			<artifactId>A11yMessaging</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>looksee-gcp</artifactId>
+			<artifactId>A11yGcp</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>looksee-nlp</artifactId>
+			<artifactId>A11yNlp</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>looksee-utils</artifactId>
+			<artifactId>A11yUtils</artifactId>
 		</dependency>
 
 		<dependency>

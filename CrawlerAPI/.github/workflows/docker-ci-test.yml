@@ -22,8 +22,9 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Download core JAR
-        run: bash scripts/download-core.sh
+      - name: Build and install LookseeCore
+        run: mvn -B -ntp clean install -DskipTests -Dspring.profiles.active=test
+        working-directory: LookseeCore
 
       - name: Test with Maven
         run: mvn test

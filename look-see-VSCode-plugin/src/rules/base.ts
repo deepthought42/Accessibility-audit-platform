@@ -7,7 +7,7 @@ export abstract class BaseRule implements AccessibilityRule {
   abstract readonly description: string;
   abstract readonly severity: ViolationSeverity;
   abstract readonly wcagReference: WcagReference;
-  abstract readonly frameworks: FrameworkType[];
+  abstract readonly frameworks: readonly FrameworkType[];
 
   abstract check(context: DocumentContext): Promise<AccessibilityViolation[]>;
 
@@ -98,9 +98,9 @@ export abstract class BaseRule implements AccessibilityRule {
   }
 
   protected hasAccessibleName(element: ParsedElement): boolean {
-    return this.hasAriaLabel(element) || 
-           this.hasAriaLabelledBy(element) || 
-           (element.textContent && element.textContent.trim().length > 0);
+    return this.hasAriaLabel(element) ||
+           this.hasAriaLabelledBy(element) ||
+           !!(element.textContent && element.textContent.trim().length > 0);
   }
 
   protected isDecorativeImage(element: ParsedElement): boolean {

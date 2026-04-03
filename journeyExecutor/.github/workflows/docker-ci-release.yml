@@ -23,11 +23,9 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Download core JAR
-        run: bash scripts/download-core.sh
-
-      - name: Install core JAR to local repository
-        run: mvn install:install-file -Dfile=libs/core-0.3.21.jar -DgroupId=com.looksee -DartifactId=core -Dversion=0.3.21 -Dpackaging=jar
+      - name: Build and install LookseeCore
+        run: mvn -B -ntp clean install -DskipTests -Dspring.profiles.active=test
+        working-directory: LookseeCore
 
       - name: Test with Maven
         run: mvn test
@@ -101,12 +99,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       
-      - name: Download core JAR
-        run: bash scripts/download-core.sh
+      - name: Build and install LookseeCore
+        run: mvn -B -ntp clean install -DskipTests -Dspring.profiles.active=test
+        working-directory: LookseeCore
 
-      - name: Install core JAR to local repository
-        run: mvn install:install-file -Dfile=libs/core-0.3.21.jar -DgroupId=com.looksee -DartifactId=core -Dversion=0.3.21 -Dpackaging=jar
-  
       - name: Test with Maven
         run: mvn install -DskipTests
 
