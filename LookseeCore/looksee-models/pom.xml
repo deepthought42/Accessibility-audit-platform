@@ -3,19 +3,19 @@
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>com.looksee</groupId>
-		<artifactId>LookseeParent</artifactId>
+		<artifactId>Parent</artifactId>
 		<version>0.5.0</version>
 	</parent>
 
-	<artifactId>LookseeModels</artifactId>
-	<name>LookseeCore Models</name>
+	<artifactId>Models</artifactId>
+	<name>Core Models</name>
 	<description>Core domain models, enums, DTOs, exceptions, and messages</description>
 
 	<dependencies>
 		<!-- Browser enums (BrowserType, BrowserEnvironment) -->
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>LookseeBrowser</artifactId>
+			<artifactId>Browser</artifactId>
 		</dependency>
 
 		<!-- Spring Data Neo4j annotations -->

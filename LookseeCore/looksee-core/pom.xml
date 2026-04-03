@@ -3,43 +3,43 @@
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>com.looksee</groupId>
-		<artifactId>LookseeParent</artifactId>
+		<artifactId>Parent</artifactId>
 		<version>0.5.0</version>
 	</parent>
 
 	<artifactId>Core</artifactId>
-	<name>LookseeCore (Umbrella)</name>
+	<name>Core (Umbrella)</name>
 	<description>Backward-compatible umbrella module that re-exports all LookseeCore sub-libraries.
 		Consumers should migrate to depending on individual sub-modules instead.</description>
 
 	<dependencies>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>LookseeModels</artifactId>
+			<artifactId>Models</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>LookseePersistence</artifactId>
+			<artifactId>Persistence</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>LookseeBrowser</artifactId>
+			<artifactId>Browser</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>LookseeMessaging</artifactId>
+			<artifactId>Messaging</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>LookseeGcp</artifactId>
+			<artifactId>Gcp</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>LookseeNlp</artifactId>
+			<artifactId>Nlp</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>com.looksee</groupId>
-			<artifactId>LookseeUtils</artifactId>
+			<artifactId>Utils</artifactId>
 		</dependency>
 
 		<dependency>

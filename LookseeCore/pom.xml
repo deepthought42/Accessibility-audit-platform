@@ -2,10 +2,10 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.looksee</groupId>
-	<artifactId>LookseeParent</artifactId>
+	<artifactId>Parent</artifactId>
 	<version>0.5.0</version>
 	<packaging>pom</packaging>
-	<name>LookseeCore Parent</name>
+	<name>Core Parent</name>
 	<description>Parent POM for the modularized LookseeCore library</description>
 
 	<modules>
@@ -67,37 +67,37 @@
 			<!-- Internal module versions -->
 			<dependency>
 				<groupId>com.looksee</groupId>
-				<artifactId>LookseeModels</artifactId>
+				<artifactId>Models</artifactId>
 				<version>${looksee.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>com.looksee</groupId>
-				<artifactId>LookseePersistence</artifactId>
+				<artifactId>Persistence</artifactId>
 				<version>${looksee.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>com.looksee</groupId>
-				<artifactId>LookseeBrowser</artifactId>
+				<artifactId>Browser</artifactId>
 				<version>${looksee.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>com.looksee</groupId>
-				<artifactId>LookseeMessaging</artifactId>
+				<artifactId>Messaging</artifactId>
 				<version>${looksee.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>com.looksee</groupId>
-				<artifactId>LookseeGcp</artifactId>
+				<artifactId>Gcp</artifactId>
 				<version>${looksee.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>com.looksee</groupId>
-				<artifactId>LookseeNlp</artifactId>
+				<artifactId>Nlp</artifactId>
 				<version>${looksee.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>com.looksee</groupId>
-				<artifactId>LookseeUtils</artifactId>
+				<artifactId>Utils</artifactId>
 				<version>${looksee.version}</version>
 			</dependency>
 		</dependencies>
