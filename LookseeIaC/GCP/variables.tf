@@ -152,6 +152,34 @@ variable "auth0_audience" {
 
 
 #########################
+# GCP API Keys
+#########################
+
+variable "gcp_api_key" {
+  description = "Google Cloud API key (used by PageSpeed Insights / Vision API)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "integrations_encryption_key" {
+  description = "AES-GCM encryption key for integration configurations"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+#########################
+# SMTP Additional
+#########################
+
+variable "smtp_host" {
+  description = "SMTP host for outbound email"
+  type        = string
+  default     = ""
+}
+
+#########################
 # GCP Service Account
 #########################
 

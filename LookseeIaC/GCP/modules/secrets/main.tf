@@ -168,3 +168,142 @@ resource "google_secret_manager_secret_version" "smtp_username_version" {
   secret         = google_secret_manager_secret.smtp_username.id
   secret_data_wo = var.smtp_username
 }
+
+# Auth0 Client ID Secret
+resource "google_secret_manager_secret" "auth0_client_id" {
+  secret_id = "auth0-client-id"
+  project   = var.project_id
+
+  labels = {
+    environment = var.environment
+  }
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "auth0_client_id_version" {
+  secret         = google_secret_manager_secret.auth0_client_id.id
+  secret_data_wo = var.auth0_client_id
+}
+
+# Auth0 Client Secret
+resource "google_secret_manager_secret" "auth0_client_secret" {
+  secret_id = "auth0-client-secret"
+  project   = var.project_id
+
+  labels = {
+    environment = var.environment
+  }
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "auth0_client_secret_version" {
+  secret         = google_secret_manager_secret.auth0_client_secret.id
+  secret_data_wo = var.auth0_client_secret
+}
+
+# Auth0 Domain Secret
+resource "google_secret_manager_secret" "auth0_domain" {
+  secret_id = "auth0-domain"
+  project   = var.project_id
+
+  labels = {
+    environment = var.environment
+  }
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "auth0_domain_version" {
+  secret         = google_secret_manager_secret.auth0_domain.id
+  secret_data_wo = var.auth0_domain
+}
+
+# Auth0 Audience Secret
+resource "google_secret_manager_secret" "auth0_audience" {
+  secret_id = "auth0-audience"
+  project   = var.project_id
+
+  labels = {
+    environment = var.environment
+  }
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "auth0_audience_version" {
+  secret         = google_secret_manager_secret.auth0_audience.id
+  secret_data_wo = var.auth0_audience
+}
+
+# GCP API Key Secret
+resource "google_secret_manager_secret" "gcp_api_key" {
+  count     = var.gcp_api_key != "" ? 1 : 0
+  secret_id = "gcp-api-key"
+  project   = var.project_id
+
+  labels = {
+    environment = var.environment
+  }
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "gcp_api_key_version" {
+  count          = var.gcp_api_key != "" ? 1 : 0
+  secret         = google_secret_manager_secret.gcp_api_key[0].id
+  secret_data_wo = var.gcp_api_key
+}
+
+# Integrations Encryption Key Secret
+resource "google_secret_manager_secret" "integrations_encryption_key" {
+  count     = var.integrations_encryption_key != "" ? 1 : 0
+  secret_id = "integrations-encryption-key"
+  project   = var.project_id
+
+  labels = {
+    environment = var.environment
+  }
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "integrations_encryption_key_version" {
+  count          = var.integrations_encryption_key != "" ? 1 : 0
+  secret         = google_secret_manager_secret.integrations_encryption_key[0].id
+  secret_data_wo = var.integrations_encryption_key
+}
+
+# SMTP Host Secret
+resource "google_secret_manager_secret" "smtp_host" {
+  count     = var.smtp_host != "" ? 1 : 0
+  secret_id = "smtp-host"
+  project   = var.project_id
+
+  labels = {
+    environment = var.environment
+  }
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "smtp_host_version" {
+  count          = var.smtp_host != "" ? 1 : 0
+  secret         = google_secret_manager_secret.smtp_host[0].id
+  secret_data_wo = var.smtp_host
+}

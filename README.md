@@ -355,10 +355,29 @@ jobs:
 
 ---
 
-### Known Gaps
+### Terraform Backend (Remote State)
 
-1. **No remote backend configured.** The Terraform code has no `terraform {}` block with a backend. Without a remote backend (e.g. GCS bucket), state is lost between GitHub Actions runs. A GCS backend must be added to `LookseeIaC/GCP/`.
+The GCS backend is configured in `LookseeIaC/GCP/versions.tf` but requires backend config values at init time (no bucket names are committed to the repo). Provide them via `-backend-config` flags or a backend config file:
 
-2. **Auth0 secrets are accepted but never created.** The secrets module accepts `auth0_client_id`, `auth0_client_secret`, `auth0_domain`, and `auth0_audience` as input variables but does not create corresponding `google_secret_manager_secret` resources or outputs. Auth0 configuration is not wired to any Cloud Run service.
+```bash
+terraform init \
+  -backend-config="bucket=my-tf-state-bucket" \
+  -backend-config="prefix=looksee/dev"
+```
 
-3. **Stripe, Segment, and integration keys are not in Terraform.** These are only set in Spring Boot application property files and would need to be added to the secrets module if they should be managed as infrastructure.
+In GitHub Actions, set the `TF_STATE_BUCKET` secret and pass it during init:
+
+```yaml
+env:
+  TF_CLI_ARGS_init: "-backend-config=bucket=${{ secrets.TF_STATE_BUCKET }} -backend-config=prefix=looksee/${{ github.ref_name }}"
+```
+
+### Optional Secrets (Gap 3 Variables)
+
+The following variables are optional (default to empty string). When provided, Terraform creates the corresponding Secret Manager entries and wires them into the API and/or Page Builder Cloud Run services:
+
+| GitHub Secret Name | Terraform Variable | Wired To |
+|---|---|---|
+| `TF_VAR_GCP_API_KEY` | `gcp_api_key` | API, Page Builder (`gcp.api.key`) |
+| `TF_VAR_INTEGRATIONS_ENCRYPTION_KEY` | `integrations_encryption_key` | API (`integrations.encryption.key`) |
+| `TF_VAR_SMTP_HOST` | `smtp_host` | API (`spring.mail.host`) |

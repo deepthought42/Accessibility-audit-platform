@@ -94,3 +94,58 @@ output "smtp_username_secret_name" {
   description = "The name of the SMTP username secret"
   value       = google_secret_manager_secret.smtp_username.name
 }
+
+output "auth0_client_id_secret_id" {
+  description = "The ID of the Auth0 client ID secret"
+  value       = google_secret_manager_secret.auth0_client_id.id
+}
+
+output "auth0_client_id_secret_name" {
+  description = "The name of the Auth0 client ID secret"
+  value       = google_secret_manager_secret.auth0_client_id.secret_id
+}
+
+output "auth0_client_secret_secret_id" {
+  description = "The ID of the Auth0 client secret"
+  value       = google_secret_manager_secret.auth0_client_secret.id
+}
+
+output "auth0_client_secret_secret_name" {
+  description = "The name of the Auth0 client secret"
+  value       = google_secret_manager_secret.auth0_client_secret.secret_id
+}
+
+output "auth0_domain_secret_id" {
+  description = "The ID of the Auth0 domain secret"
+  value       = google_secret_manager_secret.auth0_domain.id
+}
+
+output "auth0_domain_secret_name" {
+  description = "The name of the Auth0 domain secret"
+  value       = google_secret_manager_secret.auth0_domain.secret_id
+}
+
+output "auth0_audience_secret_id" {
+  description = "The ID of the Auth0 audience secret"
+  value       = google_secret_manager_secret.auth0_audience.id
+}
+
+output "auth0_audience_secret_name" {
+  description = "The name of the Auth0 audience secret"
+  value       = google_secret_manager_secret.auth0_audience.secret_id
+}
+
+output "gcp_api_key_secret_name" {
+  description = "The name of the GCP API key secret (empty if not configured)"
+  value       = var.gcp_api_key != "" ? google_secret_manager_secret.gcp_api_key[0].secret_id : ""
+}
+
+output "integrations_encryption_key_secret_name" {
+  description = "The name of the integrations encryption key secret (empty if not configured)"
+  value       = var.integrations_encryption_key != "" ? google_secret_manager_secret.integrations_encryption_key[0].secret_id : ""
+}
+
+output "smtp_host_secret_name" {
+  description = "The name of the SMTP host secret (empty if not configured)"
+  value       = var.smtp_host != "" ? google_secret_manager_secret.smtp_host[0].secret_id : ""
+}

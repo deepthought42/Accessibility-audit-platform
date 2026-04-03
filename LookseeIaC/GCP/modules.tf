@@ -69,6 +69,10 @@ module "secrets" {
   auth0_domain        = var.auth0_domain
   auth0_audience      = var.auth0_audience
 
+  gcp_api_key                 = var.gcp_api_key
+  integrations_encryption_key = var.integrations_encryption_key
+  smtp_host                   = var.smtp_host
+
   depends_on = [module.neo4j_db]
 }
 
@@ -136,6 +140,29 @@ module "api" {
     "pubsub.discarded_journey_topic" : module.pubsub_topics.journey_discarded_topic_name,
     "pubsub.error_topic" : module.pubsub_topics.audit_error_topic_name
   }
+  environment_variables = merge(
+    {
+      "spring.data.neo4j.database" : [module.secrets.neo4j_db_name_secret_name, "latest"],
+      "spring.data.neo4j.username" : [module.secrets.neo4j_username_secret_name, "latest"],
+      "spring.data.neo4j.password" : [module.secrets.neo4j_password_secret_name, "latest"],
+      "spring.data.neo4j.uri" : [module.neo4j_db.neo4j_bolt_uri_secret_name, "latest"],
+      "auth0.clientId" : [module.secrets.auth0_client_id_secret_name, "latest"],
+      "auth0.clientSecret" : [module.secrets.auth0_client_secret_secret_name, "latest"],
+      "auth0.domain" : [module.secrets.auth0_domain_secret_name, "latest"],
+      "auth0.audience" : [module.secrets.auth0_audience_secret_name, "latest"],
+      "smtp.username" : [module.secrets.smtp_username_secret_name, "latest"],
+      "smtp.password" : [module.secrets.smtp_password_secret_name, "latest"],
+    },
+    var.gcp_api_key != "" ? {
+      "gcp.api.key" : [module.secrets.gcp_api_key_secret_name, "latest"],
+    } : {},
+    var.integrations_encryption_key != "" ? {
+      "integrations.encryption.key" : [module.secrets.integrations_encryption_key_secret_name, "latest"],
+    } : {},
+    var.smtp_host != "" ? {
+      "spring.mail.host" : [module.secrets.smtp_host_secret_name, "latest"],
+    } : {},
+  )
   memory_allocation = "1Gi"
   depends_on        = [module.neo4j_db, module.secrets]
 }
@@ -163,12 +190,17 @@ module "page_builder_cloud_run" {
     "spring.cloud.gcp.project-id" : var.project_id,
     "spring.cloud.gcp.region" : var.region
   }
-  environment_variables = {
-    "spring.data.neo4j.database" : [module.secrets.neo4j_db_name_secret_name, "latest"],
-    "spring.data.neo4j.username" : [module.secrets.neo4j_username_secret_name, "latest"],
-    "spring.data.neo4j.password" : [module.secrets.neo4j_password_secret_name, "latest"],
-    "spring.data.neo4j.uri" : [module.neo4j_db.neo4j_bolt_uri_secret_name, "latest"],
-  }
+  environment_variables = merge(
+    {
+      "spring.data.neo4j.database" : [module.secrets.neo4j_db_name_secret_name, "latest"],
+      "spring.data.neo4j.username" : [module.secrets.neo4j_username_secret_name, "latest"],
+      "spring.data.neo4j.password" : [module.secrets.neo4j_password_secret_name, "latest"],
+      "spring.data.neo4j.uri" : [module.neo4j_db.neo4j_bolt_uri_secret_name, "latest"],
+    },
+    var.gcp_api_key != "" ? {
+      "gcp.api.key" : [module.secrets.gcp_api_key_secret_name, "latest"],
+    } : {},
+  )
 
   vpc_connector_name = module.vpc.vpc_connector_name
   vpc_egress         = "private-ranges-only"
