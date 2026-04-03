@@ -389,3 +389,102 @@ jobs:
 
       - name: Validate package
         run: npm ls --all --json > /dev/null 2>&1 || true
+
+  # ---------------------------------------------------------------------------
+  # Docker Hub Push (only on push to main/master, not on PRs)
+  # ---------------------------------------------------------------------------
+  docker-push:
+    needs:
+      - changes
+      - looksee-core
+      - java17-services
+      - crawler-api
+      - java8-services
+      - ui
+    # Run only on push (not PRs), and even if upstream jobs were skipped (no changes),
+    # but not if any that actually ran have failed
+    if: >
+      always() &&
+      github.event_name == 'push' &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: AuditManager
+            flag: audit-manager
+            image: deepthought42/audit-manager
+          - project: CrawlerAPI
+            flag: crawler-api
+            image: deepthought42/looksee-api
+          - project: PageBuilder
+            flag: page-builder
+            image: deepthought42/page-builder
+          - project: audit-service
+            flag: audit-service
+            image: deepthought42/audit-update-service
+          - project: contentAudit
+            flag: content-audit
+            image: deepthought42/content-audit
+          - project: informationArchitectureAudit
+            flag: info-arch-audit
+            image: deepthought42/information-architecture-audit
+          - project: journeyExecutor
+            flag: journey-executor
+            image: deepthought42/journey-executor
+          - project: journeyExpander
+            flag: journey-expander
+            image: deepthought42/journey-expander
+          - project: visualDesignAudit
+            flag: visual-design-audit
+            image: deepthought42/visual-design-audit
+          - project: journey-map-cleanup
+            flag: journey-map-cleanup
+            image: deepthought42/journey-map-cleanup
+          - project: element-enrichment
+            flag: element-enrichment
+            image: deepthought42/element-enrichment
+          - project: journeyErrors
+            flag: journey-errors
+            image: deepthought42/journey-errors
+          - project: look-see-front-end-broadcaster
+            flag: frontend-broadcaster
+            image: deepthought42/frontend-broadcaster
+          - project: Look-see-UI-v3
+            flag: ui
+            image: deepthought42/looksee-ui
+    steps:
+      - name: Check if project changed
+        id: should-run
+        run: |
+          FLAG="${{ needs.changes.outputs[matrix.flag] }}"
+          echo "run=$FLAG" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.should-run.outputs.run == 'true'
+
+      - name: Set short SHA tag
+        if: steps.should-run.outputs.run == 'true'
+        run: echo "IMAGE_TAG=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
+      - name: Build Docker image
+        if: steps.should-run.outputs.run == 'true'
+        working-directory: ${{ matrix.project }}
+        run: |
+          docker build -t ${{ matrix.image }}:${{ env.IMAGE_TAG }} .
+          docker tag ${{ matrix.image }}:${{ env.IMAGE_TAG }} ${{ matrix.image }}:latest
+
+      - name: Login to Docker Hub
+        if: steps.should-run.outputs.run == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Push Docker image
+        if: steps.should-run.outputs.run == 'true'
+        run: |
+          docker push ${{ matrix.image }}:${{ env.IMAGE_TAG }}
+          docker push ${{ matrix.image }}:latest
