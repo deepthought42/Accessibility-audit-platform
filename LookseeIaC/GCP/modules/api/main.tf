@@ -13,52 +13,25 @@ resource "google_cloud_run_service" "api" {
           container_port = var.port
         }
 
-        # Add environment variables from secrets
-        env {
-          name = "NEO4J_PASSWORD"
-          value_from {
-            secret_key_ref {
-              name = "neo4j-password"
-              key  = "latest"
-            }
-          }
-        }
-
-        env {
-          name = "NEO4J_USERNAME"
-          value_from {
-            secret_key_ref {
-              name = "neo4j-username"
-              key  = "latest"
-            }
-          }
-        }
-
-        env {
-          name = "NEO4J_BOLT_URI"
-          value_from {
-            secret_key_ref {
-              name = "neo4j-bolt-uri"
-              key  = "latest"
-            }
-          }
-        }
-
-        env {
-          name = "NEO4J_DB_NAME"
-          value_from {
-            secret_key_ref {
-              name = "neo4j-db-name"
-              key  = "latest"
-            }
-          }
-        }
-        
         dynamic "env" {
           for_each = var.pubsub_topics
           content {
             name  = env.key
             value = env.value
+          }
+        }
+
+        # Add environment variables from secrets
+        dynamic "env" {
+          for_each = var.environment_variables
+          content {
+            name = env.key
+            value_from {
+              secret_key_ref {
+                name = env.value[0]
+                key  = env.value[1]
+              }
+            }
           }
         }
 

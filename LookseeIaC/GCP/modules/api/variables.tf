@@ -49,30 +49,6 @@ variable "url_topic_name" {
   type        = string
 }
 
-################################
-# SECRETS
-################################
-
-variable "neo4j_password_secret" {
-  description = "Name of the Neo4j password secret"
-  default     = "neo4j-password"
-}
-
-variable "neo4j_username_secret" {
-  description = "Name of the Neo4j username secret"
-  default     = "neo4j-username"
-}
-
-variable "neo4j_bolt_uri_secret" {
-  description = "Name of the Neo4j bolt URI secret"
-  default     = "neo4j-bolt-uri"
-}
-
-variable "neo4j_db_name_secret" {
-  description = "Name of the Neo4j database name secret"
-  default     = "neo4j-db-name"
-}
-
 variable "pubsub_topics" {
   description = "Pubsub topics"
   type        = map(string)
@@ -81,4 +57,10 @@ variable "pubsub_topics" {
 variable "memory_allocation" {
   description = "Memory allocated for cloud run instance"
   type        = string
+}
+
+variable "environment_variables" {
+  description = "Map of environment variables backed by Secret Manager references"
+  type        = map(list(string))
+  default     = {}
 }
