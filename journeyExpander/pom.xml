@@ -141,7 +141,7 @@
 		<!-- Alternative: Direct JAR from GitHub release (uncomment if Maven repo doesn't work) -->
 		<dependency>
             <groupId>com.looksee</groupId>
-            <artifactId>core</artifactId>
+            <artifactId>A11yCore</artifactId>
             <version>${core.version}</version>
         </dependency>
 	</dependencies>

@@ -2,10 +2,10 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.looksee</groupId>
-	<artifactId>looksee-parent</artifactId>
+	<artifactId>A11yParent</artifactId>
 	<version>0.5.0</version>
 	<packaging>pom</packaging>
-	<name>A11yParent</name>
+	<name>A11y Core Parent</name>
 	<description>Parent POM for the modularized LookseeCore library</description>
 
 	<modules>
@@ -67,37 +67,37 @@
 			<!-- Internal module versions -->
 			<dependency>
 				<groupId>com.looksee</groupId>
-				<artifactId>looksee-models</artifactId>
+				<artifactId>A11yModels</artifactId>
 				<version>${looksee.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>com.looksee</groupId>
-				<artifactId>looksee-persistence</artifactId>
+				<artifactId>A11yPersistence</artifactId>
 				<version>${looksee.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>com.looksee</groupId>
-				<artifactId>looksee-browser</artifactId>
+				<artifactId>A11yBrowser</artifactId>
 				<version>${looksee.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>com.looksee</groupId>
-				<artifactId>looksee-messaging</artifactId>
+				<artifactId>A11yMessaging</artifactId>
 				<version>${looksee.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>com.looksee</groupId>
-				<artifactId>looksee-gcp</artifactId>
+				<artifactId>A11yGcp</artifactId>
 				<version>${looksee.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>com.looksee</groupId>
-				<artifactId>looksee-nlp</artifactId>
+				<artifactId>A11yNlp</artifactId>
 				<version>${looksee.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>com.looksee</groupId>
-				<artifactId>looksee-utils</artifactId>
+				<artifactId>A11yUtils</artifactId>
 				<version>${looksee.version}</version>
 			</dependency>
 		</dependencies>

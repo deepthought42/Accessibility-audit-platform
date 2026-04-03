@@ -55,7 +55,7 @@
 
 		<dependency>
             <groupId>com.looksee</groupId>
-            <artifactId>core</artifactId>
+            <artifactId>A11yCore</artifactId>
             <version>${core.version}</version>
         </dependency>
 	</dependencies>

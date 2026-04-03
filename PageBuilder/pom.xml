@@ -109,7 +109,7 @@
 
         <dependency>
             <groupId>com.looksee</groupId>
-            <artifactId>core</artifactId>
+            <artifactId>A11yCore</artifactId>
             <version>${looksee-core.version}</version>
         </dependency>
 	</dependencies>
