@@ -6,8 +6,8 @@ import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.looksee.frontEndBroadcaster.models.Account;
-import com.looksee.frontEndBroadcaster.models.repository.AccountRepository;
+import com.looksee.models.Account;
+import com.looksee.models.repository.AccountRepository;
 
 /**
  * Contains business logic for interacting with and managing accounts

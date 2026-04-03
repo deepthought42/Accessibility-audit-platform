@@ -12,11 +12,11 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.looksee.journeyErrors.mapper.Body;
-import com.looksee.journeyErrors.models.enums.JourneyStatus;
-import com.looksee.journeyErrors.models.journeys.Journey;
-import com.looksee.journeyErrors.models.message.JourneyCandidateMessage;
-import com.looksee.journeyErrors.services.JourneyService;
+import com.looksee.mapper.Body;
+import com.looksee.models.enums.JourneyStatus;
+import com.looksee.models.journeys.Journey;
+import com.looksee.models.message.JourneyCandidateMessage;
+import com.looksee.services.JourneyService;
 
 /*
  * Copyright 2019 Look-see Inc

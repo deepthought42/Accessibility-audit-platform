@@ -18,8 +18,8 @@ import org.slf4j.LoggerFactory;
 @PropertySources({
 	@PropertySource("classpath:application.properties")
 })
-@EnableNeo4jRepositories("com.looksee.journeyErrors.models.repository")
-@EntityScan(basePackages = { "com.looksee.journeyErrors.models"} )
+@EnableNeo4jRepositories("com.looksee.models.repository")
+@EntityScan(basePackages = { "com.looksee.models"} )
 public class Application {
 	@SuppressWarnings("unused")
 	private final Logger log = LoggerFactory.getLogger(this.getClass());

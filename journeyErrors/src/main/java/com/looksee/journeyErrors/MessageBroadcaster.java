@@ -3,8 +3,8 @@ package com.looksee.journeyErrors;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.looksee.journeyErrors.models.LookseeObject;
-import com.looksee.journeyErrors.models.dto.DomainDto;
+import com.looksee.models.LookseeObject;
+import com.looksee.models.dto.DomainDto;
 import com.pusher.rest.Pusher;
 
 import org.slf4j.Logger;

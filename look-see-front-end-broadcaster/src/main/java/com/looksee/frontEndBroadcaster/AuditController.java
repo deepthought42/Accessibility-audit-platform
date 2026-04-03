@@ -14,14 +14,14 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.looksee.dto.PageStateDto;
-import com.looksee.frontEndBroadcaster.mapper.Body;
-import com.looksee.frontEndBroadcaster.models.Account;
-import com.looksee.frontEndBroadcaster.models.PageState;
+import com.looksee.models.dto.PageStateDto;
+import com.looksee.mapper.Body;
+import com.looksee.models.Account;
+import com.looksee.models.PageState;
 import com.looksee.frontEndBroadcaster.models.message.AuditProgressUpdate;
-import com.looksee.frontEndBroadcaster.models.message.PageBuiltMessage;
+import com.looksee.models.message.PageBuiltMessage;
 import com.looksee.frontEndBroadcaster.services.AccountService;
-import com.looksee.frontEndBroadcaster.services.PageStateService;
+import com.looksee.services.PageStateService;
 
 /*
  * Copyright 2019 Google LLC

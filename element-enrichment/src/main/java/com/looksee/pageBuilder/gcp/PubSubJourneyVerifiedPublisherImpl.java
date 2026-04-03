@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
-public class PubSubJourneyVerifiedPublisherImpl extends PubSubPublisher {
+public class PubSubJourneyVerifiedPublisherImpl extends com.looksee.gcp.PubSubPublisher {
 
     @Value("${pubsub.journey_verified}")
     private String topic;
