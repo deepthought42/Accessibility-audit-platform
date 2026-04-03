@@ -46,6 +46,19 @@
 			<version>1.5.4</version>
 		</dependency>
 
+		<!-- Appium (7.x is compatible with Selenium 3.x) -->
+		<dependency>
+			<groupId>io.appium</groupId>
+			<artifactId>java-client</artifactId>
+			<version>${appium-version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.seleniumhq.selenium</groupId>
+					<artifactId>selenium-java</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+
 		<!-- CSS/HTML parsing -->
 		<dependency>
 			<groupId>net.sf.cssbox</groupId>

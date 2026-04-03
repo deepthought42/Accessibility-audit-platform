@@ -3,19 +3,27 @@ package com.looksee.browsing.enums;
 import com.fasterxml.jackson.annotation.JsonCreator;
 
 /**
- * Defines all browser types that exist in the system
+ * Represents a touch action that can be performed on a mobile device.
+ * This is the mobile counterpart of {@link Action}.
  */
-public enum BrowserType {
-	CHROME("chrome"),
-	FIREFOX("firefox"),
-	SAFARI("safari"),
-	IE("ie"),
-	ANDROID("android"),
-	IOS("ios");
+public enum MobileAction {
+	TAP("tap"),
+	DOUBLE_TAP("doubleTap"),
+	LONG_PRESS("longPress"),
+	SWIPE_UP("swipeUp"),
+	SWIPE_DOWN("swipeDown"),
+	SWIPE_LEFT("swipeLeft"),
+	SWIPE_RIGHT("swipeRight"),
+	SCROLL_UP("scrollUp"),
+	SCROLL_DOWN("scrollDown"),
+	PINCH("pinch"),
+	ZOOM("zoom"),
+	SEND_KEYS("sendKeys"),
+	UNKNOWN("unknown");
 
 	private String shortName;
 
-	BrowserType(String shortName) {
+	MobileAction(String shortName) {
         this.shortName = shortName;
     }
 
@@ -25,11 +33,11 @@ public enum BrowserType {
     }
 
     @JsonCreator
-    public static BrowserType create(String value) {
+    public static MobileAction create(String value) {
         if(value == null) {
             throw new IllegalArgumentException();
         }
-        for(BrowserType v : values()) {
+        for(MobileAction v : values()) {
             if(value.equalsIgnoreCase(v.getShortName())) {
                 return v;
             }
@@ -39,9 +47,5 @@ public enum BrowserType {
 
     public String getShortName() {
         return shortName;
-    }
-
-    public boolean isMobile() {
-        return this == ANDROID || this == IOS;
     }
 }

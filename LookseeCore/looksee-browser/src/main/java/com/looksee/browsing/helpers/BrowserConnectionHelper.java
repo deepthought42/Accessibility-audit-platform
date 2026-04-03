@@ -1,7 +1,9 @@
 package com.looksee.browsing.helpers;
 
 import com.looksee.browsing.BrowserFactory;
+import com.looksee.browsing.MobileFactory;
 import com.looksee.models.Browser;
+import com.looksee.models.MobileDevice;
 import com.looksee.browsing.enums.BrowserEnvironment;
 import com.looksee.browsing.enums.BrowserType;
 import io.github.resilience4j.retry.annotation.Retry;
@@ -29,6 +31,13 @@ public class BrowserConnectionHelper {
 	private static int SELENIUM_HUB_IDX = 0;
 
 	private static String[] HUB_URLS;
+
+	/**
+	 * The index of the Appium server for round-robin selection
+	 */
+	private static int APPIUM_SERVER_IDX = 0;
+
+	private static String[] APPIUM_URLS;
 	
 	/**
 	 * Gets the selenium hub URLs, either from environment variable SELENIUM_URLS or fallback to hardcoded list
@@ -39,6 +48,17 @@ public class BrowserConnectionHelper {
 	public static void setConfiguredSeleniumUrls(String[] urls) {
 		assert urls != null;
 		HUB_URLS=urls;
+	}
+
+	/**
+	 * Sets the Appium server URLs for mobile driver connections
+	 * @param urls the Appium server URLs
+	 *
+	 * precondition: urls != null
+	 */
+	public static void setConfiguredAppiumUrls(String[] urls) {
+		assert urls != null;
+		APPIUM_URLS = urls;
 	}
 
 	/**
@@ -61,16 +81,49 @@ public class BrowserConnectionHelper {
 		assert browser != null;
 		assert environment != null;
 
-		URL hub_url = null;
-		
-		if(environment.equals(BrowserEnvironment.DISCOVERY) && "chrome".equalsIgnoreCase(browser.toString())){
-			hub_url = new URL( "https://"+HUB_URLS[SELENIUM_HUB_IDX%HUB_URLS.length]+"/wd/hub");
-		}
-		else if(environment.equals(BrowserEnvironment.DISCOVERY) && "firefox".equalsIgnoreCase(browser.toString())){
-			hub_url = new URL( "https://"+HUB_URLS[SELENIUM_HUB_IDX%HUB_URLS.length]+"/wd/hub");
-		}
-		SELENIUM_HUB_IDX++;
+		URL server_url = null;
 
-		return BrowserFactory.createBrowser(browser.toString(), hub_url);
+		if (environment.equals(BrowserEnvironment.DISCOVERY)
+				&& ("chrome".equalsIgnoreCase(browser.toString())
+					|| "firefox".equalsIgnoreCase(browser.toString()))) {
+			server_url = new URL("https://" + HUB_URLS[SELENIUM_HUB_IDX % HUB_URLS.length] + "/wd/hub");
+			SELENIUM_HUB_IDX++;
+		}
+
+		return BrowserFactory.createBrowser(browser.toString(), server_url);
+	}
+
+	/**
+	 * Creates a {@link MobileDevice} connection via Appium
+	 *
+	 * @param browser the mobile browser type (ANDROID, IOS)
+	 * @param environment the environment to connect to
+	 *
+	 * @return the mobile device connection
+	 *
+	 * precondition: browser != null
+	 * precondition: browser.isMobile()
+	 * precondition: environment != null
+	 *
+	 * @throws MalformedURLException if the url is malformed
+	 * @throws IllegalStateException if Appium URLs are not configured
+	 */
+    @Retry(name="webdriver")
+	public static MobileDevice getMobileConnection(BrowserType browser, BrowserEnvironment environment)
+			throws MalformedURLException
+    {
+		assert browser != null;
+		assert browser.isMobile();
+		assert environment != null;
+
+		if (APPIUM_URLS == null || APPIUM_URLS.length == 0) {
+			throw new IllegalStateException(
+				"Appium URLs not configured. Set appium.urls property.");
+		}
+
+		URL server_url = new URL("http://" + APPIUM_URLS[APPIUM_SERVER_IDX % APPIUM_URLS.length] + "/wd/hub");
+		APPIUM_SERVER_IDX++;
+
+		return MobileFactory.createMobileDevice(browser.toString(), server_url);
 	}
 }
