@@ -27,7 +27,7 @@ import com.looksee.models.Domain;
 import com.looksee.models.ElementState;
 import com.looksee.models.PageState;
 import com.looksee.models.enums.Action;
-import com.looksee.models.enums.BrowserType;
+import com.looksee.browsing.enums.BrowserType;
 import com.looksee.models.enums.JourneyStatus;
 import com.looksee.models.journeys.DomainMap;
 import com.looksee.models.journeys.Journey;
