@@ -23,7 +23,7 @@ import org.springframework.data.neo4j.repository.config.EnableNeo4jRepositories;
  * @see com.looksee.auditManager.config.PubSubConfig
  */
 @SpringBootApplication(exclude = {
-    com.looksee.LookseeCoreAutoConfiguration.class
+    com.looksee.config.LookseeCoreAutoConfiguration.class
 })
 @ComponentScan(basePackages = {"com.looksee.auditManager"})
 @PropertySources({
