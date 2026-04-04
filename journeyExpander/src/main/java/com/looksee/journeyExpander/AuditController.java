@@ -37,6 +37,7 @@ import com.looksee.models.message.JourneyCandidateMessage;
 import com.looksee.models.message.VerifiedJourneyMessage;
 import com.looksee.services.AuditRecordService;
 import com.looksee.services.BrowserService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.DomainMapService;
 import com.looksee.services.DomainService;
 import com.looksee.services.JourneyService;
@@ -85,6 +86,9 @@ public class AuditController {
 	@Autowired
 	private PubSubJourneyCandidatePublisherImpl journey_candidate_topic;
 
+	@Autowired
+	private IdempotencyService idempotencyService;
+
 	/**
 	 * Receives a verified journey via Pub/Sub push and expands it into candidate
 	 * journeys by appending interactive-element click steps to the journey's
@@ -114,6 +118,10 @@ public class AuditController {
 		if(body == null || body.getMessage() == null || body.getMessage().getData() == null || body.getMessage().getData().isBlank()) {
 			log.warn("IGNORING JOURNEY! request payload missing message data");
 			return new ResponseEntity<String>("Message data is required", HttpStatus.OK);
+		}
+
+		if (idempotencyService.isAlreadyProcessed(body.getMessage().getMessageId(), "journey-expander")) {
+			return ResponseEntity.ok("Duplicate message, already processed");
 		}
 
 		VerifiedJourneyMessage journey_msg;
@@ -231,6 +239,7 @@ public class AuditController {
 			}
 
 			log.warn("generated "+journey_cnt+" journeys to explore");
+			idempotencyService.markProcessed(body.getMessage().getMessageId(), "journey-expander");
 			return new ResponseEntity<String>("Successfully generated journey expansions", HttpStatus.OK);
 		}
 		catch(Exception e) {

@@ -1,6 +1,8 @@
 package com.looksee.journeyErrors;
 
 import java.util.Base64;
+import java.util.Set;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +41,7 @@ import com.looksee.journeyErrors.services.JourneyService;
 @RestController
 public class AuditController {
 	private static Logger log = LoggerFactory.getLogger(AuditController.class);
+	private static final Set<String> processedMessages = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
 	@Autowired
 	private JourneyService journey_service;
@@ -51,6 +54,11 @@ public class AuditController {
 		if(body == null || body.getMessage() == null || body.getMessage().getData() == null || body.getMessage().getData().isEmpty()) {
 			log.warn("Received empty Pub/Sub message payload");
 			return new ResponseEntity<String>("Empty message payload", HttpStatus.OK);
+		}
+
+		String pubsubMsgId = body.getMessage().getMessageId();
+		if (pubsubMsgId != null && !processedMessages.add(pubsubMsgId)) {
+			return ResponseEntity.ok("Duplicate");
 		}
 
 		Body.Message message = body.getMessage();

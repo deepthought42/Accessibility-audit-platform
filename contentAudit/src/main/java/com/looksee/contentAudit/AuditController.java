@@ -55,6 +55,7 @@ import com.looksee.models.enums.AuditName;
 import com.looksee.models.message.AuditProgressUpdate;
 import com.looksee.models.message.PageAuditMessage;
 import com.looksee.services.AuditRecordService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.PageStateService;
 
 /**
@@ -70,6 +71,9 @@ import com.looksee.services.PageStateService;
 @RestController
 public class AuditController {
 	private static Logger log = LoggerFactory.getLogger(AuditController.class);
+
+	@Autowired
+	private IdempotencyService idempotencyService;
 
 	@Autowired
 	private AuditRecordService audit_record_service;
@@ -131,6 +135,11 @@ public class AuditController {
 		if (body == null || body.getMessage() == null || body.getMessage().getData() == null) {
 			log.warn("invalid pubsub payload received");
 			return acknowledgeInvalidMessage("Invalid pubsub payload");
+		}
+
+		String pubsubMessageId = body.getMessage().getMessageId();
+		if (idempotencyService.isAlreadyProcessed(pubsubMessageId, "content-audit")) {
+			return ResponseEntity.ok("Duplicate message, already processed");
 		}
 
 		Body.Message message = body.getMessage();
@@ -224,6 +233,7 @@ public class AuditController {
 			return new ResponseEntity<String>("Error publishing audit progress", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
+		idempotencyService.markProcessed(pubsubMessageId, "content-audit");
 		return new ResponseEntity<String>("Successfully completed content audit", HttpStatus.OK);
 	}
 	

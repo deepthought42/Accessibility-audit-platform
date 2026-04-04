@@ -45,6 +45,7 @@ import com.looksee.models.message.PageDataExtractionError;
 import com.looksee.models.message.VerifiedJourneyMessage;
 import com.looksee.pageBuilder.schemas.BodySchema;
 import com.looksee.services.AuditRecordService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.BrowserService;
 import com.looksee.services.DomainMapService;
 import com.looksee.services.ElementStateService;
@@ -78,6 +79,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Tag(name = "Audit", description = "API endpoints for building page objects")
 public class AuditController {
 	private static Logger log = LoggerFactory.getLogger(AuditController.class);
+
+	@Autowired
+	private IdempotencyService idempotencyService;
 
 	@Autowired
 	private AuditRecordService audit_record_service;
@@ -182,6 +186,11 @@ public class AuditController {
 		if(body == null || body.getMessage() == null || body.getMessage().getData() == null || body.getMessage().getData().isBlank()) {
 			log.warn("Received empty message body while attempting to extract page data");
 			return new ResponseEntity<String>("Request must include message.data containing a Base64-encoded AuditStartMessage payload", HttpStatus.BAD_REQUEST);
+		}
+
+		String pubsubMessageId = body.getMessage().getMessageId();
+		if (idempotencyService.isAlreadyProcessed(pubsubMessageId, "page-builder")) {
+			return ResponseEntity.ok("Duplicate message, already processed");
 		}
 
 		AuditStartMessage url_msg;
@@ -303,6 +312,7 @@ public class AuditController {
 				audit_record_topic.publish(audit_record_json);
 			}
 
+			idempotencyService.markProcessed(pubsubMessageId, "page-builder");
 			return new ResponseEntity<String>("Successfully sent message to verified journey topic", HttpStatus.OK);
 		}
 		catch(Exception e) {

@@ -45,6 +45,7 @@ import com.looksee.models.enums.AuditName;
 import com.looksee.models.message.AuditProgressUpdate;
 import com.looksee.models.message.PageAuditMessage;
 import com.looksee.services.AuditRecordService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.PageStateService;
 
 /**
@@ -118,6 +119,9 @@ public class AuditController {
 	
 	@Autowired
 	private PubSubAuditUpdatePublisherImpl audit_update_topic;
+
+	@Autowired
+	private IdempotencyService idempotencyService;
 	
 	/**
 	 * Receives a Pub/Sub message containing a {@link PageAuditMessage}, executes all
@@ -144,6 +148,10 @@ public class AuditController {
 	{
 		if(body == null || body.getMessage() == null) {
 			return new ResponseEntity<String>("Invalid Pub/Sub message: body.message is required", HttpStatus.BAD_REQUEST);
+		}
+
+		if (idempotencyService.isAlreadyProcessed(body.getMessage().getMessageId(), "information-architecture-audit")) {
+			return ResponseEntity.ok("Duplicate message, already processed");
 		}
 
 		Body.Message message = body.getMessage();
@@ -296,6 +304,7 @@ public class AuditController {
 			return new ResponseEntity<String>("Failed to publish audit progress update", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 		
+		idempotencyService.markProcessed(body.getMessage().getMessageId(), "information-architecture-audit");
 		return new ResponseEntity<String>("Successfully audited information architecture", HttpStatus.OK);
 	}
 

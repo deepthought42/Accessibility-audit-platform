@@ -25,6 +25,12 @@ import lombok.NoArgsConstructor;
 public class MessageSchema {
 
     @Schema(
+        description = "PubSub-assigned unique message identifier used for idempotent processing",
+        example = "1234567890"
+    )
+    private String messageId;
+
+    @Schema(
         description = "Base64 encoded JSON string containing AuditStartMessage",
         example = "eyJ1cmwiOiJodHRwczovL2V4YW1wbGUuY29tIiwidHlwZSI6IlBBR0UiLCJhY2NvdW50SWQiOiIxMjMiLCJhdWRpdElkIjoiNDU2In0=",
         required = true

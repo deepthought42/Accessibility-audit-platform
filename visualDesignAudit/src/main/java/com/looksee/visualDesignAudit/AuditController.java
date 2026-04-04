@@ -51,6 +51,7 @@ import com.looksee.models.enums.AuditName;
 import com.looksee.models.message.AuditProgressUpdate;
 import com.looksee.models.message.PageAuditMessage;
 import com.looksee.services.AuditRecordService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.DomainService;
 import com.looksee.services.PageStateService;
 import com.looksee.visualDesignAudit.audit.ImageAudit;
@@ -67,6 +68,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 @RestController
 public class AuditController {
 	private static Logger log = LoggerFactory.getLogger(AuditController.class);
+
+	@Autowired
+	private IdempotencyService idempotencyService;
 
 	@Autowired
 	private AuditRecordService audit_record_service;
@@ -145,6 +149,16 @@ public class AuditController {
 	public ResponseEntity<String> receiveMessage(@RequestBody Body body)
 			throws JsonMappingException, JsonProcessingException, ExecutionException, InterruptedException
 	{
+		if (body == null || body.getMessage() == null || body.getMessage().getData() == null) {
+			log.warn("invalid pubsub payload received");
+			return new ResponseEntity<String>("Invalid pubsub payload", HttpStatus.OK);
+		}
+
+		String pubsubMessageId = body.getMessage().getMessageId();
+		if (idempotencyService.isAlreadyProcessed(pubsubMessageId, "visual-design-audit")) {
+			return ResponseEntity.ok("Duplicate message, already processed");
+		}
+
 		Body.Message message = body.getMessage();
 		String data = message.getData();
 
@@ -209,6 +223,7 @@ public class AuditController {
 			log.error("Failed to publish audit update", e);
 		}
 
+		idempotencyService.markProcessed(pubsubMessageId, "visual-design-audit");
 		return new ResponseEntity<String>("Successfully completed visual design audit", HttpStatus.OK);
 	}
 	

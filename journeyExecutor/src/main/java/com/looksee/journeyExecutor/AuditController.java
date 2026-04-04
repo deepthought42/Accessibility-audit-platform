@@ -52,6 +52,7 @@ import com.looksee.models.message.PageBuiltMessage;
 import com.looksee.models.message.VerifiedJourneyMessage;
 import com.looksee.services.BrowserService;
 import com.looksee.services.DomainMapService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.DomainService;
 import com.looksee.services.ElementStateService;
 import com.looksee.services.JourneyService;
@@ -118,6 +119,9 @@ public class AuditController {
 	
 	@Autowired
 	private PubSubPageBuiltPublisherImpl page_built_topic;
+
+	@Autowired
+	private IdempotencyService idempotencyService;
 	
 	/**
 	 * Receives a {@link JourneyCandidateMessage} and processes it.
@@ -150,6 +154,10 @@ public class AuditController {
 		if(body == null || body.getMessage() == null || body.getMessage().getData() == null || body.getMessage().getData().isEmpty()) {
 			log.warn("Received empty Pub/Sub message payload");
 			return new ResponseEntity<String>("Empty message payload", HttpStatus.OK);
+		}
+
+		if (idempotencyService.isAlreadyProcessed(body.getMessage().getMessageId(), "journey-executor")) {
+			return ResponseEntity.ok("Duplicate message, already processed");
 		}
 
 		Body.Message message = body.getMessage();
@@ -389,6 +397,7 @@ public class AuditController {
 
 			}
 			review_map.remove(journey_id);
+			idempotencyService.markProcessed(body.getMessage().getMessageId(), "journey-executor");
 			return new ResponseEntity<String>("Successfully verified journey", HttpStatus.OK);
 		} catch(Exception e){
 			e.printStackTrace();

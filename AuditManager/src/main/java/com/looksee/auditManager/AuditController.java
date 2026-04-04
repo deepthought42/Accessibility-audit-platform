@@ -31,6 +31,7 @@ import com.looksee.models.enums.ExecutionStatus;
 import com.looksee.models.message.PageAuditMessage;
 import com.looksee.models.message.PageBuiltMessage;
 import com.looksee.services.AuditRecordService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.PageStateService;
 
 /**
@@ -55,6 +56,7 @@ public class AuditController {
 	private final AuditRecordService auditRecordService;
 	private final PubSubPageAuditPublisherImpl auditRecordTopic;
 	private final PageStateService pageStateService;
+	private final IdempotencyService idempotencyService;
 
 	/**
 	 * Creates a new {@code AuditController}.
@@ -62,15 +64,18 @@ public class AuditController {
 	 * @param auditRecordService service for persisting and querying audit records; must not be {@code null}
 	 * @param auditRecordTopic   Pub/Sub publisher for page-audit messages; must not be {@code null}
 	 * @param pageStateService   service for querying page state and landability; must not be {@code null}
+	 * @param idempotencyService service for deduplicating Pub/Sub messages; must not be {@code null}
 	 * @throws NullPointerException if any argument is {@code null}
 	 */
 	public AuditController(
 		AuditRecordService auditRecordService,
 		PubSubPageAuditPublisherImpl auditRecordTopic,
-		PageStateService pageStateService) {
+		PageStateService pageStateService,
+		IdempotencyService idempotencyService) {
 		this.auditRecordService = Objects.requireNonNull(auditRecordService, "auditRecordService must not be null");
 		this.auditRecordTopic = Objects.requireNonNull(auditRecordTopic, "auditRecordTopic must not be null");
 		this.pageStateService = Objects.requireNonNull(pageStateService, "pageStateService must not be null");
+		this.idempotencyService = Objects.requireNonNull(idempotencyService, "idempotencyService must not be null");
 	}
 
 	/**
@@ -102,6 +107,11 @@ public class AuditController {
 			return ResponseEntity.ok("Acknowledged invalid Pub/Sub payload");
 		}
 
+		String pubsubMessageId = body.getMessage().getMessageId();
+		if (idempotencyService.isAlreadyProcessed(pubsubMessageId, "audit-manager")) {
+			return ResponseEntity.ok("Duplicate message, already processed");
+		}
+
 		String payload = decodePayload(body.getMessage().getData());
 		if (payload == null) {
 			return ResponseEntity.ok("Acknowledged invalid message encoding");
@@ -112,7 +122,7 @@ public class AuditController {
 			return ResponseEntity.ok("Acknowledged invalid message format");
 		}
 
-		return processMessage(pageBuiltMessage);
+		return processMessage(pageBuiltMessage, pubsubMessageId);
 	}
 
 	/**
@@ -122,7 +132,7 @@ public class AuditController {
 	 * @param pageBuiltMessage the validated message; must not be {@code null}
 	 * @return {@code 200 OK} on success, {@code 500} on infrastructure failure
 	 */
-	private ResponseEntity<String> processMessage(PageBuiltMessage pageBuiltMessage) {
+	private ResponseEntity<String> processMessage(PageBuiltMessage pageBuiltMessage, String pubsubMessageId) {
 		assert pageBuiltMessage != null : "pageBuiltMessage must not be null at this point";
 
 		try {
@@ -133,11 +143,12 @@ public class AuditController {
 			Optional<PageState> pageState = pageStateService.findById(pageBuiltMessage.getPageId());
 
 			if (!alreadyAudited && isLandable && pageState.isPresent()) {
-				return createAndPublishAudit(pageBuiltMessage, pageState.get(), auditNames);
+				return createAndPublishAudit(pageBuiltMessage, pageState.get(), auditNames, pubsubMessageId);
 			}
 
 			log.info("Skipping pageId={} (alreadyAudited={}, landable={}, pageStatePresent={})",
 				pageBuiltMessage.getPageId(), alreadyAudited, isLandable, pageState.isPresent());
+			idempotencyService.markProcessed(pubsubMessageId, "audit-manager");
 			return ResponseEntity.ok("Successfully processed message");
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
@@ -165,7 +176,7 @@ public class AuditController {
 	 * @throws InterruptedException    if the current thread is interrupted while publishing
 	 */
 	@Transactional
-	private ResponseEntity<String> createAndPublishAudit(PageBuiltMessage pageBuiltMessage, PageState pageState, Set<AuditName> auditNames)
+	private ResponseEntity<String> createAndPublishAudit(PageBuiltMessage pageBuiltMessage, PageState pageState, Set<AuditName> auditNames, String pubsubMessageId)
 		throws JsonProcessingException, ExecutionException, InterruptedException {
 		assert pageBuiltMessage != null : "pageBuiltMessage must not be null";
 		assert pageState != null : "pageState must not be null";
@@ -190,6 +201,7 @@ public class AuditController {
 		String auditRecordJson = JacksonConfig.mapper().writeValueAsString(auditMessage);
 		log.info("Sending PageAuditMessage to Pub/Sub for pageAuditId={}", auditRecord.getId());
 		auditRecordTopic.publish(auditRecordJson);
+		idempotencyService.markProcessed(pubsubMessageId, "audit-manager");
 		return ResponseEntity.ok("Successfully processed message");
 	}
 

@@ -38,6 +38,7 @@ import com.looksee.models.message.PageAuditProgressMessage;
 import com.looksee.models.message.VerifiedJourneyMessage;
 import com.looksee.services.AccountService;
 import com.looksee.services.AuditRecordService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.DomainService;
 import com.looksee.services.MessageBroadcaster;
 import com.looksee.services.PageStateService;
@@ -73,6 +74,9 @@ public class AuditController {
 
 	@Autowired
 	private MessageBroadcaster messageBroadcaster;
+
+	@Autowired
+	private IdempotencyService idempotencyService;
 
 	/**
 	 * Receives a Pub/Sub push message, deserializes it into one of the supported
@@ -115,6 +119,10 @@ public class AuditController {
 			return new ResponseEntity<String>("Invalid message payload", HttpStatus.BAD_REQUEST);
 		}
 
+		if (idempotencyService.isAlreadyProcessed(body.getMessage().getMessageId(), "audit-service")) {
+			return ResponseEntity.ok("Duplicate message, already processed");
+		}
+
 		Body.Message message = body.getMessage();
 		String data = message.getData();
 		String target = "";
@@ -132,25 +140,36 @@ public class AuditController {
 			JsonNode rootNode = JacksonConfig.mapper().readTree(target);
 			String messageType = rootNode.has("messageType") ? rootNode.get("messageType").asText() : null;
 
+			ResponseEntity<String> result = null;
 			if (messageType != null) {
 				switch (messageType) {
 					case "AuditProgressUpdate":
-						return handleAuditProgressUpdate(target);
+						result = handleAuditProgressUpdate(target);
+						break;
 					case "PageAuditProgressMessage":
-						return handlePageAuditProgressMessage(target);
+						result = handlePageAuditProgressMessage(target);
+						break;
 					case "JourneyCandidateMessage":
-						return handleJourneyCandidateMessage(target);
+						result = handleJourneyCandidateMessage(target);
+						break;
 					case "VerifiedJourneyMessage":
-						return handleVerifiedJourneyMessage(target);
+						result = handleVerifiedJourneyMessage(target);
+						break;
 					case "DiscardedJourneyMessage":
-						return handleDiscardedJourneyMessage(target);
+						result = handleDiscardedJourneyMessage(target);
+						break;
 					default:
 						log.warn("Unknown messageType={}, attempting fallback deserialization", messageType);
 				}
 			}
 
-			// Fallback: try legacy cascading deserialization for messages without messageType
-			return handleLegacyMessage(target);
+			if (result == null) {
+				// Fallback: try legacy cascading deserialization for messages without messageType
+				result = handleLegacyMessage(target);
+			}
+
+			idempotencyService.markProcessed(body.getMessage().getMessageId(), "audit-service");
+			return result;
 		} catch (Exception e) {
 			log.warn("Failed to process message, acknowledging to prevent infinite retries", e);
 			return new ResponseEntity<String>("Error occurred while updating audit progress", HttpStatus.OK);

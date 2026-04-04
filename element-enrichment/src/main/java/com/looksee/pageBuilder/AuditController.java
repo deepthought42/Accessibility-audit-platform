@@ -4,6 +4,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Base64;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
@@ -48,6 +49,7 @@ import com.looksee.utils.ElementStateUtils;
 @RestController
 public class AuditController {
 	private static Logger log = LoggerFactory.getLogger(AuditController.class);
+	private static final Set<String> processedMessages = java.util.concurrent.ConcurrentHashMap.newKeySet();
 	
 	@Autowired
 	private BrowserService browser_service;
@@ -78,6 +80,11 @@ public class AuditController {
 		if(body == null || body.getMessage() == null || body.getMessage().getData() == null || body.getMessage().getData().isEmpty()) {
 			log.warn("Received empty Pub/Sub message payload");
 			return new ResponseEntity<String>("Empty message payload", HttpStatus.OK);
+		}
+
+		String pubsubMsgId = body.getMessage().getMessageId();
+		if (pubsubMsgId != null && !processedMessages.add(pubsubMsgId)) {
+			return ResponseEntity.ok("Duplicate");
 		}
 
 		Body.Message message = body.getMessage();

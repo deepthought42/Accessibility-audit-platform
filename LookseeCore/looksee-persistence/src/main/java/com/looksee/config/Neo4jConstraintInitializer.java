@@ -23,6 +23,7 @@ import org.springframework.stereotype.Component;
  *   <li>{@code DomainAuditRecord.key} — unique constraint to prevent duplicate domain audits</li>
  *   <li>{@code Journey.candidateKey} — unique constraint to prevent duplicate journey candidates</li>
  *   <li>{@code OutboxEvent.eventId} — unique constraint for outbox event deduplication</li>
+ *   <li>{@code ProcessedMessage(pubsubMessageId, serviceName)} — composite unique for message deduplication</li>
  * </ul>
  */
 @Component
@@ -43,7 +44,8 @@ public class Neo4jConstraintInitializer {
             "CREATE CONSTRAINT page_audit_record_key_unique IF NOT EXISTS FOR (p:PageAuditRecord) REQUIRE p.key IS UNIQUE",
             "CREATE CONSTRAINT domain_audit_record_key_unique IF NOT EXISTS FOR (d:DomainAuditRecord) REQUIRE d.key IS UNIQUE",
             "CREATE CONSTRAINT journey_candidate_key_unique IF NOT EXISTS FOR (j:Journey) REQUIRE j.candidateKey IS UNIQUE",
-            "CREATE CONSTRAINT outbox_event_id_unique IF NOT EXISTS FOR (o:OutboxEvent) REQUIRE o.eventId IS UNIQUE"
+            "CREATE CONSTRAINT outbox_event_id_unique IF NOT EXISTS FOR (o:OutboxEvent) REQUIRE o.eventId IS UNIQUE",
+            "CREATE CONSTRAINT processed_message_unique IF NOT EXISTS FOR (pm:ProcessedMessage) REQUIRE (pm.pubsubMessageId, pm.serviceName) IS UNIQUE"
         };
 
         try (Session session = neo4jDriver.session()) {
