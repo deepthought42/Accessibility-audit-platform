@@ -220,7 +220,7 @@ public class AuditController {
 		//update audit record
 		Optional<AuditRecord> auditRecordOpt = audit_record_service.findById(audit_msg.getPageAuditId());
 		if (auditRecordOpt.isEmpty() || !(auditRecordOpt.get() instanceof PageAuditRecord)) {
-			return new ResponseEntity<String>("Page audit record not found", HttpStatus.BAD_REQUEST);
+			return new ResponseEntity<String>("Page audit record not found", HttpStatus.OK);
 		}
 		PageAuditRecord audit_record = (PageAuditRecord) auditRecordOpt.get();
 

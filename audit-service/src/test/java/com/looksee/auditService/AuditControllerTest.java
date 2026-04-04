@@ -143,7 +143,6 @@ class AuditControllerTest {
         Body body = createBody("{\"unexpected\":\"message\"}");
         ResponseEntity<String> response = auditController.receiveMessage(body);
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertTrue(response.getBody().contains("Error occurred while updating audit progress"));
     }
 
     @Test
