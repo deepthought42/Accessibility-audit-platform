@@ -2,6 +2,7 @@ package audits;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -360,8 +361,8 @@ public class LinksAuditExecuteTest {
                 .thenReturn(List.of(linkElem));
 
         try (MockedStatic<BrowserUtils> mockedStatic = mockStatic(BrowserUtils.class)) {
-            mockedStatic.when(() -> BrowserUtils.sanitizeUrl(anyString())).thenReturn("https://example.com");
-            mockedStatic.when(() -> BrowserUtils.formatUrl(anyString(), anyString())).thenReturn("https://example.com/page");
+            mockedStatic.when(() -> BrowserUtils.sanitizeUrl(anyString(), anyBoolean())).thenReturn("https://example.com");
+            mockedStatic.when(() -> BrowserUtils.formatUrl(anyString(), anyString(), anyString(), anyBoolean())).thenReturn("https://example.com/page");
             mockedStatic.when(() -> BrowserUtils.isJavascript(anyString())).thenReturn(false);
             mockedStatic.when(() -> BrowserUtils.doesUrlExist(anyString())).thenThrow(new java.io.IOException("Connection refused"));
 
