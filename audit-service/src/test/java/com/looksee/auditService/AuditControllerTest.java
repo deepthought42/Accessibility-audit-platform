@@ -134,7 +134,7 @@ class AuditControllerTest {
         when(body.getMessage()).thenReturn(message);
         when(message.getData()).thenReturn("not-base64$payload");
         ResponseEntity<String> response = auditController.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("Invalid message payload", response.getBody());
     }
 
@@ -142,7 +142,7 @@ class AuditControllerTest {
     void receiveMessageShouldReturnBadRequestForUnknownMessageType() throws Exception {
         Body body = createBody("{\"unexpected\":\"message\"}");
         ResponseEntity<String> response = auditController.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         assertTrue(response.getBody().contains("Error occurred while updating audit progress"));
     }
 
@@ -153,7 +153,7 @@ class AuditControllerTest {
         when(body.getMessage()).thenReturn(message);
         when(message.getData()).thenReturn("");
         ResponseEntity<String> response = auditController.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     // ========== AuditProgressUpdate Tests ==========
@@ -546,9 +546,9 @@ class AuditControllerTest {
         when(auditRecordService.getAllAudits(100L))
             .thenThrow(new RuntimeException("force first handler to fail"));
 
-        // Second handler: findById returns DomainAuditRecord (not PageAuditRecord) => BAD_REQUEST
+        // Second handler: findById returns DomainAuditRecord (not PageAuditRecord) => OK (acknowledging to prevent retries)
         ResponseEntity<String> response = auditController.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     // ========== JourneyCandidateMessage Tests ==========
@@ -820,7 +820,7 @@ class AuditControllerTest {
         when(auditRecordService.findById(anyLong())).thenReturn(Optional.empty());
 
         ResponseEntity<String> response = auditController.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     @Test
