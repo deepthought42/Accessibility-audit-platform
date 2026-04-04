@@ -8,7 +8,6 @@ import static org.mockito.Mockito.*;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +15,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.SettableListenableFuture;
 
 import com.google.cloud.spring.pubsub.core.PubSubTemplate;
 import com.looksee.models.OutboxEvent;
@@ -32,6 +34,18 @@ class OutboxEventPublisherTest {
 
     @InjectMocks
     private OutboxEventPublisher outboxEventPublisher;
+
+    private ListenableFuture<String> successFuture() {
+        SettableListenableFuture<String> future = new SettableListenableFuture<>();
+        future.set("msg-id");
+        return future;
+    }
+
+    private ListenableFuture<String> failedFuture(String errorMessage) {
+        SettableListenableFuture<String> future = new SettableListenableFuture<>();
+        future.setException(new RuntimeException(errorMessage));
+        return future;
+    }
 
     private OutboxEvent createTestEvent(String topic, String payload, int retryCount) {
         OutboxEvent event = new OutboxEvent(topic, payload);
@@ -55,7 +69,7 @@ class OutboxEventPublisherTest {
         OutboxEvent event = createTestEvent("test-topic", "test-payload", 0);
         when(outboxEventRepository.findRetryableEvents()).thenReturn(List.of(event));
         when(pubSubTemplate.publish(eq("test-topic"), eq("test-payload")))
-                .thenReturn(CompletableFuture.completedFuture("msg-id"));
+                .thenReturn(successFuture());
 
         outboxEventPublisher.publishPendingEvents();
 
@@ -72,10 +86,8 @@ class OutboxEventPublisherTest {
         OutboxEvent event = createTestEvent("test-topic", "test-payload", 1);
         when(outboxEventRepository.findRetryableEvents()).thenReturn(List.of(event));
 
-        CompletableFuture<String> failedFuture = new CompletableFuture<>();
-        failedFuture.completeExceptionally(new RuntimeException("publish failed"));
         when(pubSubTemplate.publish(eq("test-topic"), eq("test-payload")))
-                .thenReturn(failedFuture);
+                .thenReturn(failedFuture("publish failed"));
 
         outboxEventPublisher.publishPendingEvents();
 
@@ -92,10 +104,8 @@ class OutboxEventPublisherTest {
         OutboxEvent event = createTestEvent("test-topic", "test-payload", 4);
         when(outboxEventRepository.findRetryableEvents()).thenReturn(List.of(event));
 
-        CompletableFuture<String> failedFuture = new CompletableFuture<>();
-        failedFuture.completeExceptionally(new RuntimeException("publish failed"));
         when(pubSubTemplate.publish(eq("test-topic"), eq("test-payload")))
-                .thenReturn(failedFuture);
+                .thenReturn(failedFuture("publish failed"));
 
         outboxEventPublisher.publishPendingEvents();
 
@@ -137,7 +147,7 @@ class OutboxEventPublisherTest {
         OutboxEvent event2 = createTestEvent("topic-2", "payload-2", 0);
         when(outboxEventRepository.findRetryableEvents()).thenReturn(List.of(event1, event2));
         when(pubSubTemplate.publish(anyString(), anyString()))
-                .thenReturn(CompletableFuture.completedFuture("msg-id"));
+                .thenReturn(successFuture());
 
         outboxEventPublisher.publishPendingEvents();
 
