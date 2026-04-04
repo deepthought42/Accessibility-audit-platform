@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +13,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.SettableListenableFuture;
 
 import com.google.cloud.spring.pubsub.core.PubSubTemplate;
 
@@ -38,15 +39,15 @@ class PubSubPublisherTest {
         ReflectionTestUtils.setField(publisher, "pubSubTemplate", pubSubTemplate);
     }
 
-    @SuppressWarnings("unchecked")
-    private CompletableFuture<String> successFuture() {
-        return CompletableFuture.completedFuture("message-id");
+    private ListenableFuture<String> successFuture() {
+        SettableListenableFuture<String> future = new SettableListenableFuture<>();
+        future.set("message-id");
+        return future;
     }
 
-    @SuppressWarnings("unchecked")
-    private CompletableFuture<String> failedFuture(String errorMessage) {
-        CompletableFuture<String> future = new CompletableFuture<>();
-        future.completeExceptionally(new RuntimeException(errorMessage));
+    private ListenableFuture<String> failedFuture(String errorMessage) {
+        SettableListenableFuture<String> future = new SettableListenableFuture<>();
+        future.setException(new RuntimeException(errorMessage));
         return future;
     }
 
@@ -105,14 +106,11 @@ class PubSubPublisherTest {
 
     @Test
     void publish_interruptedException_propagates() throws Exception {
-        // Set up a failure to trigger the retry/sleep path
         when(pubSubTemplate.publish(eq(TEST_TOPIC), anyString()))
                 .thenReturn(failedFuture("failure"));
 
-        // Interrupt the thread so that Thread.sleep throws InterruptedException
         Thread.currentThread().interrupt();
         assertThrows(InterruptedException.class, () -> publisher.publish("test message"));
-        // Clear interrupt flag if still set
         Thread.interrupted();
     }
 
@@ -127,8 +125,7 @@ class PubSubPublisherTest {
         assertThrows(ExecutionException.class, () -> publisher.publish("test message"));
         long elapsed = System.currentTimeMillis() - start;
 
-        // BASE_BACKOFF_MS=1000, attempt 1 sleeps 1000ms, attempt 2 sleeps 2000ms, no sleep after attempt 3
-        // Total expected: ~3000ms minimum
+        // BASE_BACKOFF_MS=1000, attempt 1 sleeps 1000ms, attempt 2 sleeps 2000ms
         assertTrue(elapsed >= 2500, "Expected at least 2500ms of backoff, but was " + elapsed + "ms");
     }
 }
