@@ -1,0 +1,33 @@
+{
+  "type": "record",
+  "name": "PageBuiltMessage",
+  "namespace": "com.looksee.models.message",
+  "doc": "Message published to the 'page_created' topic when a page has been built and is ready for auditing.",
+  "fields": [
+    {
+      "name": "messageId",
+      "type": "string",
+      "doc": "Unique message identifier (UUID)"
+    },
+    {
+      "name": "publishTime",
+      "type": "string",
+      "doc": "ISO-8601 formatted timestamp of when the message was created"
+    },
+    {
+      "name": "accountId",
+      "type": "long",
+      "doc": "ID of the account that initiated the request"
+    },
+    {
+      "name": "pageId",
+      "type": "long",
+      "doc": "ID of the page that was built"
+    },
+    {
+      "name": "auditRecordId",
+      "type": "long",
+      "doc": "ID of the associated audit record"
+    }
+  ]
+}

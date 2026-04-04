@@ -1,0 +1,43 @@
+{
+  "type": "record",
+  "name": "DiscardedJourneyMessage",
+  "namespace": "com.looksee.models.message",
+  "doc": "Message published to the 'journey_discarded' topic when a user journey has been discarded as invalid.",
+  "fields": [
+    {
+      "name": "messageId",
+      "type": "string",
+      "doc": "Unique message identifier (UUID)"
+    },
+    {
+      "name": "publishTime",
+      "type": "string",
+      "doc": "ISO-8601 formatted timestamp of when the message was created"
+    },
+    {
+      "name": "accountId",
+      "type": "long",
+      "doc": "ID of the account that initiated the request"
+    },
+    {
+      "name": "journey",
+      "type": "string",
+      "doc": "JSON-serialized Journey object that was discarded"
+    },
+    {
+      "name": "browserType",
+      "type": "string",
+      "doc": "Browser type used during journey execution (e.g. CHROME, FIREFOX)"
+    },
+    {
+      "name": "domainId",
+      "type": "long",
+      "doc": "ID of the domain the journey belongs to"
+    },
+    {
+      "name": "auditRecordId",
+      "type": "long",
+      "doc": "ID of the associated audit record"
+    }
+  ]
+}

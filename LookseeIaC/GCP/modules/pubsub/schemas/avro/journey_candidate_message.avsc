@@ -1,0 +1,43 @@
+{
+  "type": "record",
+  "name": "JourneyCandidateMessage",
+  "namespace": "com.looksee.models.message",
+  "doc": "Message published to the 'journey_candidate' topic when a new journey candidate is identified for execution.",
+  "fields": [
+    {
+      "name": "messageId",
+      "type": "string",
+      "doc": "Unique message identifier (UUID)"
+    },
+    {
+      "name": "publishTime",
+      "type": "string",
+      "doc": "ISO-8601 formatted timestamp of when the message was created"
+    },
+    {
+      "name": "accountId",
+      "type": "long",
+      "doc": "ID of the account that initiated the request"
+    },
+    {
+      "name": "mapId",
+      "type": "long",
+      "doc": "ID of the journey map this candidate belongs to"
+    },
+    {
+      "name": "journey",
+      "type": "string",
+      "doc": "JSON-serialized Journey object representing the candidate journey"
+    },
+    {
+      "name": "browser",
+      "type": "string",
+      "doc": "Browser type to use for journey execution (e.g. CHROME, FIREFOX)"
+    },
+    {
+      "name": "auditRecordId",
+      "type": "long",
+      "doc": "ID of the associated audit record"
+    }
+  ]
+}

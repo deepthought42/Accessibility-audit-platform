@@ -1,0 +1,48 @@
+{
+  "type": "record",
+  "name": "AuditProgressUpdate",
+  "namespace": "com.looksee.models.message",
+  "doc": "Message published to the 'audit_update' topic to report audit progress from audit services.",
+  "fields": [
+    {
+      "name": "messageId",
+      "type": "string",
+      "doc": "Unique message identifier (UUID)"
+    },
+    {
+      "name": "publishTime",
+      "type": "string",
+      "doc": "ISO-8601 formatted timestamp of when the message was created"
+    },
+    {
+      "name": "accountId",
+      "type": "long",
+      "doc": "ID of the account that initiated the request"
+    },
+    {
+      "name": "pageAuditId",
+      "type": "long",
+      "doc": "ID of the page audit record being updated"
+    },
+    {
+      "name": "category",
+      "type": "string",
+      "doc": "Audit category: CONTENT, INFORMATION_ARCHITECTURE, AESTHETICS, or ACCESSIBILITY"
+    },
+    {
+      "name": "level",
+      "type": "string",
+      "doc": "Audit level: PAGE or DOMAIN"
+    },
+    {
+      "name": "progress",
+      "type": "double",
+      "doc": "Progress percentage as a value between 0.0 and 1.0"
+    },
+    {
+      "name": "message",
+      "type": "string",
+      "doc": "Human-readable progress status message"
+    }
+  ]
+}

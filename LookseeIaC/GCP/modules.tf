@@ -23,6 +23,11 @@ module "vpc" {
 }
 
 
+module "pubsub_schemas" {
+  source     = "./modules/pubsub/pubsub_schemas"
+  project_id = var.project_id
+}
+
 module "pubsub_topics" {
   source                                = "./modules/pubsub/pubsub_topics"
   project_id                            = var.project_id
@@ -38,6 +43,23 @@ module "pubsub_topics" {
   audit_update_topic_name               = "audit_update"
   journey_candidate_topic_name          = "journey_candidate"
   journey_completion_cleanup_topic_name = "journey_completion_cleanup"
+
+  # Attach schemas to simple topics (no complex nested objects)
+  url_schema_id          = module.pubsub_schemas.url_message_schema_id
+  page_created_schema_id = module.pubsub_schemas.page_built_message_schema_id
+  page_audit_schema_id   = module.pubsub_schemas.page_audit_message_schema_id
+  audit_update_schema_id = module.pubsub_schemas.audit_progress_update_schema_id
+  audit_error_schema_id  = module.pubsub_schemas.audit_error_schema_id
+
+  # Journey topics: schemas are created but not attached yet.
+  # The Journey object uses polymorphic Jackson serialization that requires
+  # validation testing before enabling broker-level schema enforcement.
+  # To attach, uncomment and set:
+  # journey_verified_schema_id    = module.pubsub_schemas.verified_journey_message_schema_id
+  # journey_discarded_schema_id   = module.pubsub_schemas.discarded_journey_message_schema_id
+  # journey_candidate_schema_id   = module.pubsub_schemas.journey_candidate_message_schema_id
+
+  depends_on = [module.pubsub_schemas]
 }
 
 variable "environment_variables" {

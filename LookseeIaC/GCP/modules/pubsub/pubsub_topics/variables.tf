@@ -62,3 +62,59 @@ variable "audit_error_topic_name" {
   description = "The name of the PubSub topic"
   type        = string
 }
+
+# Schema IDs for topic validation (empty string = no schema attached)
+
+variable "url_schema_id" {
+  description = "The ID of the Avro schema for the URL topic"
+  type        = string
+  default     = ""
+}
+
+variable "page_created_schema_id" {
+  description = "The ID of the Avro schema for the page_created topic"
+  type        = string
+  default     = ""
+}
+
+variable "page_audit_schema_id" {
+  description = "The ID of the Avro schema for the page_audit topic"
+  type        = string
+  default     = ""
+}
+
+variable "journey_verified_schema_id" {
+  description = "The ID of the Avro schema for the journey_verified topic"
+  type        = string
+  default     = ""
+}
+
+variable "journey_discarded_schema_id" {
+  description = "The ID of the Avro schema for the journey_discarded topic"
+  type        = string
+  default     = ""
+}
+
+variable "journey_candidate_schema_id" {
+  description = "The ID of the Avro schema for the journey_candidate topic"
+  type        = string
+  default     = ""
+}
+
+variable "audit_update_schema_id" {
+  description = "The ID of the Avro schema for the audit_update topic"
+  type        = string
+  default     = ""
+}
+
+variable "journey_completion_cleanup_schema_id" {
+  description = "The ID of the Avro schema for the journey_completion_cleanup topic"
+  type        = string
+  default     = ""
+}
+
+variable "audit_error_schema_id" {
+  description = "The ID of the Avro schema for the audit_error topic"
+  type        = string
+  default     = ""
+}

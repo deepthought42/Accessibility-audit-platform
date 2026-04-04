@@ -1,0 +1,51 @@
+{
+  "type": "record",
+  "name": "AuditErrorEvent",
+  "namespace": "com.looksee.models.message",
+  "doc": "Combined schema for the 'audit_error' topic. Accommodates both PageDataExtractionError and AuditError message types using nullable fields for type-specific data.",
+  "fields": [
+    {
+      "name": "messageId",
+      "type": "string",
+      "doc": "Unique message identifier (UUID)"
+    },
+    {
+      "name": "publishTime",
+      "type": "string",
+      "doc": "ISO-8601 formatted timestamp of when the message was created"
+    },
+    {
+      "name": "accountId",
+      "type": "long",
+      "doc": "ID of the account that initiated the request"
+    },
+    {
+      "name": "auditRecordId",
+      "type": "long",
+      "doc": "ID of the associated audit record"
+    },
+    {
+      "name": "errorMessage",
+      "type": "string",
+      "doc": "Description of the error that occurred"
+    },
+    {
+      "name": "url",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "URL where the error occurred (present in PageDataExtractionError)"
+    },
+    {
+      "name": "auditCategory",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Audit category that encountered the error: CONTENT, INFORMATION_ARCHITECTURE, AESTHETICS, or ACCESSIBILITY (present in AuditError)"
+    },
+    {
+      "name": "progress",
+      "type": ["null", "double"],
+      "default": null,
+      "doc": "Progress at the time of error, value between 0.0 and 1.0 (present in AuditError)"
+    }
+  ]
+}
