@@ -8,13 +8,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.bean.MockBean;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.looksee.gcp.PubSubErrorPublisherImpl;
@@ -38,49 +41,66 @@ import com.looksee.services.StepService;
  * Integration tests for the PageBuilder {@link AuditController} using Spring
  * MockMvc. Tests the HTTP layer with mocked dependencies.
  */
-@WebMvcTest(AuditController.class)
+@ExtendWith(MockitoExtension.class)
 class AuditControllerIntegrationTest {
 
-    @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @Mock
     private IdempotencyService idempotencyService;
 
-    @MockBean
+    @Mock
     private AuditRecordService audit_record_service;
 
-    @MockBean
+    @Mock
     private BrowserService browser_service;
 
-    @MockBean
+    @Mock
     private JourneyService journey_service;
 
-    @MockBean
+    @Mock
     private StepService step_service;
 
-    @MockBean
+    @Mock
     private PageStateService page_state_service;
 
-    @MockBean
+    @Mock
     private ElementStateService element_state_service;
 
-    @MockBean
+    @Mock
     private DomainMapService domain_map_service;
 
-    @MockBean
+    @Mock
     private PubSubErrorPublisherImpl pubSubErrorPublisherImpl;
 
-    @MockBean
+    @Mock
     private PubSubJourneyVerifiedPublisherImpl pubSubJourneyVerifiedPublisherImpl;
 
-    @MockBean
+    @Mock
     private PubSubPageCreatedPublisherImpl pubSubPageCreatedPublisherImpl;
 
-    @MockBean
+    @Mock
     private PubSubPageAuditPublisherImpl audit_record_topic;
 
     private final ObjectMapper mapper = JacksonConfig.mapper();
+
+    @BeforeEach
+    void setUp() {
+        AuditController controller = new AuditController();
+        ReflectionTestUtils.setField(controller, "idempotencyService", idempotencyService);
+        ReflectionTestUtils.setField(controller, "audit_record_service", audit_record_service);
+        ReflectionTestUtils.setField(controller, "browser_service", browser_service);
+        ReflectionTestUtils.setField(controller, "journey_service", journey_service);
+        ReflectionTestUtils.setField(controller, "step_service", step_service);
+        ReflectionTestUtils.setField(controller, "page_state_service", page_state_service);
+        ReflectionTestUtils.setField(controller, "element_state_service", element_state_service);
+        ReflectionTestUtils.setField(controller, "domain_map_service", domain_map_service);
+        ReflectionTestUtils.setField(controller, "pubSubErrorPublisherImpl", pubSubErrorPublisherImpl);
+        ReflectionTestUtils.setField(controller, "pubSubJourneyVerifiedPublisherImpl", pubSubJourneyVerifiedPublisherImpl);
+        ReflectionTestUtils.setField(controller, "pubSubPageCreatedPublisherImpl", pubSubPageCreatedPublisherImpl);
+        ReflectionTestUtils.setField(controller, "audit_record_topic", audit_record_topic);
+        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+    }
 
     private String buildValidEnvelope(String messageId, Object innerMessage) throws Exception {
         String innerJson = mapper.writeValueAsString(innerMessage);

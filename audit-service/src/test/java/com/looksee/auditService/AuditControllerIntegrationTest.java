@@ -10,13 +10,16 @@ import java.util.Base64;
 import java.util.HashSet;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.bean.MockBean;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.looksee.models.PageState;
@@ -38,31 +41,42 @@ import com.looksee.services.PageStateService;
  * Integration tests for the audit-service {@link AuditController} using
  * Spring MockMvc. Tests the HTTP layer with mocked dependencies.
  */
-@WebMvcTest(AuditController.class)
+@ExtendWith(MockitoExtension.class)
 class AuditControllerIntegrationTest {
 
-    @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @Mock
     private AuditRecordService audit_record_service;
 
-    @MockBean
+    @Mock
     private AccountService account_service;
 
-    @MockBean
+    @Mock
     private DomainService domain_service;
 
-    @MockBean
+    @Mock
     private PageStateService page_state_service;
 
-    @MockBean
+    @Mock
     private MessageBroadcaster messageBroadcaster;
 
-    @MockBean
+    @Mock
     private IdempotencyService idempotencyService;
 
     private final ObjectMapper mapper = JacksonConfig.mapper();
+
+    @BeforeEach
+    void setUp() {
+        AuditController controller = new AuditController();
+        ReflectionTestUtils.setField(controller, "audit_record_service", audit_record_service);
+        ReflectionTestUtils.setField(controller, "account_service", account_service);
+        ReflectionTestUtils.setField(controller, "domain_service", domain_service);
+        ReflectionTestUtils.setField(controller, "page_state_service", page_state_service);
+        ReflectionTestUtils.setField(controller, "messageBroadcaster", messageBroadcaster);
+        ReflectionTestUtils.setField(controller, "idempotencyService", idempotencyService);
+        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+    }
 
     private String buildValidEnvelope(String messageId, Object innerMessage) throws Exception {
         String innerJson = mapper.writeValueAsString(innerMessage);

@@ -30,6 +30,7 @@ import com.looksee.models.audit.AuditRecord;
 import com.looksee.models.audit.DomainAuditRecord;
 import com.looksee.models.enums.AuditName;
 import com.looksee.services.AuditRecordService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.PageStateService;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,11 +45,14 @@ class AuditControllerTest {
 	@Mock
 	private PageStateService pageStateService;
 
+	@Mock
+	private IdempotencyService idempotencyService;
+
 	private AuditController controller;
 
 	@BeforeEach
 	void setup() {
-		controller = new AuditController(auditRecordService, auditRecordTopic, pageStateService);
+		controller = new AuditController(auditRecordService, auditRecordTopic, pageStateService, idempotencyService);
 	}
 
 	@Test

@@ -10,13 +10,16 @@ import java.util.Base64;
 import java.util.HashSet;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.bean.MockBean;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.looksee.contentAudit.models.AppletAltTextAudit;
@@ -42,49 +45,66 @@ import com.looksee.services.PageStateService;
  * Integration tests for the contentAudit {@link AuditController} using Spring
  * MockMvc. Tests the HTTP layer with mocked dependencies.
  */
-@WebMvcTest(AuditController.class)
+@ExtendWith(MockitoExtension.class)
 class AuditControllerIntegrationTest {
 
-    @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @Mock
     private IdempotencyService idempotencyService;
 
-    @MockBean
+    @Mock
     private AuditRecordService audit_record_service;
 
-    @MockBean
+    @Mock
     private PageStateService page_state_service;
 
-    @MockBean
+    @Mock
     private ImageAltTextAudit image_alt_text_auditor;
 
-    @MockBean
+    @Mock
     private AppletAltTextAudit appletAllAltTextAudit;
 
-    @MockBean
+    @Mock
     private CanvasAltTextAudit canvasAltTextAudit;
 
-    @MockBean
+    @Mock
     private IframeAltTextAudit iframeAltTextAudit;
 
-    @MockBean
+    @Mock
     private ObjectAltTextAudit objectAltTextAudit;
 
-    @MockBean
+    @Mock
     private SVGAltTextAudit svgAltTextAudit;
 
-    @MockBean
+    @Mock
     private ParagraphingAudit paragraph_auditor;
 
-    @MockBean
+    @Mock
     private ReadabilityAudit readability_auditor;
 
-    @MockBean
+    @Mock
     private PubSubAuditUpdatePublisherImpl audit_update_topic;
 
     private final ObjectMapper mapper = JacksonConfig.mapper();
+
+    @BeforeEach
+    void setUp() {
+        AuditController controller = new AuditController();
+        ReflectionTestUtils.setField(controller, "idempotencyService", idempotencyService);
+        ReflectionTestUtils.setField(controller, "audit_record_service", audit_record_service);
+        ReflectionTestUtils.setField(controller, "page_state_service", page_state_service);
+        ReflectionTestUtils.setField(controller, "image_alt_text_auditor", image_alt_text_auditor);
+        ReflectionTestUtils.setField(controller, "appletAllAltTextAudit", appletAllAltTextAudit);
+        ReflectionTestUtils.setField(controller, "canvasAltTextAudit", canvasAltTextAudit);
+        ReflectionTestUtils.setField(controller, "iframeAltTextAudit", iframeAltTextAudit);
+        ReflectionTestUtils.setField(controller, "objectAltTextAudit", objectAltTextAudit);
+        ReflectionTestUtils.setField(controller, "svgAltTextAudit", svgAltTextAudit);
+        ReflectionTestUtils.setField(controller, "paragraph_auditor", paragraph_auditor);
+        ReflectionTestUtils.setField(controller, "readability_auditor", readability_auditor);
+        ReflectionTestUtils.setField(controller, "audit_update_topic", audit_update_topic);
+        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+    }
 
     private String buildValidEnvelope(String messageId, Object innerMessage) throws Exception {
         String innerJson = mapper.writeValueAsString(innerMessage);
