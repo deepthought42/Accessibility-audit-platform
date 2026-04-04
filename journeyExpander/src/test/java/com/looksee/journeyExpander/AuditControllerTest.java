@@ -84,7 +84,7 @@ class AuditControllerTest {
         Body body = mock(Body.class, RETURNS_DEEP_STUBS);
         when(body.getMessage().getData()).thenReturn("   ");
         ResponseEntity<String> response = controller.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("Message data is required", response.getBody());
     }
 
@@ -93,7 +93,7 @@ class AuditControllerTest {
         Body body = mock(Body.class, RETURNS_DEEP_STUBS);
         when(body.getMessage().getData()).thenReturn("%%%not_base64%%%");
         ResponseEntity<String> response = controller.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("Invalid message payload", response.getBody());
     }
 
@@ -103,7 +103,7 @@ class AuditControllerTest {
         String encoded = Base64.getEncoder().encodeToString("not-json".getBytes(StandardCharsets.UTF_8));
         when(body.getMessage().getData()).thenReturn(encoded);
         ResponseEntity<String> response = controller.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("Invalid message payload", response.getBody());
     }
 
@@ -115,7 +115,7 @@ class AuditControllerTest {
     void receiveMessageReturnsBadRequestWhenJourneyIsNull() {
         Body body = createNullJourneyBody();
         ResponseEntity<String> response = controller.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("Journey has no steps", response.getBody());
     }
 

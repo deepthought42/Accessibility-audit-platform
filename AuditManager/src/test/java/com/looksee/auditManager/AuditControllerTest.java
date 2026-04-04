@@ -59,8 +59,8 @@ class AuditControllerTest {
 	void shouldReturnBadRequestWhenBodyIsMissing() {
 		ResponseEntity<String> response = controller.receiveMessage(null);
 
-		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-		assertEquals("Invalid Pub/Sub payload", response.getBody());
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		assertEquals("Acknowledged invalid Pub/Sub payload", response.getBody());
 	}
 
 	@Test
@@ -70,8 +70,8 @@ class AuditControllerTest {
 
 		ResponseEntity<String> response = controller.receiveMessage(body);
 
-		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-		assertEquals("Invalid Pub/Sub payload", response.getBody());
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		assertEquals("Acknowledged invalid Pub/Sub payload", response.getBody());
 	}
 
 	@Test
@@ -83,8 +83,8 @@ class AuditControllerTest {
 
 		ResponseEntity<String> response = controller.receiveMessage(body);
 
-		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-		assertEquals("Invalid Pub/Sub payload", response.getBody());
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		assertEquals("Acknowledged invalid Pub/Sub payload", response.getBody());
 	}
 
 	@Test
@@ -96,8 +96,8 @@ class AuditControllerTest {
 
 		ResponseEntity<String> response = controller.receiveMessage(body);
 
-		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-		assertEquals("Invalid Pub/Sub payload", response.getBody());
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		assertEquals("Acknowledged invalid Pub/Sub payload", response.getBody());
 	}
 
 	@Test
@@ -106,8 +106,8 @@ class AuditControllerTest {
 
 		ResponseEntity<String> response = controller.receiveMessage(body);
 
-		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-		assertEquals("Invalid message encoding", response.getBody());
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		assertEquals("Acknowledged invalid message encoding", response.getBody());
 		verify(auditRecordTopic, never()).publish(any());
 	}
 
@@ -118,8 +118,8 @@ class AuditControllerTest {
 
 		ResponseEntity<String> response = controller.receiveMessage(body);
 
-		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-		assertEquals("Invalid message format", response.getBody());
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		assertEquals("Acknowledged invalid message format", response.getBody());
 		verify(auditRecordTopic, never()).publish(any());
 	}
 

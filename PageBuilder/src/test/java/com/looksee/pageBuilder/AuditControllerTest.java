@@ -111,7 +111,7 @@ class AuditControllerTest {
     void invalidBase64Returns400() throws Exception {
         BodySchema body = new BodySchema(new MessageSchema(null, "not-valid-base64!!!"));
         ResponseEntity<String> resp = controller.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
     }
 
     @Test
@@ -119,7 +119,7 @@ class AuditControllerTest {
         String notJson = Base64.getEncoder().encodeToString("not json".getBytes(StandardCharsets.UTF_8));
         BodySchema body = buildBody(notJson);
         ResponseEntity<String> resp = controller.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
     }
 
     // ===== HTTP status 404/408 error path tests =====
