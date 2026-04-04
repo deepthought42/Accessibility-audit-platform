@@ -1,4 +1,4 @@
-package com.looksee.gcp;
+package com.looksee.services;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -13,6 +13,13 @@ import com.google.cloud.spring.pubsub.core.PubSubTemplate;
 import com.looksee.models.OutboxEvent;
 import com.looksee.models.repository.OutboxEventRepository;
 
+/**
+ * Polls for pending {@link OutboxEvent} records and publishes them to PubSub.
+ *
+ * <p>This implements the Transactional Outbox pattern: services write an
+ * OutboxEvent in the same Neo4j transaction as their domain changes, and
+ * this publisher asynchronously delivers them to PubSub with retry logic.
+ */
 @Service
 public class OutboxEventPublisher {
     private static final Logger log = LoggerFactory.getLogger(OutboxEventPublisher.class);

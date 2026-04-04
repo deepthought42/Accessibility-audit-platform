@@ -1,4 +1,4 @@
-package com.looksee.gcp;
+package com.looksee.services;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -84,7 +84,7 @@ class OutboxEventPublisherTest {
 
         OutboxEvent saved = captor.getValue();
         assertEquals(2, saved.getRetryCount());
-        assertEquals("PENDING", saved.getStatus()); // still PENDING, not yet at 5
+        assertEquals("PENDING", saved.getStatus());
     }
 
     @Test
@@ -110,14 +110,12 @@ class OutboxEventPublisherTest {
     @Test
     void publishPendingEvents_doesNothingWhenPubSubTemplateIsNull() {
         OutboxEventPublisher publisherWithNullTemplate = new OutboxEventPublisher();
-        // pubSubTemplate is null, outboxEventRepository is null
         assertDoesNotThrow(publisherWithNullTemplate::publishPendingEvents);
     }
 
     @Test
     void publishPendingEvents_doesNothingWhenRepositoryIsNull() {
         OutboxEventPublisher publisherWithNullRepo = new OutboxEventPublisher();
-        // Both fields are null
         assertDoesNotThrow(publisherWithNullRepo::publishPendingEvents);
     }
 
