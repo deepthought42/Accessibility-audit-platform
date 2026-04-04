@@ -2,6 +2,7 @@
   "type": "record",
   "name": "PageBuiltMessage",
   "namespace": "com.looksee.models.message",
+  "version": "1.0.0",
   "doc": "Message published to the 'page_created' topic when a page has been built and is ready for auditing.",
   "fields": [
     {

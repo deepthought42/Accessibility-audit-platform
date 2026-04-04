@@ -2,6 +2,7 @@
   "type": "record",
   "name": "AuditProgressUpdate",
   "namespace": "com.looksee.models.message",
+  "version": "1.0.0",
   "doc": "Message published to the 'audit_update' topic to report audit progress from audit services.",
   "fields": [
     {

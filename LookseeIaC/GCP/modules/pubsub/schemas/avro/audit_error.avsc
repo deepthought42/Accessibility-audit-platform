@@ -2,6 +2,7 @@
   "type": "record",
   "name": "AuditErrorEvent",
   "namespace": "com.looksee.models.message",
+  "version": "1.0.0",
   "doc": "Combined schema for the 'audit_error' topic. Accommodates both PageDataExtractionError and AuditError message types using nullable fields for type-specific data.",
   "fields": [
     {

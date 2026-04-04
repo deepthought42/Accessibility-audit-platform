@@ -44,20 +44,38 @@ module "pubsub_topics" {
   journey_candidate_topic_name          = "journey_candidate"
   journey_completion_cleanup_topic_name = "journey_completion_cleanup"
 
-  # Attach schemas to simple topics (no complex nested objects)
-  url_schema_id          = module.pubsub_schemas.url_message_schema_id
-  page_created_schema_id = module.pubsub_schemas.page_built_message_schema_id
-  page_audit_schema_id   = module.pubsub_schemas.page_audit_message_schema_id
-  audit_update_schema_id = module.pubsub_schemas.audit_progress_update_schema_id
-  audit_error_schema_id  = module.pubsub_schemas.audit_error_schema_id
+  # Attach versioned schemas to simple topics (no complex nested objects).
+  # Each config object supports optional revision pinning via first_revision_id / last_revision_id
+  # to control which schema revisions a topic accepts during rolling upgrades.
+  url_schema_config = {
+    schema = module.pubsub_schemas.url_message_schema_id
+  }
+  page_created_schema_config = {
+    schema = module.pubsub_schemas.page_built_message_schema_id
+  }
+  page_audit_schema_config = {
+    schema = module.pubsub_schemas.page_audit_message_schema_id
+  }
+  audit_update_schema_config = {
+    schema = module.pubsub_schemas.audit_progress_update_schema_id
+  }
+  audit_error_schema_config = {
+    schema = module.pubsub_schemas.audit_error_schema_id
+  }
 
   # Journey topics: schemas are created but not attached yet.
   # The Journey object uses polymorphic Jackson serialization that requires
   # validation testing before enabling broker-level schema enforcement.
   # To attach, uncomment and set:
-  # journey_verified_schema_id    = module.pubsub_schemas.verified_journey_message_schema_id
-  # journey_discarded_schema_id   = module.pubsub_schemas.discarded_journey_message_schema_id
-  # journey_candidate_schema_id   = module.pubsub_schemas.journey_candidate_message_schema_id
+  # journey_verified_schema_config = {
+  #   schema = module.pubsub_schemas.verified_journey_message_schema_id
+  # }
+  # journey_discarded_schema_config = {
+  #   schema = module.pubsub_schemas.discarded_journey_message_schema_id
+  # }
+  # journey_candidate_schema_config = {
+  #   schema = module.pubsub_schemas.journey_candidate_message_schema_id
+  # }
 
   depends_on = [module.pubsub_schemas]
 }

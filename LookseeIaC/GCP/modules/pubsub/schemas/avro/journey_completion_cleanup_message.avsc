@@ -2,6 +2,7 @@
   "type": "record",
   "name": "JourneyCompletionCleanupMessage",
   "namespace": "com.looksee.models.message",
+  "version": "1.0.0",
   "doc": "Placeholder schema for the 'journey_completion_cleanup' topic. This topic is reserved for cleanup operations after journey completion. The schema will be expanded when the message contract is defined.",
   "fields": [
     {

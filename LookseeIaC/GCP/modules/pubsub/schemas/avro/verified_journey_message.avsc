@@ -2,6 +2,7 @@
   "type": "record",
   "name": "VerifiedJourneyMessage",
   "namespace": "com.looksee.models.message",
+  "version": "1.0.0",
   "doc": "Message published to the 'journey_verified' topic when a user journey has been verified as valid.",
   "fields": [
     {

@@ -2,6 +2,7 @@
   "type": "record",
   "name": "UrlMessage",
   "namespace": "com.looksee.models.message",
+  "version": "1.0.0",
   "doc": "Message published to the 'url' topic to initiate page processing for a given URL.",
   "fields": [
     {
