@@ -66,7 +66,7 @@ class AuditControllerIdempotencyTest {
     // --- Idempotency tests ---
 
     @Test
-    void shouldReturnOkForDuplicateMessage() {
+    void shouldReturnOkForDuplicateMessage() throws Exception {
         String validPayload = "{\"messageType\":\"AuditProgressUpdate\",\"accountId\":1,\"pageAuditId\":100,\"progress\":0.5,\"message\":\"test\",\"category\":\"CONTENT\",\"level\":\"PAGE\"}";
         Body body = createValidBody("test-msg-id", validPayload);
         when(idempotencyService.isAlreadyProcessed("test-msg-id", "audit-service")).thenReturn(true);
@@ -82,14 +82,14 @@ class AuditControllerIdempotencyTest {
     // --- Invalid payload tests ---
 
     @Test
-    void shouldReturnBadRequestForNullBody() {
+    void shouldReturnBadRequestForNullBody() throws Exception {
         ResponseEntity<String> response = controller.receiveMessage(null);
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
 
     @Test
-    void shouldReturnBadRequestForNullMessage() {
+    void shouldReturnBadRequestForNullMessage() throws Exception {
         Body body = new Body();
         body.setMessage(null);
 
@@ -99,7 +99,7 @@ class AuditControllerIdempotencyTest {
     }
 
     @Test
-    void shouldReturnBadRequestForNullData() {
+    void shouldReturnBadRequestForNullData() throws Exception {
         Body body = new Body();
         Body.Message msg = body.new Message("msg-1", "2024-01-01T00:00:00Z", "placeholder");
         try {
@@ -117,7 +117,7 @@ class AuditControllerIdempotencyTest {
     }
 
     @Test
-    void shouldReturnOkForInvalidBase64Data() {
+    void shouldReturnOkForInvalidBase64Data() throws Exception {
         Body body = new Body();
         Body.Message msg = body.new Message("msg-2", "2024-01-01T00:00:00Z", "not-valid-base64!!!");
         body.setMessage(msg);
@@ -130,7 +130,7 @@ class AuditControllerIdempotencyTest {
     }
 
     @Test
-    void shouldReturnOkForInvalidJson() {
+    void shouldReturnOkForInvalidJson() throws Exception {
         String invalidJson = "this is not json at all";
         Body body = createValidBody("msg-3", invalidJson);
         when(idempotencyService.isAlreadyProcessed("msg-3", "audit-service")).thenReturn(false);
@@ -143,7 +143,7 @@ class AuditControllerIdempotencyTest {
     // --- messageType routing tests ---
 
     @Test
-    void shouldRouteAuditProgressUpdateByMessageType() {
+    void shouldRouteAuditProgressUpdateByMessageType() throws Exception {
         String payload = "{\"messageType\":\"AuditProgressUpdate\",\"accountId\":1,\"pageAuditId\":100,\"progress\":1.0,\"message\":\"done\",\"category\":\"CONTENT\",\"level\":\"PAGE\"}";
         Body body = createValidBody("msg-4", payload);
         when(idempotencyService.isAlreadyProcessed("msg-4", "audit-service")).thenReturn(false);
@@ -163,7 +163,7 @@ class AuditControllerIdempotencyTest {
     }
 
     @Test
-    void shouldRoutePageAuditProgressMessageByMessageType() {
+    void shouldRoutePageAuditProgressMessageByMessageType() throws Exception {
         String payload = "{\"messageType\":\"PageAuditProgressMessage\",\"accountId\":1,\"pageAuditId\":100}";
         Body body = createValidBody("msg-5", payload);
         when(idempotencyService.isAlreadyProcessed("msg-5", "audit-service")).thenReturn(false);
@@ -182,7 +182,7 @@ class AuditControllerIdempotencyTest {
     }
 
     @Test
-    void shouldFallbackToLegacyParsingForMessagesWithoutMessageType() {
+    void shouldFallbackToLegacyParsingForMessagesWithoutMessageType() throws Exception {
         // A payload without messageType field should use legacy cascading deserialization
         String payload = "{\"accountId\":1,\"pageAuditId\":100,\"progress\":1.0,\"message\":\"done\",\"category\":\"CONTENT\",\"level\":\"PAGE\"}";
         Body body = createValidBody("msg-6", payload);
@@ -202,7 +202,7 @@ class AuditControllerIdempotencyTest {
     }
 
     @Test
-    void shouldHandleUnknownMessageTypeWithFallback() {
+    void shouldHandleUnknownMessageTypeWithFallback() throws Exception {
         String payload = "{\"messageType\":\"UnknownType\",\"accountId\":1,\"pageAuditId\":100,\"progress\":1.0,\"message\":\"done\",\"category\":\"CONTENT\",\"level\":\"PAGE\"}";
         Body body = createValidBody("msg-7", payload);
         when(idempotencyService.isAlreadyProcessed("msg-7", "audit-service")).thenReturn(false);
@@ -224,7 +224,7 @@ class AuditControllerIdempotencyTest {
     // --- Error handling tests ---
 
     @Test
-    void shouldNotCallMarkProcessedOnInvalidPayload() {
+    void shouldNotCallMarkProcessedOnInvalidPayload() throws Exception {
         Body body = new Body();
         Body.Message msg = body.new Message("msg-8", "2024-01-01T00:00:00Z", "bad-base64!!!");
         body.setMessage(msg);
@@ -236,7 +236,7 @@ class AuditControllerIdempotencyTest {
     }
 
     @Test
-    void shouldReturnOkOnProcessingException() {
+    void shouldReturnOkOnProcessingException() throws Exception {
         String payload = "{\"messageType\":\"AuditProgressUpdate\",\"accountId\":1,\"pageAuditId\":100,\"progress\":1.0,\"message\":\"done\",\"category\":\"CONTENT\",\"level\":\"PAGE\"}";
         Body body = createValidBody("msg-9", payload);
         when(idempotencyService.isAlreadyProcessed("msg-9", "audit-service")).thenReturn(false);
