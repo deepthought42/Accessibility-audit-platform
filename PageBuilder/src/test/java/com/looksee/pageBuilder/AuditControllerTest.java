@@ -72,7 +72,7 @@ class AuditControllerTest {
     }
 
     private BodySchema buildBody(String base64Data) {
-        MessageSchema msg = new MessageSchema(base64Data);
+        MessageSchema msg = new MessageSchema(null, base64Data);
         return new BodySchema(msg);
     }
 
@@ -93,21 +93,21 @@ class AuditControllerTest {
 
     @Test
     void nullDataReturns400() throws Exception {
-        BodySchema body = new BodySchema(new MessageSchema(null));
+        BodySchema body = new BodySchema(new MessageSchema(null, null));
         ResponseEntity<String> resp = controller.receiveMessage(body);
         assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
     }
 
     @Test
     void blankDataReturns400() throws Exception {
-        BodySchema body = new BodySchema(new MessageSchema("   "));
+        BodySchema body = new BodySchema(new MessageSchema(null, "   "));
         ResponseEntity<String> resp = controller.receiveMessage(body);
         assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
     }
 
     @Test
     void invalidBase64Returns400() throws Exception {
-        BodySchema body = new BodySchema(new MessageSchema("not-valid-base64!!!"));
+        BodySchema body = new BodySchema(new MessageSchema(null, "not-valid-base64!!!"));
         ResponseEntity<String> resp = controller.receiveMessage(body);
         assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
     }
@@ -488,7 +488,7 @@ class AuditControllerTest {
 
     @Test
     void emptyStringDataReturns400() throws Exception {
-        BodySchema body = new BodySchema(new MessageSchema(""));
+        BodySchema body = new BodySchema(new MessageSchema(null, ""));
         ResponseEntity<String> resp = controller.receiveMessage(body);
         assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
     }
