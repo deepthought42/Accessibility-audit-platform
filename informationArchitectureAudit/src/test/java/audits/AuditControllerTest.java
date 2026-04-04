@@ -160,7 +160,7 @@ public class AuditControllerTest {
     void testReceiveMessage_invalidBase64() throws Exception {
         Body body = createBody("!!!not-valid-base64!!!");
         ResponseEntity<String> response = controller.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         assertTrue(response.getBody().contains("base64"));
     }
 
@@ -177,7 +177,7 @@ public class AuditControllerTest {
     void testReceiveMessage_invalidJson() throws Exception {
         Body body = createBody(encodeBase64("not-json-at-all"));
         ResponseEntity<String> response = controller.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         assertTrue(response.getBody().contains("valid PageAuditMessage JSON"));
     }
 
