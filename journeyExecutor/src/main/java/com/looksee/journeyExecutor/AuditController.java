@@ -27,11 +27,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.looksee.models.config.JacksonConfig;
 import com.looksee.gcp.PubSubDiscardedJourneyPublisherImpl;
 import com.looksee.gcp.PubSubJourneyVerifiedPublisherImpl;
 import com.looksee.gcp.PubSubPageBuiltPublisherImpl;
@@ -132,6 +131,7 @@ public class AuditController {
 	 *
 	 * @post return value is never null
 	 */
+	@Transactional
 	@RequestMapping(value = "/", method = RequestMethod.POST)
 	public ResponseEntity<String> receiveMessage(@RequestBody Body body)
 			throws Exception
@@ -143,7 +143,6 @@ public class AuditController {
 		PageState final_page = null;
 		long domain_audit_id = -1;
 		JourneyCandidateMessage journey_msg = null;
-		JsonMapper mapper = JsonMapper.builder().addModule(new JavaTimeModule()).build();
 		boolean is_external_link = false;
 		Domain domain = null;
 		boolean clear_review_counter = false;
@@ -156,10 +155,9 @@ public class AuditController {
 		Body.Message message = body.getMessage();
 		String data = message.getData();
 		String target = "";
-		ObjectMapper input_mapper = new ObjectMapper();
 		try {
 			target = new String(Base64.getDecoder().decode(data), StandardCharsets.UTF_8);
-			journey_msg = input_mapper.readValue(target, JourneyCandidateMessage.class);
+			journey_msg = JacksonConfig.mapper().readValue(target, JourneyCandidateMessage.class);
 			journey = journey_msg.getJourney();
 		}
 		catch(IllegalArgumentException | IOException e) {
@@ -330,7 +328,7 @@ public class AuditController {
 																						journey_msg.getAccountId(),
 																						journey_msg.getAuditRecordId());
 
-				String discarded_journey_json = mapper.writeValueAsString(journey_message);
+				String discarded_journey_json = JacksonConfig.mapper().writeValueAsString(journey_message);
 				discarded_journey_topic.publish(discarded_journey_json);
 			}
 			else if(!final_step.getStartPage().getUrl().equals(final_step.getEndPage().getUrl()))
@@ -342,7 +340,7 @@ public class AuditController {
 																		final_page.getId(),
 																		journey_msg.getAuditRecordId());
 
-				String page_built_str = mapper.writeValueAsString(page_built_msg);
+				String page_built_str = JacksonConfig.mapper().writeValueAsString(page_built_msg);
 				log.warn("SENDING page built message ...");
 				page_built_topic.publish(page_built_str);
 				
@@ -375,18 +373,18 @@ public class AuditController {
 																					BrowserType.CHROME, 
 																					journey_msg.getAccountId(), 
 																					journey_msg.getAuditRecordId());
-				String journey_json = mapper.writeValueAsString(journey_message);
+				String journey_json = JacksonConfig.mapper().writeValueAsString(journey_message);
 				verified_journey_topic.publish(journey_json);
 			}
 			else {
 				log.warn("VERIFIED Journey! "+updated_journey.getId() + " with status = "+updated_journey.getStatus());
 
 				VerifiedJourneyMessage journey_message = new VerifiedJourneyMessage(updated_journey,
-																					BrowserType.CHROME, 
-																					journey_msg.getAccountId(), 
+																					BrowserType.CHROME,
+																					journey_msg.getAccountId(),
 																					journey_msg.getAuditRecordId());
-				
-				String journey_json = mapper.writeValueAsString(journey_message);
+
+				String journey_json = JacksonConfig.mapper().writeValueAsString(journey_message);
 				verified_journey_topic.publish(journey_json);
 
 			}

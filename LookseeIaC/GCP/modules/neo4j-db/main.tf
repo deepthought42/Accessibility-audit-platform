@@ -15,10 +15,7 @@ resource "google_compute_instance" "neo4j" {
     network    = var.vpc_network_name  # e.g., "default" or your custom VPC
     subnetwork = var.subnet_name       # optional, if using custom subnet
 
-    # No external IP, so only accessible via VPC
-    access_config {
-      # Omit this block to prevent external IP assignment
-    }
+    # No external IP - accessible only via VPC
   }
 
   # Optionally, set tags for firewall rules

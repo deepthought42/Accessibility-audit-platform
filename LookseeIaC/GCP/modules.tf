@@ -443,6 +443,17 @@ module "information_architecture_audit_cloud_run" {
 }
 
 
+###############################
+#
+#  Monitoring module
+#
+###############################
+module "monitoring" {
+  source             = "./modules/monitoring"
+  project_id         = var.project_id
+  notification_email = var.notification_email
+}
+
 # Selenium modules - Cloud Run (multiple instances)
 module "selenium_chrome_cloud_run" {
   for_each = { for i in range(var.selenium_instance_count) : i => "selenium-chrome-${i + 1}" }

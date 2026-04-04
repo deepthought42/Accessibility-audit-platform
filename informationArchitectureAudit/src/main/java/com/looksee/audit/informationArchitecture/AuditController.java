@@ -13,10 +13,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.looksee.audit.informationArchitecture.audits.AudioControlAudit;
 import com.looksee.audit.informationArchitecture.audits.FormStructureAudit;
 import com.looksee.audit.informationArchitecture.audits.HeaderStructureAudit;
@@ -35,6 +35,7 @@ import com.looksee.audit.informationArchitecture.audits.UseOfColorAudit;
 import com.looksee.audit.informationArchitecture.audits.VisualPresentationAudit;
 import com.looksee.gcp.PubSubAuditUpdatePublisherImpl;
 import com.looksee.mapper.Body;
+import com.looksee.models.config.JacksonConfig;
 import com.looksee.models.PageState;
 import com.looksee.models.audit.Audit;
 import com.looksee.models.audit.AuditRecord;
@@ -136,6 +137,7 @@ public class AuditController {
 	 * @post every audit that did not already exist for the record has been persisted and
 	 *       associated with the {@link AuditRecord}
 	 */
+	@Transactional
 	@RequestMapping(value = "/", method = RequestMethod.POST)
 	public ResponseEntity<String> receiveMessage(@RequestBody Body body)
 			throws ExecutionException, InterruptedException
@@ -156,22 +158,21 @@ public class AuditController {
 		}
 		catch(IllegalArgumentException e) {
 			log.warn("Invalid Pub/Sub message data encoding", e);
-			return new ResponseEntity<String>("Invalid Pub/Sub message: message.data must be base64 encoded", HttpStatus.BAD_REQUEST);
+			return new ResponseEntity<String>("Invalid Pub/Sub message: message.data must be base64 encoded", HttpStatus.OK);
 		}
 
 		if(target.isEmpty()) {
-			return new ResponseEntity<String>("Invalid Pub/Sub message: decoded message.data is empty", HttpStatus.BAD_REQUEST);
+			return new ResponseEntity<String>("Invalid Pub/Sub message: decoded message.data is empty", HttpStatus.OK);
 		}
 		log.warn("page audit msg received = "+target);
 
-		ObjectMapper mapper = new ObjectMapper();
 		PageAuditMessage audit_record_msg;
 		try {
-			audit_record_msg = mapper.readValue(target, PageAuditMessage.class);
+			audit_record_msg = JacksonConfig.mapper().readValue(target, PageAuditMessage.class);
 		}
 		catch(JsonProcessingException e) {
 			log.warn("Invalid Pub/Sub message payload", e);
-			return new ResponseEntity<String>("Invalid Pub/Sub message: payload must be valid PageAuditMessage JSON", HttpStatus.BAD_REQUEST);
+			return new ResponseEntity<String>("Invalid Pub/Sub message: payload must be valid PageAuditMessage JSON", HttpStatus.OK);
 		}
 
 		AuditRecord audit_record = audit_record_service.findById(audit_record_msg.getPageAuditId()).orElse(null);
@@ -280,14 +281,20 @@ public class AuditController {
 
 		String audit_record_json;
 		try {
-			audit_record_json = mapper.writeValueAsString(audit_update);
+			audit_record_json = JacksonConfig.mapper().writeValueAsString(audit_update);
 		}
 		catch(JsonProcessingException e) {
 			log.error("Failed to serialize audit progress update", e);
 			return new ResponseEntity<String>("Failed to serialize audit progress update", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
-		audit_update_topic.publish(audit_record_json);
+		try {
+			audit_update_topic.publish(audit_record_json);
+		}
+		catch(Exception e) {
+			log.error("Failed to publish audit progress update", e);
+			return new ResponseEntity<String>("Failed to publish audit progress update", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 		
 		return new ResponseEntity<String>("Successfully audited information architecture", HttpStatus.OK);
 	}
