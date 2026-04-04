@@ -37,6 +37,7 @@ import com.looksee.services.AuditRecordService;
 import com.looksee.services.BrowserService;
 import com.looksee.services.DomainMapService;
 import com.looksee.services.DomainService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.JourneyService;
 import com.looksee.services.PageStateService;
 import com.looksee.services.StepService;
@@ -57,6 +58,7 @@ class AuditControllerTest {
     @Mock private PageStateService page_state_service;
     @Mock private StepService step_service;
     @Mock private PubSubJourneyCandidatePublisherImpl journey_candidate_topic;
+    @Mock private IdempotencyService idempotencyService;
 
     // ================================================================
     // receiveMessage: input validation

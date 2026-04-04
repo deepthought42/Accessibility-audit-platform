@@ -49,6 +49,7 @@ import com.looksee.models.message.VerifiedJourneyMessage;
 import com.looksee.services.AccountService;
 import com.looksee.services.AuditRecordService;
 import com.looksee.services.DomainService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.MessageBroadcaster;
 import com.looksee.services.PageStateService;
 
@@ -60,6 +61,7 @@ class AuditControllerTest {
     private DomainService domainService;
     private PageStateService pageStateService;
     private MessageBroadcaster messageBroadcaster;
+    private IdempotencyService idempotencyService;
     private ObjectMapper mapper;
 
     @BeforeEach
@@ -70,12 +72,14 @@ class AuditControllerTest {
         domainService = mock(DomainService.class);
         pageStateService = mock(PageStateService.class);
         messageBroadcaster = mock(MessageBroadcaster.class);
+        idempotencyService = mock(IdempotencyService.class);
 
         setField(auditController, "audit_record_service", auditRecordService);
         setField(auditController, "account_service", accountService);
         setField(auditController, "domain_service", domainService);
         setField(auditController, "page_state_service", pageStateService);
         setField(auditController, "messageBroadcaster", messageBroadcaster);
+        setField(auditController, "idempotencyService", idempotencyService);
 
         mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());

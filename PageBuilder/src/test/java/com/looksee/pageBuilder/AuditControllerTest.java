@@ -37,6 +37,7 @@ import com.looksee.services.AuditRecordService;
 import com.looksee.services.BrowserService;
 import com.looksee.services.DomainMapService;
 import com.looksee.services.ElementStateService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.JourneyService;
 import com.looksee.services.PageStateService;
 import com.looksee.services.StepService;
@@ -56,6 +57,7 @@ class AuditControllerTest {
     @Mock private PubSubJourneyVerifiedPublisherImpl pubSubJourneyVerifiedPublisherImpl;
     @Mock private PubSubPageCreatedPublisherImpl pubSubPageCreatedPublisherImpl;
     @Mock private PubSubPageAuditPublisherImpl auditRecordTopic;
+    @Mock private IdempotencyService idempotencyService;
 
     @InjectMocks
     private AuditController controller;
