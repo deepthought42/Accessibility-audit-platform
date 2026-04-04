@@ -59,7 +59,7 @@ class AuditControllerIdempotencyTest {
     // --- Idempotency tests ---
 
     @Test
-    void shouldReturnOkForDuplicateMessage() {
+    void shouldReturnOkForDuplicateMessage() throws Exception {
         String validPayload = "{\"accountId\":1,\"pageId\":10,\"auditRecordId\":100}";
         Body body = createValidBody("test-msg-id", validPayload);
         when(idempotencyService.isAlreadyProcessed("test-msg-id", "audit-manager")).thenReturn(true);
@@ -75,14 +75,14 @@ class AuditControllerIdempotencyTest {
     // --- Invalid payload tests (returns 200 not 400) ---
 
     @Test
-    void shouldReturnOkForNullBody() {
+    void shouldReturnOkForNullBody() throws Exception {
         ResponseEntity<String> response = controller.receiveMessage(null);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     @Test
-    void shouldReturnOkForNullMessage() {
+    void shouldReturnOkForNullMessage() throws Exception {
         Body body = new Body();
         body.setMessage(null);
 
@@ -92,7 +92,7 @@ class AuditControllerIdempotencyTest {
     }
 
     @Test
-    void shouldReturnOkForNullData() {
+    void shouldReturnOkForNullData() throws Exception {
         Body body = new Body();
         Body.Message msg = body.new Message("msg-1", "2024-01-01T00:00:00Z", "placeholder");
         // Use reflection to set data to null since constructor asserts non-null
@@ -111,7 +111,7 @@ class AuditControllerIdempotencyTest {
     }
 
     @Test
-    void shouldReturnOkForEmptyData() {
+    void shouldReturnOkForEmptyData() throws Exception {
         Body body = new Body();
         Body.Message msg = body.new Message("msg-2", "2024-01-01T00:00:00Z", "");
         body.setMessage(msg);
@@ -122,7 +122,7 @@ class AuditControllerIdempotencyTest {
     }
 
     @Test
-    void shouldReturnOkForInvalidBase64Data() {
+    void shouldReturnOkForInvalidBase64Data() throws Exception {
         Body body = new Body();
         Body.Message msg = body.new Message("msg-3", "2024-01-01T00:00:00Z", "not-valid-base64!!!");
         body.setMessage(msg);
@@ -135,7 +135,7 @@ class AuditControllerIdempotencyTest {
     }
 
     @Test
-    void shouldReturnOkForInvalidJson() {
+    void shouldReturnOkForInvalidJson() throws Exception {
         String invalidJson = "this is not json";
         Body body = createValidBody("msg-4", invalidJson);
         when(idempotencyService.isAlreadyProcessed("msg-4", "audit-manager")).thenReturn(false);
@@ -179,7 +179,7 @@ class AuditControllerIdempotencyTest {
     }
 
     @Test
-    void shouldMarkProcessedWhenPageAlreadyAudited() {
+    void shouldMarkProcessedWhenPageAlreadyAudited() throws Exception {
         String payload = "{\"accountId\":1,\"pageId\":10,\"auditRecordId\":100}";
         Body body = createValidBody("msg-6", payload);
         when(idempotencyService.isAlreadyProcessed("msg-6", "audit-manager")).thenReturn(false);
@@ -199,7 +199,7 @@ class AuditControllerIdempotencyTest {
     // --- Error handling tests ---
 
     @Test
-    void shouldNotCallMarkProcessedOnInvalidPayload() {
+    void shouldNotCallMarkProcessedOnInvalidPayload() throws Exception {
         Body body = new Body();
         Body.Message msg = body.new Message("msg-7", "2024-01-01T00:00:00Z", "bad-base64!!!");
         body.setMessage(msg);
