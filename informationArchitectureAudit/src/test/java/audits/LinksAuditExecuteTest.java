@@ -247,7 +247,7 @@ public class LinksAuditExecuteTest {
         AuditRecord auditRecord = mock(AuditRecord.class);
         ElementState linkElem = createMockLinkElement(8L,
                 "<a href=\"https://example.com\"></a>", "");
-        when(linkElem.getScreenshotUrl()).thenThrow(new RuntimeException("No screenshot"));
+        when(linkElem.getScreenshotUrl()).thenReturn(null);
         when(mockPageStateService.getLinkElementStates(pageState.getId()))
                 .thenReturn(List.of(linkElem));
 
@@ -359,8 +359,12 @@ public class LinksAuditExecuteTest {
         when(mockPageStateService.getLinkElementStates(pageState.getId()))
                 .thenReturn(List.of(linkElem));
 
-        try (MockedStatic<BrowserUtils> mock = mockStatic(BrowserUtils.class,
-                LinksAuditExecuteTest::browserUtilsIOExceptionAnswer)) {
+        try (MockedStatic<BrowserUtils> mockedStatic = mockStatic(BrowserUtils.class)) {
+            mockedStatic.when(() -> BrowserUtils.sanitizeUrl(anyString())).thenReturn("https://example.com");
+            mockedStatic.when(() -> BrowserUtils.formatUrl(anyString(), anyString())).thenReturn("https://example.com/page");
+            mockedStatic.when(() -> BrowserUtils.isJavascript(anyString())).thenReturn(false);
+            mockedStatic.when(() -> BrowserUtils.doesUrlExist(anyString())).thenThrow(new java.io.IOException("Connection refused"));
+
             Audit result = audit.execute(pageState, auditRecord, null);
 
             assertNotNull(result);
