@@ -27,6 +27,7 @@ import com.looksee.models.audit.Audit;
 import com.looksee.models.audit.AuditRecord;
 import com.looksee.models.enums.AuditName;
 import com.looksee.services.AuditRecordService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.PageStateService;
 
 public class AuditControllerTest {
@@ -53,11 +54,13 @@ public class AuditControllerTest {
     private TitleAndHeaderAudit mockTitleAndHeaderAudit;
     private TextSpacingAudit mockTextSpacingAudit;
     private SecurityAudit mockSecurityAudit;
+    private IdempotencyService mockIdempotencyService;
 
     @BeforeEach
     void setUp() throws Exception {
         controller = new AuditController();
 
+        mockIdempotencyService = mock(IdempotencyService.class);
         mockAuditRecordService = mock(AuditRecordService.class);
         mockPageStateService = mock(PageStateService.class);
         mockPubSubPublisher = mock(PubSubAuditUpdatePublisherImpl.class);
@@ -80,6 +83,7 @@ public class AuditControllerTest {
         mockSecurityAudit = mock(SecurityAudit.class);
 
         // Inject all mocks via reflection
+        injectField("idempotencyService", mockIdempotencyService);
         injectField("audit_record_service", mockAuditRecordService);
         injectField("page_state_service", mockPageStateService);
         injectField("audit_update_topic", mockPubSubPublisher);
@@ -156,7 +160,7 @@ public class AuditControllerTest {
     void testReceiveMessage_invalidBase64() throws Exception {
         Body body = createBody("!!!not-valid-base64!!!");
         ResponseEntity<String> response = controller.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         assertTrue(response.getBody().contains("base64"));
     }
 
@@ -173,7 +177,7 @@ public class AuditControllerTest {
     void testReceiveMessage_invalidJson() throws Exception {
         Body body = createBody(encodeBase64("not-json-at-all"));
         ResponseEntity<String> response = controller.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         assertTrue(response.getBody().contains("valid PageAuditMessage JSON"));
     }
 

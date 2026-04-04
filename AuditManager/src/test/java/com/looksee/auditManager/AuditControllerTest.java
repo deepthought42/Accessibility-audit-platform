@@ -30,6 +30,7 @@ import com.looksee.models.audit.AuditRecord;
 import com.looksee.models.audit.DomainAuditRecord;
 import com.looksee.models.enums.AuditName;
 import com.looksee.services.AuditRecordService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.PageStateService;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,19 +45,22 @@ class AuditControllerTest {
 	@Mock
 	private PageStateService pageStateService;
 
+	@Mock
+	private IdempotencyService idempotencyService;
+
 	private AuditController controller;
 
 	@BeforeEach
 	void setup() {
-		controller = new AuditController(auditRecordService, auditRecordTopic, pageStateService);
+		controller = new AuditController(auditRecordService, auditRecordTopic, pageStateService, idempotencyService);
 	}
 
 	@Test
 	void shouldReturnBadRequestWhenBodyIsMissing() {
 		ResponseEntity<String> response = controller.receiveMessage(null);
 
-		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-		assertEquals("Invalid Pub/Sub payload", response.getBody());
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		assertEquals("Acknowledged invalid Pub/Sub payload", response.getBody());
 	}
 
 	@Test
@@ -66,8 +70,8 @@ class AuditControllerTest {
 
 		ResponseEntity<String> response = controller.receiveMessage(body);
 
-		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-		assertEquals("Invalid Pub/Sub payload", response.getBody());
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		assertEquals("Acknowledged invalid Pub/Sub payload", response.getBody());
 	}
 
 	@Test
@@ -79,8 +83,8 @@ class AuditControllerTest {
 
 		ResponseEntity<String> response = controller.receiveMessage(body);
 
-		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-		assertEquals("Invalid Pub/Sub payload", response.getBody());
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		assertEquals("Acknowledged invalid Pub/Sub payload", response.getBody());
 	}
 
 	@Test
@@ -92,8 +96,8 @@ class AuditControllerTest {
 
 		ResponseEntity<String> response = controller.receiveMessage(body);
 
-		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-		assertEquals("Invalid Pub/Sub payload", response.getBody());
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		assertEquals("Acknowledged invalid Pub/Sub payload", response.getBody());
 	}
 
 	@Test
@@ -102,8 +106,8 @@ class AuditControllerTest {
 
 		ResponseEntity<String> response = controller.receiveMessage(body);
 
-		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-		assertEquals("Invalid message encoding", response.getBody());
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		assertEquals("Acknowledged invalid message encoding", response.getBody());
 		verify(auditRecordTopic, never()).publish(any());
 	}
 
@@ -114,8 +118,8 @@ class AuditControllerTest {
 
 		ResponseEntity<String> response = controller.receiveMessage(body);
 
-		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-		assertEquals("Invalid message format", response.getBody());
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		assertEquals("Acknowledged invalid message format", response.getBody());
 		verify(auditRecordTopic, never()).publish(any());
 	}
 

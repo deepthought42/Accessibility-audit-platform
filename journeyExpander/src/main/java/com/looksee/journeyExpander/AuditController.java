@@ -15,14 +15,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.looksee.gcp.PubSubJourneyCandidatePublisherImpl;
 import com.looksee.mapper.Body;
+import com.looksee.models.config.JacksonConfig;
 import com.looksee.models.Domain;
 import com.looksee.models.ElementState;
 import com.looksee.models.PageState;
@@ -38,6 +37,7 @@ import com.looksee.models.message.JourneyCandidateMessage;
 import com.looksee.models.message.VerifiedJourneyMessage;
 import com.looksee.services.AuditRecordService;
 import com.looksee.services.BrowserService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.DomainMapService;
 import com.looksee.services.DomainService;
 import com.looksee.services.JourneyService;
@@ -64,8 +64,6 @@ import com.looksee.utils.ElementStateUtils;
 @RestController
 public class AuditController {
 	private static final Logger log = LoggerFactory.getLogger(AuditController.class);
-	private static final ObjectMapper INPUT_MAPPER = JsonMapper.builder().addModule(new JavaTimeModule()).build();
-	private static final JsonMapper OUTPUT_MAPPER = JsonMapper.builder().addModule(new JavaTimeModule()).build();
 	
 	@Autowired
 	private DomainService domain_service;
@@ -87,6 +85,9 @@ public class AuditController {
 	
 	@Autowired
 	private PubSubJourneyCandidatePublisherImpl journey_candidate_topic;
+
+	@Autowired
+	private IdempotencyService idempotencyService;
 
 	/**
 	 * Receives a verified journey via Pub/Sub push and expands it into candidate
@@ -111,27 +112,32 @@ public class AuditController {
 	 * @return {@code 200 OK} when handled successfully, {@code 400 BAD REQUEST}
 	 *         for invalid input, or {@code 500 INTERNAL SERVER ERROR} on failure
 	 */
+	@Transactional
 	@RequestMapping(value = "/", method = RequestMethod.POST)
 	public ResponseEntity<String> receiveMessage(@RequestBody Body body) {
 		if(body == null || body.getMessage() == null || body.getMessage().getData() == null || body.getMessage().getData().isBlank()) {
 			log.warn("IGNORING JOURNEY! request payload missing message data");
-			return new ResponseEntity<String>("Message data is required", HttpStatus.BAD_REQUEST);
+			return new ResponseEntity<String>("Message data is required", HttpStatus.OK);
+		}
+
+		if (idempotencyService.isAlreadyProcessed(body.getMessage().getMessageId(), "journey-expander")) {
+			return ResponseEntity.ok("Duplicate message, already processed");
 		}
 
 		VerifiedJourneyMessage journey_msg;
 		try {
 			String target = new String(Base64.getDecoder().decode(body.getMessage().getData()), StandardCharsets.UTF_8);
-			journey_msg = INPUT_MAPPER.readValue(target, VerifiedJourneyMessage.class);
+			journey_msg = JacksonConfig.mapper().readValue(target, VerifiedJourneyMessage.class);
 		}
 		catch(IllegalArgumentException | JsonProcessingException e) {
 			log.warn("IGNORING JOURNEY! failed to parse incoming Pub/Sub payload", e);
-			return new ResponseEntity<String>("Invalid message payload", HttpStatus.BAD_REQUEST);
+			return new ResponseEntity<String>("Invalid message payload", HttpStatus.OK);
 		}
 
 		Journey journey = journey_msg.getJourney();
 		if(journey == null || journey.getSteps() == null || journey.getSteps().isEmpty()) {
 			log.warn("IGNORING JOURNEY! journey or journey steps missing");
-			return new ResponseEntity<String>("Journey has no steps", HttpStatus.BAD_REQUEST);
+			return new ResponseEntity<String>("Journey has no steps", HttpStatus.OK);
 		}
 
 		if(!shouldBeExpanded(journey)) {
@@ -226,13 +232,14 @@ public class AuditController {
 																	journey_msg.getAccountId(),
 																	journey_msg.getAuditRecordId(),
 																	domain_map.getId());
-					String candidate_json = OUTPUT_MAPPER.writeValueAsString(candidate);
+					String candidate_json = JacksonConfig.mapper().writeValueAsString(candidate);
 					journey_candidate_topic.publish(candidate_json);
 					journey_cnt++;
 				}
 			}
 
 			log.warn("generated "+journey_cnt+" journeys to explore");
+			idempotencyService.markProcessed(body.getMessage().getMessageId(), "journey-expander");
 			return new ResponseEntity<String>("Successfully generated journey expansions", HttpStatus.OK);
 		}
 		catch(Exception e) {

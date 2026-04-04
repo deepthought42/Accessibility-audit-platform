@@ -271,6 +271,11 @@ variable "labels" {
 # Selenium
 #########################
 
+variable "notification_email" {
+  description = "Email address for monitoring alert notifications"
+  type        = string
+}
+
 variable "selenium_image" {
   description = "Selenium image"
   type        = string

@@ -20,13 +20,22 @@ import org.springframework.http.ResponseEntity;
 import com.looksee.mapper.Body;
 import com.looksee.models.Browser;
 import com.looksee.models.journeys.Step;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.StepExecutor;
 
 class AuditControllerTest {
 
+    private void injectIdempotencyService(AuditController controller) throws Exception {
+        IdempotencyService idempotencyService = mock(IdempotencyService.class);
+        Field field = AuditController.class.getDeclaredField("idempotencyService");
+        field.setAccessible(true);
+        field.set(controller, idempotencyService);
+    }
+
     @Test
     void receiveMessageReturnsOkForNullBody() throws Exception {
         AuditController controller = new AuditController();
+        injectIdempotencyService(controller);
 
         ResponseEntity<String> response = controller.receiveMessage(null);
 
@@ -37,6 +46,7 @@ class AuditControllerTest {
     @Test
     void receiveMessageReturnsOkForInvalidPayload() throws Exception {
         AuditController controller = new AuditController();
+        injectIdempotencyService(controller);
         Body body = mock(Body.class);
         Body.Message message = mock(Body.Message.class);
         when(body.getMessage()).thenReturn(message);

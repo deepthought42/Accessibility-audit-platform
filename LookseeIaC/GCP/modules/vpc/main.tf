@@ -16,10 +16,10 @@ resource "google_vpc_access_connector" "connector" {
   name   = "cloud-run-connector"
   region = var.region
   network = google_compute_network.vpc.name
-  ip_cidr_range = "10.8.0.0/28"
+  ip_cidr_range = "10.8.0.0/24"
   min_instances = 2
-  max_instances = 3
-  machine_type = "e2-micro"
+  max_instances = 10
+  machine_type = "e2-small"
 }
 
 # Firewall: IAP SSH

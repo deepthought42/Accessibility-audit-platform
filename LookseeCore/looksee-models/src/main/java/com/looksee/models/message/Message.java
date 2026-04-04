@@ -3,6 +3,7 @@ package com.looksee.models.message;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
@@ -16,6 +17,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
+@JsonIgnoreProperties(ignoreUnknown = true)
 public abstract class Message {
 	/**
 	 * The message id
@@ -33,7 +35,11 @@ public abstract class Message {
 	 * The account id
 	 */
 	private long accountId;
-	
+
+	private String correlationId;
+
+	private String messageType;
+
 	/**
 	 * Creates a new Message
 	 */
@@ -41,8 +47,10 @@ public abstract class Message {
 		setAccountId(-1);
 		this.messageId = UUID.randomUUID().toString();
 		this.publishTime = LocalDateTime.now();
+		this.correlationId = UUID.randomUUID().toString();
+		this.messageType = this.getClass().getSimpleName();
 	}
-	
+
 	/**
 	 * Constructs a {@link Message} with the given account id
 	 *
@@ -51,7 +59,8 @@ public abstract class Message {
 	public Message(long accountId){
 		this.messageId = UUID.randomUUID().toString();
 		this.publishTime = LocalDateTime.now();
-		
+		this.correlationId = UUID.randomUUID().toString();
+		this.messageType = this.getClass().getSimpleName();
 		setAccountId(accountId);
 	}
 }

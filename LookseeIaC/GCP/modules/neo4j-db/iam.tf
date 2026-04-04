@@ -52,5 +52,5 @@ resource "google_secret_manager_secret" "neo4j_bolt_uri" {
 
 resource "google_secret_manager_secret_version" "neo4j_bolt_uri_version" {
   secret         = google_secret_manager_secret.neo4j_bolt_uri.id
-  secret_data_wo = "bolt://${google_compute_instance.neo4j.network_interface[0].network_ip}:7687"
+  secret_data_wo = "bolt+s://${google_compute_instance.neo4j.network_interface[0].network_ip}:7687"
 }

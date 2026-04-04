@@ -1,0 +1,44 @@
+{
+  "type": "record",
+  "name": "UrlMessage",
+  "namespace": "com.looksee.models.message",
+  "version": "1.0.0",
+  "doc": "Message published to the 'url' topic to initiate page processing for a given URL.",
+  "fields": [
+    {
+      "name": "messageId",
+      "type": "string",
+      "doc": "Unique message identifier (UUID)"
+    },
+    {
+      "name": "publishTime",
+      "type": "string",
+      "doc": "ISO-8601 formatted timestamp of when the message was created"
+    },
+    {
+      "name": "accountId",
+      "type": "long",
+      "doc": "ID of the account that initiated the request"
+    },
+    {
+      "name": "url",
+      "type": "string",
+      "doc": "The URL to be processed"
+    },
+    {
+      "name": "browser",
+      "type": "string",
+      "doc": "Browser type to use for processing (e.g. CHROME, FIREFOX, SAFARI, IE, ANDROID, IOS)"
+    },
+    {
+      "name": "auditId",
+      "type": "long",
+      "doc": "ID of the audit this URL belongs to"
+    },
+    {
+      "name": "type",
+      "type": "string",
+      "doc": "Audit level: PAGE or DOMAIN"
+    }
+  ]
+}

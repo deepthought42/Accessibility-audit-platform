@@ -32,10 +32,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.looksee.gcp.PubSubAuditUpdatePublisherImpl;
+import com.looksee.models.config.JacksonConfig;
 import com.looksee.mapper.Body;
 import com.looksee.models.Domain;
 import com.looksee.models.ElementState;
@@ -49,6 +51,7 @@ import com.looksee.models.enums.AuditName;
 import com.looksee.models.message.AuditProgressUpdate;
 import com.looksee.models.message.PageAuditMessage;
 import com.looksee.services.AuditRecordService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.DomainService;
 import com.looksee.services.PageStateService;
 import com.looksee.visualDesignAudit.audit.ImageAudit;
@@ -65,6 +68,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 @RestController
 public class AuditController {
 	private static Logger log = LoggerFactory.getLogger(AuditController.class);
+
+	@Autowired
+	private IdempotencyService idempotencyService;
 
 	@Autowired
 	private AuditRecordService audit_record_service;
@@ -138,20 +144,37 @@ public class AuditController {
 			)
 		)
 	)
+	@Transactional
 	@RequestMapping(value = "/", method = RequestMethod.POST)
 	public ResponseEntity<String> receiveMessage(@RequestBody Body body)
 			throws JsonMappingException, JsonProcessingException, ExecutionException, InterruptedException
 	{
+		if (body == null || body.getMessage() == null || body.getMessage().getData() == null) {
+			log.warn("invalid pubsub payload received");
+			return new ResponseEntity<String>("Invalid pubsub payload", HttpStatus.OK);
+		}
+
+		String pubsubMessageId = body.getMessage().getMessageId();
+		if (idempotencyService.isAlreadyProcessed(pubsubMessageId, "visual-design-audit")) {
+			return ResponseEntity.ok("Duplicate message, already processed");
+		}
+
 		Body.Message message = body.getMessage();
 		String data = message.getData();
-	    String target = !data.isEmpty() ? new String(Base64.getDecoder().decode(data)) : "";
-        log.warn("page audit msg received = "+target);
 
-	    ObjectMapper mapper = new ObjectMapper();
-	    PageAuditMessage audit_record_msg = mapper.readValue(target, PageAuditMessage.class);
-    
+		String target;
+		PageAuditMessage audit_record_msg;
+		try {
+			target = !data.isEmpty() ? new String(Base64.getDecoder().decode(data)) : "";
+			log.warn("page audit msg received = "+target);
+			audit_record_msg = JacksonConfig.mapper().readValue(target, PageAuditMessage.class);
+		} catch (IllegalArgumentException | JsonProcessingException e) {
+			log.error("Invalid or unparseable Pub/Sub message, acknowledging to prevent retry", e);
+			return new ResponseEntity<String>("Invalid message acknowledged", HttpStatus.OK);
+		}
+
     	Domain domain = domain_service.findByAuditRecord(audit_record_msg.getPageAuditId());
-    	
+
 		DesignSystem design_system = buildDefaultDesignSystem();
 		if(domain != null) {
 			design_system = domain_service.getDesignSystem(domain.getId()).get();
@@ -180,22 +203,27 @@ public class AuditController {
 			Audit image_copyright_audit = image_audit.execute(page, audit_record, null);
 			audit_record_service.addAudit(audit_record_msg.getPageAuditId(), image_copyright_audit.getId());
 		}
-		
+
 		if(!auditAlreadyExists(audits, AuditName.IMAGE_POLICY)) {
 			Audit image_policy_result = image_policy_audit.execute(page, audit_record, null);
 			audit_record_service.addAudit(audit_record_msg.getPageAuditId(), image_policy_result.getId());
 		}
-		
+
 		AuditProgressUpdate audit_update = new AuditProgressUpdate(audit_record_msg.getAccountId(),
-																	1.0, 
+																	1.0,
 																	"Completed visual design audit!",
-																	AuditCategory.CONTENT, 
-																	AuditLevel.PAGE, 
+																	AuditCategory.CONTENT,
+																	AuditLevel.PAGE,
 																	audit_record_msg.getPageAuditId());
 
-		String audit_record_json = mapper.writeValueAsString(audit_update);
-		audit_update_topic.publish(audit_record_json);
+		try {
+			String audit_record_json = JacksonConfig.mapper().writeValueAsString(audit_update);
+			audit_update_topic.publish(audit_record_json);
+		} catch (ExecutionException | InterruptedException e) {
+			log.error("Failed to publish audit update", e);
+		}
 
+		idempotencyService.markProcessed(pubsubMessageId, "visual-design-audit");
 		return new ResponseEntity<String>("Successfully completed visual design audit", HttpStatus.OK);
 	}
 	

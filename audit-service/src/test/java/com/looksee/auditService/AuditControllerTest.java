@@ -49,6 +49,7 @@ import com.looksee.models.message.VerifiedJourneyMessage;
 import com.looksee.services.AccountService;
 import com.looksee.services.AuditRecordService;
 import com.looksee.services.DomainService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.MessageBroadcaster;
 import com.looksee.services.PageStateService;
 
@@ -60,6 +61,7 @@ class AuditControllerTest {
     private DomainService domainService;
     private PageStateService pageStateService;
     private MessageBroadcaster messageBroadcaster;
+    private IdempotencyService idempotencyService;
     private ObjectMapper mapper;
 
     @BeforeEach
@@ -70,12 +72,14 @@ class AuditControllerTest {
         domainService = mock(DomainService.class);
         pageStateService = mock(PageStateService.class);
         messageBroadcaster = mock(MessageBroadcaster.class);
+        idempotencyService = mock(IdempotencyService.class);
 
         setField(auditController, "audit_record_service", auditRecordService);
         setField(auditController, "account_service", accountService);
         setField(auditController, "domain_service", domainService);
         setField(auditController, "page_state_service", pageStateService);
         setField(auditController, "messageBroadcaster", messageBroadcaster);
+        setField(auditController, "idempotencyService", idempotencyService);
 
         mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
@@ -130,7 +134,7 @@ class AuditControllerTest {
         when(body.getMessage()).thenReturn(message);
         when(message.getData()).thenReturn("not-base64$payload");
         ResponseEntity<String> response = auditController.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("Invalid message payload", response.getBody());
     }
 
@@ -138,8 +142,7 @@ class AuditControllerTest {
     void receiveMessageShouldReturnBadRequestForUnknownMessageType() throws Exception {
         Body body = createBody("{\"unexpected\":\"message\"}");
         ResponseEntity<String> response = auditController.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertTrue(response.getBody().contains("Error occurred while updating audit progress"));
+        assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     @Test
@@ -149,7 +152,7 @@ class AuditControllerTest {
         when(body.getMessage()).thenReturn(message);
         when(message.getData()).thenReturn("");
         ResponseEntity<String> response = auditController.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     // ========== AuditProgressUpdate Tests ==========
@@ -542,9 +545,9 @@ class AuditControllerTest {
         when(auditRecordService.getAllAudits(100L))
             .thenThrow(new RuntimeException("force first handler to fail"));
 
-        // Second handler: findById returns DomainAuditRecord (not PageAuditRecord) => BAD_REQUEST
+        // Second handler: findById returns DomainAuditRecord (not PageAuditRecord) => OK (acknowledging to prevent retries)
         ResponseEntity<String> response = auditController.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     // ========== JourneyCandidateMessage Tests ==========
@@ -816,7 +819,7 @@ class AuditControllerTest {
         when(auditRecordService.findById(anyLong())).thenReturn(Optional.empty());
 
         ResponseEntity<String> response = auditController.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     @Test

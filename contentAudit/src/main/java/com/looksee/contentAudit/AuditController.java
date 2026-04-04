@@ -31,12 +31,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.looksee.models.config.JacksonConfig;
 import com.looksee.contentAudit.models.AppletAltTextAudit;
 import com.looksee.contentAudit.models.CanvasAltTextAudit;
 import com.looksee.contentAudit.models.IframeAltTextAudit;
@@ -56,6 +55,7 @@ import com.looksee.models.enums.AuditName;
 import com.looksee.models.message.AuditProgressUpdate;
 import com.looksee.models.message.PageAuditMessage;
 import com.looksee.services.AuditRecordService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.PageStateService;
 
 /**
@@ -71,6 +71,9 @@ import com.looksee.services.PageStateService;
 @RestController
 public class AuditController {
 	private static Logger log = LoggerFactory.getLogger(AuditController.class);
+
+	@Autowired
+	private IdempotencyService idempotencyService;
 
 	@Autowired
 	private AuditRecordService audit_record_service;
@@ -126,11 +129,17 @@ public class AuditController {
 	 * @param body the body of the message containing the audit record and page state
 	 * @return ResponseEntity containing the result of the audit
 	 */
+	@Transactional
 	@RequestMapping(value = "/", method = RequestMethod.POST)
 	public ResponseEntity<String> receiveMessage(@RequestBody Body body) {
 		if (body == null || body.getMessage() == null || body.getMessage().getData() == null) {
 			log.warn("invalid pubsub payload received");
 			return acknowledgeInvalidMessage("Invalid pubsub payload");
+		}
+
+		String pubsubMessageId = body.getMessage().getMessageId();
+		if (idempotencyService.isAlreadyProcessed(pubsubMessageId, "content-audit")) {
+			return ResponseEntity.ok("Duplicate message, already processed");
 		}
 
 		Body.Message message = body.getMessage();
@@ -143,8 +152,7 @@ public class AuditController {
 		PageAuditMessage audit_record_msg;
 		try {
 			String target = new String(Base64.getDecoder().decode(data), StandardCharsets.UTF_8);
-			ObjectMapper input_mapper = new ObjectMapper();
-			audit_record_msg = input_mapper.readValue(target, PageAuditMessage.class);
+			audit_record_msg = JacksonConfig.mapper().readValue(target, PageAuditMessage.class);
 		} catch (IllegalArgumentException | JsonProcessingException e) {
 			log.warn("invalid pubsub message format", e);
 			return acknowledgeInvalidMessage("Invalid pubsub message format");
@@ -206,7 +214,6 @@ public class AuditController {
 			return new ResponseEntity<String>("Error performing content audit", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
-		JsonMapper mapper = JsonMapper.builder().addModule(new JavaTimeModule()).build();
 		AuditProgressUpdate audit_update = new AuditProgressUpdate(audit_record_msg.getAccountId(),
 												1.0, 
 												"Content Audit Complete!",
@@ -215,7 +222,7 @@ public class AuditController {
 														audit_record_msg.getPageAuditId());
 
 		try {
-			String audit_record_json = mapper.writeValueAsString(audit_update);
+			String audit_record_json = JacksonConfig.mapper().writeValueAsString(audit_update);
 			audit_update_topic.publish(audit_record_json);
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
@@ -226,6 +233,7 @@ public class AuditController {
 			return new ResponseEntity<String>("Error publishing audit progress", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
+		idempotencyService.markProcessed(pubsubMessageId, "content-audit");
 		return new ResponseEntity<String>("Successfully completed content audit", HttpStatus.OK);
 	}
 	

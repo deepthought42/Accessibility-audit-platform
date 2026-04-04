@@ -37,6 +37,7 @@ import com.looksee.services.AuditRecordService;
 import com.looksee.services.BrowserService;
 import com.looksee.services.DomainMapService;
 import com.looksee.services.ElementStateService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.JourneyService;
 import com.looksee.services.PageStateService;
 import com.looksee.services.StepService;
@@ -56,6 +57,7 @@ class AuditControllerTest {
     @Mock private PubSubJourneyVerifiedPublisherImpl pubSubJourneyVerifiedPublisherImpl;
     @Mock private PubSubPageCreatedPublisherImpl pubSubPageCreatedPublisherImpl;
     @Mock private PubSubPageAuditPublisherImpl auditRecordTopic;
+    @Mock private IdempotencyService idempotencyService;
 
     @InjectMocks
     private AuditController controller;
@@ -72,7 +74,7 @@ class AuditControllerTest {
     }
 
     private BodySchema buildBody(String base64Data) {
-        MessageSchema msg = new MessageSchema(base64Data);
+        MessageSchema msg = new MessageSchema(null, base64Data);
         return new BodySchema(msg);
     }
 
@@ -93,23 +95,23 @@ class AuditControllerTest {
 
     @Test
     void nullDataReturns400() throws Exception {
-        BodySchema body = new BodySchema(new MessageSchema(null));
+        BodySchema body = new BodySchema(new MessageSchema(null, null));
         ResponseEntity<String> resp = controller.receiveMessage(body);
         assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
     }
 
     @Test
     void blankDataReturns400() throws Exception {
-        BodySchema body = new BodySchema(new MessageSchema("   "));
+        BodySchema body = new BodySchema(new MessageSchema(null, "   "));
         ResponseEntity<String> resp = controller.receiveMessage(body);
         assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
     }
 
     @Test
     void invalidBase64Returns400() throws Exception {
-        BodySchema body = new BodySchema(new MessageSchema("not-valid-base64!!!"));
+        BodySchema body = new BodySchema(new MessageSchema(null, "not-valid-base64!!!"));
         ResponseEntity<String> resp = controller.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
     }
 
     @Test
@@ -117,7 +119,7 @@ class AuditControllerTest {
         String notJson = Base64.getEncoder().encodeToString("not json".getBytes(StandardCharsets.UTF_8));
         BodySchema body = buildBody(notJson);
         ResponseEntity<String> resp = controller.receiveMessage(body);
-        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
     }
 
     // ===== HTTP status 404/408 error path tests =====
@@ -488,7 +490,7 @@ class AuditControllerTest {
 
     @Test
     void emptyStringDataReturns400() throws Exception {
-        BodySchema body = new BodySchema(new MessageSchema(""));
+        BodySchema body = new BodySchema(new MessageSchema(null, ""));
         ResponseEntity<String> resp = controller.receiveMessage(body);
         assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
     }
