@@ -8,30 +8,44 @@ This migration uses a **single new history** at the root (previous per-repo comm
 
 ## Packages (top-level folders)
 
-| Directory | Role |
-|-----------|------|
-| `audit-service` | Audit service |
-| `AuditManager` | Audit manager |
-| `contentAudit` | Content audit |
-| `CrawlerAPI` | Crawler API |
-| `element-enrichment` | Element enrichment |
-| `front-end-audit-broadcaster` | Front-end audit broadcaster |
-| `informationArchitectureAudit` | Information architecture audit |
-| `journey-map-cleanup` | Journey map cleanup |
-| `journeyErrors` | Journey errors |
-| `journeyExecutor` | Journey executor |
-| `journeyExpander` | Journey expander |
-| `look-see-api-gateway` | API gateway |
-| `look-see-front-end-broadcaster` | Front-end broadcaster |
-| `Look-see-UI-v3` | Web UI |
-| `look-see-VSCode-plugin` | VS Code plugin |
-| `LookseeChromeExtension` | Chrome extension |
-| `LookseeCore` | Shared core library |
-| `LookseeIaC` | Infrastructure as code |
-| `page-audit-enrichment` | Page audit enrichment |
-| `PageBuilder` | Page builder |
-| `qa-testbed` | QA testbed |
-| `visualDesignAudit` | Visual design audit |
+| Directory | Role | Java | Core Dep |
+|-----------|------|------|----------|
+| `AuditManager` | Orchestrates page audit lifecycle; routes Pub/Sub audit events to downstream services | 17 | A11yCore |
+| `audit-service` | Processes audit progress events and broadcasts live updates via Pusher | 17 | A11yCore |
+| `contentAudit` | Runs content accessibility audits (alt text, readability, paragraph structure) | 17 | A11yCore |
+| `CrawlerAPI` | REST API for web crawling, domain management, and user-facing operations | 21 | A11yCore |
+| `element-enrichment` | Enriches page element states with visual and semantic metadata | 17 | A11yCore |
+| `informationArchitectureAudit` | Audits information architecture (headers, tables, forms, links, metadata) | 17 | A11yCore |
+| `journey-map-cleanup` | Cleans up stale journey candidates in domain maps | 17 | A11yCore |
+| `journeyErrors` | Dead-letter handler for failed journey candidate messages | 17 | A11yCore |
+| `journeyExecutor` | Executes user journey workflows and validates journey paths | 17 | A11yCore |
+| `journeyExpander` | Expands verified journeys by discovering interactive elements | 17 | A11yCore |
+| `look-see-front-end-broadcaster` | Broadcasts page-found and audit-update events to the frontend via Pusher | 17 | A11yCore |
+| `Look-see-UI-v3` | Angular web UI for the accessibility audit platform | -- | -- |
+| `look-see-VSCode-plugin` | VS Code extension for real-time WCAG 2.2 accessibility analysis | -- | -- |
+| `LookseeChromeExtension` | Chrome extension for in-page accessibility issue detection | -- | -- |
+| `LookseeCore` | Shared core library: models, persistence, browser automation, GCP, messaging | 17 | -- |
+| `LookseeIaC` | Terraform infrastructure-as-code for GCP deployment | -- | -- |
+| `page-audit-enrichment` | Page audit data enrichment utilities | -- | -- |
+| `PageBuilder` | Builds page state models from crawled URLs using headless browsers | 17 | A11yCore |
+| `qa-testbed` | QA test fixture pages for accessibility testing | -- | -- |
+| `visualDesignAudit` | Audits visual design (color contrast, typography, imagery, whitespace) | 17 | A11yCore |
+
+## Architecture
+
+All Java backend services share the **LookseeCore** library (`A11yCore` Maven artifact) which provides:
+
+- **Models** -- Neo4j domain entities (Page, Element, Audit, Journey, etc.)
+- **Persistence** -- Spring Data Neo4j repositories and service layer
+- **Browser** -- Selenium WebDriver automation and HTML utilities
+- **GCP** -- Google Cloud Storage, Vision, NLP, and Pub/Sub integrations
+- **Messaging** -- Pusher real-time event broadcasting
+
+Services communicate asynchronously via **Google Cloud Pub/Sub** push subscriptions. Each service is a standalone Spring Boot application deployed as a Docker container on **Google Cloud Run**.
+
+### CI/CD
+
+The monorepo CI (`.github/workflows/ci.yml`) uses path-based change detection to only build/test affected modules. All Java 17 services first build and install `LookseeCore` locally before compiling.
 
 ## GitHub
 
