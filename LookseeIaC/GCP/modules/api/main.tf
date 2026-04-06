@@ -58,10 +58,10 @@ resource "google_cloud_run_service" "api" {
   }
 }
 
-# IAM policy to make the service public
-resource "google_cloud_run_service_iam_member" "public_access" {
+# IAM policy to allow authenticated access only
+resource "google_cloud_run_service_iam_member" "authenticated_access" {
   service  = google_cloud_run_service.api.name
   location = google_cloud_run_service.api.location
   role     = "roles/run.invoker"
-  member   = "allUsers"
+  member   = "serviceAccount:${var.service_account_email}"
 }

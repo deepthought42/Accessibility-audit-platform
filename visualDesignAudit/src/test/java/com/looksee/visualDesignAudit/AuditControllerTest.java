@@ -30,6 +30,7 @@ import com.looksee.models.enums.AuditName;
 import com.looksee.models.message.PageAuditMessage;
 import com.looksee.services.AuditRecordService;
 import com.looksee.services.DomainService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.PageStateService;
 import com.looksee.visualDesignAudit.audit.ImageAudit;
 import com.looksee.visualDesignAudit.audit.ImagePolicyAudit;
@@ -65,6 +66,9 @@ public class AuditControllerTest {
 
     @Mock
     private PubSubAuditUpdatePublisherImpl audit_update_topic;
+
+    @Mock
+    private IdempotencyService idempotencyService;
 
     @InjectMocks
     private AuditController auditController;

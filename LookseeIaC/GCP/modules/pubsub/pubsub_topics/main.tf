@@ -10,6 +10,16 @@ resource "google_pubsub_topic" "url_topic" {
       var.region
     ]
   }
+
+  dynamic "schema_settings" {
+    for_each = var.url_schema_config.schema != "" ? [var.url_schema_config] : []
+    content {
+      schema             = schema_settings.value.schema
+      encoding           = schema_settings.value.encoding
+      first_revision_id  = schema_settings.value.first_revision_id != "" ? schema_settings.value.first_revision_id : null
+      last_revision_id   = schema_settings.value.last_revision_id != "" ? schema_settings.value.last_revision_id : null
+    }
+  }
 }
 
 resource "google_pubsub_topic" "page_created_topic" {
@@ -23,6 +33,16 @@ resource "google_pubsub_topic" "page_created_topic" {
     allowed_persistence_regions = [
       var.region
     ]
+  }
+
+  dynamic "schema_settings" {
+    for_each = var.page_created_schema_config.schema != "" ? [var.page_created_schema_config] : []
+    content {
+      schema             = schema_settings.value.schema
+      encoding           = schema_settings.value.encoding
+      first_revision_id  = schema_settings.value.first_revision_id != "" ? schema_settings.value.first_revision_id : null
+      last_revision_id   = schema_settings.value.last_revision_id != "" ? schema_settings.value.last_revision_id : null
+    }
   }
 }
 
@@ -38,6 +58,16 @@ resource "google_pubsub_topic" "page_audit_topic" {
       var.region
     ]
   }
+
+  dynamic "schema_settings" {
+    for_each = var.page_audit_schema_config.schema != "" ? [var.page_audit_schema_config] : []
+    content {
+      schema             = schema_settings.value.schema
+      encoding           = schema_settings.value.encoding
+      first_revision_id  = schema_settings.value.first_revision_id != "" ? schema_settings.value.first_revision_id : null
+      last_revision_id   = schema_settings.value.last_revision_id != "" ? schema_settings.value.last_revision_id : null
+    }
+  }
 }
 
 resource "google_pubsub_topic" "journey_verified_topic" {
@@ -51,7 +81,17 @@ resource "google_pubsub_topic" "journey_verified_topic" {
     allowed_persistence_regions = [
       var.region
     ]
-}
+  }
+
+  dynamic "schema_settings" {
+    for_each = var.journey_verified_schema_config.schema != "" ? [var.journey_verified_schema_config] : []
+    content {
+      schema             = schema_settings.value.schema
+      encoding           = schema_settings.value.encoding
+      first_revision_id  = schema_settings.value.first_revision_id != "" ? schema_settings.value.first_revision_id : null
+      last_revision_id   = schema_settings.value.last_revision_id != "" ? schema_settings.value.last_revision_id : null
+    }
+  }
 }
 
 resource "google_pubsub_topic" "journey_discarded_topic" {
@@ -65,6 +105,16 @@ resource "google_pubsub_topic" "journey_discarded_topic" {
     allowed_persistence_regions = [
       var.region
     ]
+  }
+
+  dynamic "schema_settings" {
+    for_each = var.journey_discarded_schema_config.schema != "" ? [var.journey_discarded_schema_config] : []
+    content {
+      schema             = schema_settings.value.schema
+      encoding           = schema_settings.value.encoding
+      first_revision_id  = schema_settings.value.first_revision_id != "" ? schema_settings.value.first_revision_id : null
+      last_revision_id   = schema_settings.value.last_revision_id != "" ? schema_settings.value.last_revision_id : null
+    }
   }
 }
 
@@ -80,6 +130,16 @@ resource "google_pubsub_topic" "journey_candidate_topic" {
       var.region
     ]
   }
+
+  dynamic "schema_settings" {
+    for_each = var.journey_candidate_schema_config.schema != "" ? [var.journey_candidate_schema_config] : []
+    content {
+      schema             = schema_settings.value.schema
+      encoding           = schema_settings.value.encoding
+      first_revision_id  = schema_settings.value.first_revision_id != "" ? schema_settings.value.first_revision_id : null
+      last_revision_id   = schema_settings.value.last_revision_id != "" ? schema_settings.value.last_revision_id : null
+    }
+  }
 }
 
 resource "google_pubsub_topic" "audit_update_topic" {
@@ -93,6 +153,16 @@ resource "google_pubsub_topic" "audit_update_topic" {
     allowed_persistence_regions = [
       var.region
     ]
+  }
+
+  dynamic "schema_settings" {
+    for_each = var.audit_update_schema_config.schema != "" ? [var.audit_update_schema_config] : []
+    content {
+      schema             = schema_settings.value.schema
+      encoding           = schema_settings.value.encoding
+      first_revision_id  = schema_settings.value.first_revision_id != "" ? schema_settings.value.first_revision_id : null
+      last_revision_id   = schema_settings.value.last_revision_id != "" ? schema_settings.value.last_revision_id : null
+    }
   }
 }
 
@@ -108,6 +178,16 @@ resource "google_pubsub_topic" "journey_completion_cleanup_topic" {
       var.region
     ]
   }
+
+  dynamic "schema_settings" {
+    for_each = var.journey_completion_cleanup_schema_config.schema != "" ? [var.journey_completion_cleanup_schema_config] : []
+    content {
+      schema             = schema_settings.value.schema
+      encoding           = schema_settings.value.encoding
+      first_revision_id  = schema_settings.value.first_revision_id != "" ? schema_settings.value.first_revision_id : null
+      last_revision_id   = schema_settings.value.last_revision_id != "" ? schema_settings.value.last_revision_id : null
+    }
+  }
 }
 
 resource "google_pubsub_topic" "audit_error_topic" {
@@ -121,5 +201,15 @@ resource "google_pubsub_topic" "audit_error_topic" {
     allowed_persistence_regions = [
       var.region
     ]
+  }
+
+  dynamic "schema_settings" {
+    for_each = var.audit_error_schema_config.schema != "" ? [var.audit_error_schema_config] : []
+    content {
+      schema             = schema_settings.value.schema
+      encoding           = schema_settings.value.encoding
+      first_revision_id  = schema_settings.value.first_revision_id != "" ? schema_settings.value.first_revision_id : null
+      last_revision_id   = schema_settings.value.last_revision_id != "" ? schema_settings.value.last_revision_id : null
+    }
   }
 }

@@ -1,0 +1,29 @@
+{
+  "type": "record",
+  "name": "PageAuditMessage",
+  "namespace": "com.looksee.models.message",
+  "version": "1.0.0",
+  "doc": "Message published to the 'page_audit' topic to trigger audits on a specific page.",
+  "fields": [
+    {
+      "name": "messageId",
+      "type": "string",
+      "doc": "Unique message identifier (UUID)"
+    },
+    {
+      "name": "publishTime",
+      "type": "string",
+      "doc": "ISO-8601 formatted timestamp of when the message was created"
+    },
+    {
+      "name": "accountId",
+      "type": "long",
+      "doc": "ID of the account that initiated the request"
+    },
+    {
+      "name": "pageAuditId",
+      "type": "long",
+      "doc": "ID of the page audit record to process"
+    }
+  ]
+}

@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.looksee.mapper.Body;
@@ -48,9 +49,10 @@ public class AuditController {
 	@Autowired
 	private JourneyService journey_service;
 	
+	@Transactional
 	@RequestMapping(value = "/", method = RequestMethod.POST)
 	public ResponseEntity<String> receiveMessage(@RequestBody Body body)
-			throws Exception 
+			throws Exception
 	{
 		Set<DomainMap> domain_maps = domain_map_service.getAllMapsWithinLastDay(7);
 		

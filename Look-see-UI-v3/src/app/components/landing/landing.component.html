@@ -1,0 +1,112 @@
+<div class="min-h-screen bg-gradient-to-br from-charcoal-950 via-charcoal-900 to-charcoal-950 flex flex-col">
+
+    <!-- Top bar -->
+    <header class="flex items-center justify-between px-8 py-5">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-brand-500 flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+            </div>
+            <span class="text-xl font-semibold text-white tracking-tight">Look-see</span>
+        </div>
+        <div>
+            <app-auth-button></app-auth-button>
+        </div>
+    </header>
+
+    <!-- Hero section -->
+    <main class="flex-1 flex flex-col items-center justify-center px-6 -mt-16">
+        <!-- Badge -->
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 mb-8">
+            <span class="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span>
+            <span class="text-xs font-medium text-white/80">AI-Powered Accessibility Audits</span>
+        </div>
+
+        <!-- Headline -->
+        <h1 class="text-5xl md:text-6xl font-semibold text-white text-center max-w-3xl leading-tight tracking-tight">
+            Find and fix accessibility issues
+            <span class="text-brand-400">in seconds</span>
+        </h1>
+
+        <p class="mt-5 text-lg text-white/60 text-center max-w-xl leading-relaxed">
+            Enter any URL and get a comprehensive audit of accessibility, content quality, and visual design — with AI-powered fix suggestions.
+        </p>
+
+        <!-- URL Input Form -->
+        <form [formGroup]="form" (ngSubmit)="startAudit()" class="w-full max-w-2xl mt-10">
+            <div class="bg-white rounded-2xl p-2 shadow-elevated flex items-center gap-2">
+                <div class="flex-1 relative">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                        </svg>
+                    </div>
+                    <input formControlName="url"
+                           type="text"
+                           placeholder="Enter a website URL (e.g. https://www.example.com)"
+                           class="w-full pl-12 pr-4 py-4 text-base bg-transparent border-0 focus:ring-0 focus:outline-none placeholder-gray-400 text-gray-900"
+                           (keydown.enter)="startAudit()" />
+                </div>
+                <button type="submit"
+                        class="btn-accent px-8 py-4 text-base font-semibold rounded-xl flex items-center gap-2 whitespace-nowrap"
+                        [disabled]="isLoading"
+                        [class.opacity-75]="isLoading">
+                    <span *ngIf="!isLoading">Start Audit</span>
+                    <span *ngIf="isLoading" class="flex items-center gap-2">
+                        <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Starting...
+                    </span>
+                </button>
+            </div>
+
+            <!-- Error message -->
+            <div *ngIf="error" class="mt-3 flex items-center gap-2 text-sm text-red-400">
+                <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+                {{ error }}
+            </div>
+        </form>
+
+        <!-- Feature highlights -->
+        <div class="grid grid-cols-3 gap-8 mt-16 max-w-2xl w-full">
+            <div class="text-center">
+                <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mx-auto mb-3">
+                    <svg class="w-5 h-5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                    </svg>
+                </div>
+                <h3 class="text-sm font-semibold text-white mb-1">Visual Issues</h3>
+                <p class="text-xs text-white/50 leading-relaxed">See issues pinpointed directly on your page screenshot</p>
+            </div>
+            <div class="text-center">
+                <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mx-auto mb-3">
+                    <svg class="w-5 h-5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                    </svg>
+                </div>
+                <h3 class="text-sm font-semibold text-white mb-1">AI Fix Suggestions</h3>
+                <p class="text-xs text-white/50 leading-relaxed">Get intelligent recommendations to resolve each issue</p>
+            </div>
+            <div class="text-center">
+                <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mx-auto mb-3">
+                    <svg class="w-5 h-5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                </div>
+                <h3 class="text-sm font-semibold text-white mb-1">PDF Reports</h3>
+                <p class="text-xs text-white/50 leading-relaxed">Export detailed reports with issues and recommendations</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="px-8 py-5 text-center">
+        <p class="text-xs text-white/30">WCAG 2.1 compliant auditing for content, accessibility, and visual design</p>
+    </footer>
+</div>

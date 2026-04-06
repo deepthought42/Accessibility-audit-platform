@@ -104,7 +104,7 @@ export class PageAuditReviewComponent implements OnInit, AfterViewInit, OnDestro
   interactivity_audit_score = 0
   category_scores: AuditScore = {} as AuditScore
 
-  selected_category = ""
+  selected_category = "OVERALL"
   issue_selected = ""
 
   //intervals
@@ -154,7 +154,16 @@ export class PageAuditReviewComponent implements OnInit, AfterViewInit, OnDestro
   //permissions
   is_audit_admin = false
 
-  selected_element = "" 
+  selected_element = ""
+
+  // New UI state
+  activeTab: string = 'visual'
+  resultsReady: boolean = false
+  visualIssues: UXIssueMessage[] = []
+  nonVisualIssues: UXIssueMessage[] = []
+  nonVisualIssueGroups: {type: string, label: string, issues: UXIssueMessage[]}[] = []
+  aiSuggestions: Record<string, string> = {}
+  aiLoadingKeys: Record<string, boolean> = {}
 
   //screenshot image element
   @ViewChild("full_page_screenshot")
@@ -183,8 +192,10 @@ export class PageAuditReviewComponent implements OnInit, AfterViewInit, OnDestro
   renderer = inject(Renderer2);
   auth_service = inject(AuthorizationService);
   report_service = inject(ReportService);
+  categoryPipe = inject(FilterByCategoryPipe);
+  severityPipe = inject(FilterSeverityPipe);
 
-  constructor() { 
+  constructor() {
     this.priorities = [
       { name: 'High' },
       { name: 'Medium' },
@@ -195,12 +206,15 @@ export class PageAuditReviewComponent implements OnInit, AfterViewInit, OnDestro
   }
   
   ngAfterViewInit(){
-    //this.element_issues = this.issue_element_map.elementIssues || []
     this.issues = this.issue_element_map.issues || []
     this.category_scores = this.issue_element_map.scores || []
-    
-    this.selectCategory('CONTENT')
-    
+
+    if (this.issues.length) {
+      this.splitIssues()
+      this.resultsReady = true
+    }
+
+    this.selectCategory('OVERALL')
   }
  
   ngOnInit(): void {
@@ -650,6 +664,8 @@ export class PageAuditReviewComponent implements OnInit, AfterViewInit, OnDestro
                     
           this.category_scores = this.issue_element_map.scores || []
           this.category_scores.overallScore = (this.issue_element_map.scores.aestheticsScore + this.issue_element_map.scores.contentScore + this.issue_element_map.scores.informationArchitectureScore)/3
+          this.splitIssues()
+          this.resultsReady = true
           this.isLoading = false
           this.is_audit_started = false
         },
@@ -1072,7 +1088,207 @@ export class PageAuditReviewComponent implements OnInit, AfterViewInit, OnDestro
     if(issue?.goodExample && issue.goodExample.screenshotUrl.length > 0){
       return issue.goodExample.screenshotUrl;
     }
-    
+
     return "assets/placeholder-300x202.jpg"
+  }
+
+  /* ===== NEW METHODS FOR REDESIGNED UI ===== */
+
+  /**
+   * Split issues into visual (tied to rendered elements with coordinates)
+   * and non-visual (metadata, SEO, structural issues without element placement).
+   */
+  splitIssues(): void {
+    this.visualIssues = []
+    this.nonVisualIssues = []
+
+    for (const issue of this.issues) {
+      if (issue.priority === 'NONE') continue;
+
+      const elementKey = this.issue_element_map.issueElementMap
+        ? this.issue_element_map.issueElementMap[issue.key]
+        : null;
+
+      let isVisual = false;
+      if (elementKey && this.elements) {
+        const element = this.elements.find(el => el.key === elementKey);
+        if (element && (element.xlocation > 0 || element.ylocation > 0)) {
+          isVisual = true;
+        }
+      }
+
+      if (isVisual) {
+        this.visualIssues.push(issue);
+      } else {
+        this.nonVisualIssues.push(issue);
+      }
+    }
+
+    this.groupNonVisualIssues();
+  }
+
+  /**
+   * Group non-visual issues by their category field.
+   */
+  groupNonVisualIssues(): void {
+    const groupMap: Record<string, UXIssueMessage[]> = {};
+
+    for (const issue of this.nonVisualIssues) {
+      const cat = issue.category || 'OTHER';
+      if (!groupMap[cat]) {
+        groupMap[cat] = [];
+      }
+      groupMap[cat].push(issue);
+    }
+
+    this.nonVisualIssueGroups = Object.keys(groupMap)
+      .filter(key => groupMap[key].length > 0)
+      .map(key => ({
+        type: key,
+        label: this.titleCase(key),
+        issues: groupMap[key]
+      }));
+  }
+
+  /**
+   * Filter issues by the selected category. Returns all if OVERALL is selected.
+   */
+  getFilteredIssues(issueList: UXIssueMessage[]): UXIssueMessage[] {
+    if (!issueList) return [];
+
+    let filtered = issueList.filter(i => i.priority !== 'NONE');
+
+    if (this.selected_category !== 'OVERALL') {
+      filtered = this.categoryPipe.transform(filtered, this.selected_category);
+    }
+
+    return filtered;
+  }
+
+  /**
+   * Select an element on the screenshot and open its first issue in the panel.
+   */
+  selectElementIssues(elementKey: string): void {
+    this.selected_element = elementKey;
+    this.activeTab = 'visual';
+
+    const elementIssues = this.getElementIssues(elementKey);
+    if (elementIssues.length > 0) {
+      const firstVisibleIssue = elementIssues.find(i => i.priority !== 'NONE');
+      if (firstVisibleIssue) {
+        this.issue_selected = firstVisibleIssue.key;
+        // Scroll to the issue in the panel
+        setTimeout(() => {
+          document.getElementById(firstVisibleIssue.key)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
+    }
+  }
+
+  /**
+   * Count visible issues for an element, respecting category filter.
+   */
+  getVisibleElementIssueCount(elementKey: string): number {
+    const elementIssues = this.getElementIssues(elementKey);
+    return this.getFilteredIssues(elementIssues).length;
+  }
+
+  /**
+   * Get the highest priority among issues for an element.
+   */
+  getHighestPriority(elementKey: string): string {
+    const elementIssues = this.getElementIssues(elementKey);
+    const priorities = elementIssues
+      .filter(i => i.priority !== 'NONE')
+      .map(i => i.priority);
+
+    if (priorities.includes('HIGH')) return 'HIGH';
+    if (priorities.includes('MEDIUM')) return 'MEDIUM';
+    if (priorities.includes('LOW')) return 'LOW';
+    return 'LOW';
+  }
+
+  /**
+   * Stubbed AI assist — generates a fix suggestion after a simulated delay.
+   */
+  requestAIAssist(issue: UXIssueMessage): void {
+    if (this.aiSuggestions[issue.key] || this.aiLoadingKeys[issue.key]) return;
+
+    this.aiLoadingKeys[issue.key] = true;
+
+    setTimeout(() => {
+      this.aiLoadingKeys[issue.key] = false;
+
+      if (issue.type === 'COLOR_CONTRAST') {
+        const contrast = issue.contrast ? issue.contrast.toFixed(2) : 'unknown';
+        const fg = issue.foregroundColor ? this.convertToHex(issue.foregroundColor) : 'the text color';
+        const bg = issue.backgroundColor ? this.convertToHex(issue.backgroundColor) : 'the background color';
+        this.aiSuggestions[issue.key] =
+          `The current contrast ratio is ${contrast}:1, which does not meet WCAG AA requirements (minimum 4.5:1 for normal text, 3:1 for large text).\n\n` +
+          `Suggested fix: Update ${fg} (foreground) or ${bg} (background) to achieve at least a 4.5:1 contrast ratio.\n\n` +
+          `For example, try darkening the text color or lightening the background to increase separation. You can verify your updated colors at a contrast checker tool.`;
+      } else {
+        const wcag = issue.wcagCompliance || 'general accessibility best practices';
+        this.aiSuggestions[issue.key] =
+          `To fix "${issue.title}":\n\n` +
+          `${issue.recommendation}\n\n` +
+          `This addresses WCAG compliance: ${wcag}.\n\n` +
+          `Additional context: ${issue.description || 'Review the element and apply the recommended changes to improve accessibility.'}`;
+      }
+    }, 2000);
+  }
+
+  /**
+   * Export PDF report — downloads the audit as a PDF file.
+   */
+  exportPDFReport(): void {
+    this.isReportDownloadDialogDisplayed = true;
+    const pageKey = sessionStorage.getItem("page_key") || '';
+    const url = sessionStorage.getItem("url") || '';
+
+    this.segmentio.trackExportReportAuthenticatedClick(url, pageKey);
+
+    this.report_service.getPDFReport(pageKey).subscribe(
+      result => {
+        const downloadURL = window.URL.createObjectURL(result);
+        const link = document.createElement('a');
+        link.href = downloadURL;
+        link.download = "accessibility_audit_report.pdf";
+        link.click();
+        this.isReportDownloadDialogDisplayed = false;
+      },
+      () => {
+        this.addError("There was an error generating the PDF report. Please try again.");
+        this.isReportDownloadDialogDisplayed = false;
+      }
+    );
+  }
+
+  /**
+   * Return an SVG path for a non-visual issue group icon based on category.
+   */
+  getNonVisualGroupIcon(type: string): string {
+    switch (type.toUpperCase()) {
+      case 'CONTENT':
+      case 'WRITTEN_CONTENT':
+        return 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z';
+      case 'INFORMATION_ARCHITECTURE':
+      case 'SEO':
+      case 'METADATA':
+        return 'M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z';
+      case 'AESTHETICS':
+      case 'COLOR_MANAGEMENT':
+      case 'TYPOGRAPHY':
+        return 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01';
+      default:
+        return 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
+    }
+  }
+
+  /**
+   * Called from the onboarding component when user clicks "View Results".
+   */
+  showResults(): void {
+    this.resultsReady = true;
   }
 }

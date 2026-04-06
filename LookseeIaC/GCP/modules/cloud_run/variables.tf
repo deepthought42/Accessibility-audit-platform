@@ -97,3 +97,15 @@ variable "selenium_urls" {
   type        = list(string)
   default     = []
 }
+
+variable "max_instances" {
+  description = "Maximum number of Cloud Run instances"
+  type        = number
+  default     = 100
+}
+
+variable "min_instances" {
+  description = "Minimum number of Cloud Run instances"
+  type        = number
+  default     = 0
+}

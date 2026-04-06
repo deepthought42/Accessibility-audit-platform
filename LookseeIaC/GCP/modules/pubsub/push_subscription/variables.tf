@@ -33,3 +33,8 @@ variable "service_account_email" {
   description = "The email of the service account used for authentication"
   type        = string
 }
+
+variable "region" {
+  description = "The GCP region for the subscription"
+  type        = string
+}

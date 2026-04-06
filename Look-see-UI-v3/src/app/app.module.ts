@@ -35,10 +35,12 @@ import { AppComponent } from './app.component';
 import { AuditDashboardComponent } from './components/audit-dashboard/audit-dashboard.component';
 import { AuditFormComponent } from './components/audit-form/audit-form.component';
 import { AuditListComponent } from './components/audit-list/audit-list.component';
+import { AuditOnboardingComponent } from './components/audit-onboarding/audit-onboarding.component';
 import { AuthButtonComponent } from './components/auth-button/auth-button.component';
 import { DomainsComponent } from './components/domains/domains.component';
 import { FooterComponent } from './components/footer/footer.component';
 import { HowItWorksComponent } from './components/how-it-works/how-it-works.component';
+import { LandingComponent } from './components/landing/landing.component';
 import { LoadingComponent } from './components/loading/loading.component';
 import { NavBarComponent } from './components/nav-bar/nav-bar.component';
 import { PageAuditReviewComponent } from './components/page-audit-review/page-audit-review.component';
@@ -76,6 +78,8 @@ import { UserProfileComponent } from './user-profile/user-profile.component';
     FooterComponent,
     MatchesCategoryPipe,
 
+    LandingComponent,
+    AuditOnboardingComponent,
 
     AuditFormComponent,
     PageAuditReviewComponent,
@@ -121,13 +125,13 @@ import { UserProfileComponent } from './user-profile/user-profile.component';
   bootstrap: [AppComponent]
 })
 
-export class AppModule { 
+export class AppModule {
   constructor(library: FaIconLibrary, public auth_service: AuthService) {
     library.addIconPacks(fas);
     library.addIcons(
-      faSquare, 
-      faCheckSquare, 
-      farSquare, 
+      faSquare,
+      faCheckSquare,
+      farSquare,
       farCheckSquare,
       faInfoCircle,
       faCircleCheck,
@@ -151,6 +155,3 @@ export class AppModule {
     });
   }
 }
-
-
-

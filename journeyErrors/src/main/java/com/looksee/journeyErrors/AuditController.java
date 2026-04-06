@@ -1,6 +1,8 @@
 package com.looksee.journeyErrors;
 
 import java.util.Base64;
+import java.util.Set;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,8 +11,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.looksee.mapper.Body;
 import com.looksee.models.enums.JourneyStatus;
@@ -36,21 +40,41 @@ import com.looksee.services.JourneyService;
 @RestController
 public class AuditController {
 	private static Logger log = LoggerFactory.getLogger(AuditController.class);
+	private static final Set<String> processedMessages = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
 	@Autowired
 	private JourneyService journey_service;
 	
+	@Transactional
 	@RequestMapping(value = "/", method = RequestMethod.POST)
-	public ResponseEntity<String> receiveMessage(@RequestBody Body body) 
-			throws Exception 
-	{	
+	public ResponseEntity<String> receiveMessage(@RequestBody Body body)
+			throws Exception
+	{
+		if(body == null || body.getMessage() == null || body.getMessage().getData() == null || body.getMessage().getData().isEmpty()) {
+			log.warn("Received empty Pub/Sub message payload");
+			return new ResponseEntity<String>("Empty message payload", HttpStatus.OK);
+		}
+
+		String pubsubMsgId = body.getMessage().getMessageId();
+		if (pubsubMsgId != null && !processedMessages.add(pubsubMsgId)) {
+			return ResponseEntity.ok("Duplicate");
+		}
+
 		Body.Message message = body.getMessage();
 		String data = message.getData();
-	    String target = !data.isEmpty() ? new String(Base64.getDecoder().decode(data)) : "";
-        log.warn("processing journey dead letter message = "+target);
 
-	    ObjectMapper input_mapper = new ObjectMapper();
-	    JourneyCandidateMessage journey_msg = input_mapper.readValue(target, JourneyCandidateMessage.class);
+		String target;
+		JourneyCandidateMessage journey_msg;
+		try {
+			target = new String(Base64.getDecoder().decode(data));
+			log.warn("processing journey dead letter message = "+target);
+			ObjectMapper input_mapper = new ObjectMapper().registerModule(new JavaTimeModule()).configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+			journey_msg = input_mapper.readValue(target, JourneyCandidateMessage.class);
+		}
+		catch(Exception e) {
+			log.warn("Invalid Pub/Sub message payload. Unable to decode/deserialize: {}", e.getMessage());
+			return new ResponseEntity<String>("Invalid message payload", HttpStatus.OK);
+		}
 	    
 	    //JsonMapper mapper = JsonMapper.builder().addModule(new JavaTimeModule()).build();
 		Journey journey = journey_msg.getJourney();

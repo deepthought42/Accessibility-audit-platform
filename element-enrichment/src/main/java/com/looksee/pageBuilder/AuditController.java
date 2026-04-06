@@ -4,6 +4,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Base64;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
@@ -15,11 +16,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.looksee.pageBuilder.gcp.PubSubErrorPublisherImpl;
 import com.looksee.pageBuilder.gcp.PubSubJourneyVerifiedPublisherImpl;
 import com.looksee.pageBuilder.gcp.PubSubPageAuditPublisherImpl;
@@ -45,6 +49,7 @@ import com.looksee.utils.ElementStateUtils;
 @RestController
 public class AuditController {
 	private static Logger log = LoggerFactory.getLogger(AuditController.class);
+	private static final Set<String> processedMessages = java.util.concurrent.ConcurrentHashMap.newKeySet();
 	
 	@Autowired
 	private BrowserService browser_service;
@@ -67,15 +72,35 @@ public class AuditController {
 	@Autowired
 	private PubSubPageAuditPublisherImpl audit_record_topic;
 	
+	@Transactional
 	@RequestMapping(value = "/", method = RequestMethod.POST)
-	public ResponseEntity<String> receiveMessage(@RequestBody Body body) 
-			throws JsonMappingException, JsonProcessingException, ExecutionException, InterruptedException, MalformedURLException 
+	public ResponseEntity<String> receiveMessage(@RequestBody Body body)
+			throws JsonMappingException, JsonProcessingException, ExecutionException, InterruptedException, MalformedURLException
 	{
+		if(body == null || body.getMessage() == null || body.getMessage().getData() == null || body.getMessage().getData().isEmpty()) {
+			log.warn("Received empty Pub/Sub message payload");
+			return new ResponseEntity<String>("Empty message payload", HttpStatus.OK);
+		}
+
+		String pubsubMsgId = body.getMessage().getMessageId();
+		if (pubsubMsgId != null && !processedMessages.add(pubsubMsgId)) {
+			return ResponseEntity.ok("Duplicate");
+		}
+
 		Body.Message message = body.getMessage();
 		String data = message.getData();
-	    String target = !data.isEmpty() ? new String(Base64.getMimeDecoder().decode(data)) : "";
-	    ObjectMapper input_mapper = new ObjectMapper();
-        PageBuiltMessage url_msg = input_mapper.readValue(target, PageBuiltMessage.class);
+
+		String target;
+		PageBuiltMessage url_msg;
+		try {
+			target = new String(Base64.getDecoder().decode(data));
+			ObjectMapper input_mapper = new ObjectMapper().registerModule(new JavaTimeModule()).configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+			url_msg = input_mapper.readValue(target, PageBuiltMessage.class);
+		}
+		catch(IllegalArgumentException | JsonProcessingException e) {
+			log.warn("Invalid Pub/Sub message payload. Unable to decode/deserialize: {}", e.getMessage());
+			return new ResponseEntity<String>("Invalid message payload", HttpStatus.OK);
+		}
         
 	    PageState page_state = page_state_service.findById(url_msg.getPageId()).get();
 		URL url = new URL(BrowserUtils.sanitizeUserUrl(page_state.getUrl()));

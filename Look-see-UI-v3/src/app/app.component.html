@@ -1,6 +1,7 @@
 <div class="relative flex top-0 left-0 w-full h-screen">
-    <app-nav-bar id="nav-bar" class="hidden sm:block"></app-nav-bar>
-    <main class="flex-1 h-full overflow-y-auto bg-gray-50 sm:ml-64">
+    <app-nav-bar id="nav-bar" class="hidden sm:block" *ngIf="!isLandingPage && !isReviewPage"></app-nav-bar>
+    <main class="flex-1 h-full overflow-y-auto bg-gray-50"
+          [ngClass]="{'sm:ml-64': !isLandingPage && !isReviewPage}">
         <router-outlet></router-outlet>
     </main>
 </div>
@@ -31,7 +32,7 @@
 
 <!-- Beta acknowledgment modal -->
 <div class="modal modal-active fixed w-full h-full top-0 left-0 flex items-center justify-center z-30"
-     *ngIf="(this.auth.isAuthenticated$ | async) && !isBetaAcknowledged">
+     *ngIf="(this.auth.isAuthenticated$ | async) && !isBetaAcknowledged && !isLandingPage">
     <div class="modal-overlay absolute w-full h-full bg-gray-900/60 backdrop-blur-sm z-50"></div>
     <section class="modal-container bg-white w-[90vw] max-w-lg rounded-2xl shadow-elevated overflow-hidden z-50 animate-fade-in">
         <header class="px-6 pt-6 pb-2">

@@ -6,6 +6,11 @@
 .cherise-red { color: #FF0050; }
 
 /* Element overlay styles */
+.element-container {
+    cursor: pointer;
+    z-index: 5;
+}
+
 .element-container:hover {
     background: rgba(255, 0, 80, 0.08);
     border-radius: 4px;
@@ -15,8 +20,65 @@
     border: 2px solid #FF0050;
     border-radius: 4px;
     background: rgba(255, 0, 80, 0.05);
+    z-index: 10;
 }
 
+/* ===== Issue Bubbles ===== */
+.issue-bubble {
+    position: absolute;
+    top: -14px;
+    left: -14px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 15;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2), 0 0 0 3px rgba(255, 255, 255, 0.8);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    animation: bubble-appear 0.3s ease-out;
+}
+
+.issue-bubble:hover {
+    transform: scale(1.2);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25), 0 0 0 3px rgba(255, 255, 255, 0.9);
+    z-index: 20;
+}
+
+.issue-bubble-high {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.issue-bubble-medium {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.issue-bubble-low {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.issue-bubble-count {
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes bubble-appear {
+    from {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Legacy issue icon styles (kept for compatibility) */
 .issue-icon-container {
     position: absolute;
     left: -12px;
@@ -72,4 +134,14 @@ iframe {
 
 h2 {
     margin: 0 !important;
+}
+
+/* Fade-in animation for panels */
+@keyframes fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+    animation: fade-in 0.3s ease-out;
 }

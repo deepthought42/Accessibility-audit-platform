@@ -18,12 +18,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.looksee.models.config.JacksonConfig;
 import com.looksee.gcp.PubSubErrorPublisherImpl;
 import com.looksee.gcp.PubSubJourneyVerifiedPublisherImpl;
 import com.looksee.gcp.PubSubPageAuditPublisherImpl;
@@ -46,6 +45,7 @@ import com.looksee.models.message.PageDataExtractionError;
 import com.looksee.models.message.VerifiedJourneyMessage;
 import com.looksee.pageBuilder.schemas.BodySchema;
 import com.looksee.services.AuditRecordService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.BrowserService;
 import com.looksee.services.DomainMapService;
 import com.looksee.services.ElementStateService;
@@ -79,6 +79,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Tag(name = "Audit", description = "API endpoints for building page objects")
 public class AuditController {
 	private static Logger log = LoggerFactory.getLogger(AuditController.class);
+
+	@Autowired
+	private IdempotencyService idempotencyService;
 
 	@Autowired
 	private AuditRecordService audit_record_service;
@@ -174,6 +177,7 @@ public class AuditController {
 		required = true,
 		content = @Content(schema = @Schema(implementation = BodySchema.class))
 	)
+	@Transactional
 	@RequestMapping(value = "/", method = RequestMethod.POST)
 	public ResponseEntity<String> receiveMessage(
 		@Valid @RequestBody BodySchema body
@@ -184,23 +188,26 @@ public class AuditController {
 			return new ResponseEntity<String>("Request must include message.data containing a Base64-encoded AuditStartMessage payload", HttpStatus.BAD_REQUEST);
 		}
 
+		String pubsubMessageId = body.getMessage().getMessageId();
+		if (idempotencyService.isAlreadyProcessed(pubsubMessageId, "page-builder")) {
+			return ResponseEntity.ok("Duplicate message, already processed");
+		}
+
 		AuditStartMessage url_msg;
 		try {
 			String data = body.getMessage().getData();
 			String target = new String(Base64.getDecoder().decode(data), StandardCharsets.UTF_8);
-			ObjectMapper input_mapper = new ObjectMapper();
-			url_msg = input_mapper.readValue(target, AuditStartMessage.class);
+			url_msg = JacksonConfig.mapper().readValue(target, AuditStartMessage.class);
 		}
 		catch(IllegalArgumentException | JsonProcessingException e) {
-			log.warn("Received an invalid message payload", e);
-			return new ResponseEntity<String>("Request message.data must be valid Base64-encoded JSON for AuditStartMessage", HttpStatus.BAD_REQUEST);
+			log.warn("Received an invalid message payload; acknowledging to prevent redelivery", e);
+			return new ResponseEntity<String>("Request message.data must be valid Base64-encoded JSON for AuditStartMessage", HttpStatus.OK);
 		}
 
 		assert url_msg != null : "Postcondition of deserialization: url_msg must not be null";
 
 		URL url = new URL(BrowserUtils.sanitizeUserUrl(url_msg.getUrl()));
 
-	    JsonMapper mapper = JsonMapper.builder().addModule(new JavaTimeModule()).build();
 	    PageState page_state = null;
 		Browser browser = null;
 
@@ -217,7 +224,7 @@ public class AuditController {
 																						  url_msg.getUrl().toString(),
 																						  "Received "+http_status+" status while building page state "+url_msg.getUrl());
 
-				String error_json = mapper.writeValueAsString(page_extraction_err);
+				String error_json = JacksonConfig.mapper().writeValueAsString(page_extraction_err);
 				pubSubErrorPublisherImpl.publish(error_json);
 
 				return new ResponseEntity<String>("Successfully sent message to page extraction error", HttpStatus.OK);
@@ -270,7 +277,7 @@ public class AuditController {
 																		page_state.getId(),
 																		url_msg.getAuditId());
 
-				String page_built_str = mapper.writeValueAsString(page_built_msg);
+				String page_built_str = JacksonConfig.mapper().writeValueAsString(page_built_msg);
 				log.warn("sending page built message to PageCreated topic : "+page_built_str);
 				pubSubPageCreatedPublisherImpl.publish(page_built_str);
 				List<Step> steps = new ArrayList<>();
@@ -289,7 +296,7 @@ public class AuditController {
 																				url_msg.getAccountId(),
 																				url_msg.getAuditId());
 				log.warn("journey steps = "+ journey.getSteps());
-				String journey_msg_str = mapper.writeValueAsString(journey_msg);
+				String journey_msg_str = JacksonConfig.mapper().writeValueAsString(journey_msg);
 				log.warn("Publishing to verified journey topic = "+journey_msg_str);
 
 				pubSubJourneyVerifiedPublisherImpl.publish(journey_msg_str);
@@ -300,11 +307,12 @@ public class AuditController {
 				PageAuditMessage audit_msg = new PageAuditMessage(	url_msg.getAccountId(),
 																	url_msg.getAuditId());
 				log.warn("sending page audit message = "+audit_msg.getPageAuditId());
-				String audit_record_json = mapper.writeValueAsString(audit_msg);
+				String audit_record_json = JacksonConfig.mapper().writeValueAsString(audit_msg);
 				log.warn("(PageAudit) Sending PageAuditMessage to Pub/Sub = "+audit_record_json);
 				audit_record_topic.publish(audit_record_json);
 			}
 
+			idempotencyService.markProcessed(pubsubMessageId, "page-builder");
 			return new ResponseEntity<String>("Successfully sent message to verified journey topic", HttpStatus.OK);
 		}
 		catch(Exception e) {
@@ -314,7 +322,7 @@ public class AuditController {
 																						"An exception occurred while building page state "+url_msg.getUrl()+".\n"+e.getMessage());
 
 			try {
-				String element_extraction_str = mapper.writeValueAsString(page_extraction_err);
+				String element_extraction_str = JacksonConfig.mapper().writeValueAsString(page_extraction_err);
 				pubSubErrorPublisherImpl.publish(element_extraction_str);
 			}
 			catch(JsonProcessingException serializationException) {

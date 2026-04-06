@@ -12,7 +12,7 @@ resource "google_cloud_run_service" "service" {
 
   template {
     spec {
-      timeout_seconds = 120
+      timeout_seconds = 600
       containers {
         image = var.image
 
@@ -71,6 +71,8 @@ resource "google_cloud_run_service" "service" {
         "run.googleapis.com/vpc-access-connector" = var.vpc_connector_name
         "run.googleapis.com/vpc-access-egress"    = var.vpc_egress
         "run.googleapis.com/client-name"          = "terraform"
+        "autoscaling.knative.dev/maxScale"        = tostring(var.max_instances)
+        "autoscaling.knative.dev/minScale"        = tostring(var.min_instances)
       }
     }
   }

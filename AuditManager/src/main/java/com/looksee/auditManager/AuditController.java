@@ -15,12 +15,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.looksee.models.config.JacksonConfig;
 import com.looksee.gcp.PubSubPageAuditPublisherImpl;
 import com.looksee.mapper.Body;
 import com.looksee.models.PageState;
@@ -32,6 +31,7 @@ import com.looksee.models.enums.ExecutionStatus;
 import com.looksee.models.message.PageAuditMessage;
 import com.looksee.models.message.PageBuiltMessage;
 import com.looksee.services.AuditRecordService;
+import com.looksee.services.IdempotencyService;
 import com.looksee.services.PageStateService;
 
 /**
@@ -53,12 +53,10 @@ import com.looksee.services.PageStateService;
 public class AuditController {
 	private static final Logger log = LoggerFactory.getLogger(AuditController.class);
 
-	private static final ObjectMapper INPUT_MAPPER = new ObjectMapper();
-	private static final JsonMapper OUTPUT_MAPPER = JsonMapper.builder().addModule(new JavaTimeModule()).build();
-
 	private final AuditRecordService auditRecordService;
 	private final PubSubPageAuditPublisherImpl auditRecordTopic;
 	private final PageStateService pageStateService;
+	private final IdempotencyService idempotencyService;
 
 	/**
 	 * Creates a new {@code AuditController}.
@@ -66,15 +64,18 @@ public class AuditController {
 	 * @param auditRecordService service for persisting and querying audit records; must not be {@code null}
 	 * @param auditRecordTopic   Pub/Sub publisher for page-audit messages; must not be {@code null}
 	 * @param pageStateService   service for querying page state and landability; must not be {@code null}
+	 * @param idempotencyService service for deduplicating Pub/Sub messages; must not be {@code null}
 	 * @throws NullPointerException if any argument is {@code null}
 	 */
 	public AuditController(
 		AuditRecordService auditRecordService,
 		PubSubPageAuditPublisherImpl auditRecordTopic,
-		PageStateService pageStateService) {
+		PageStateService pageStateService,
+		IdempotencyService idempotencyService) {
 		this.auditRecordService = Objects.requireNonNull(auditRecordService, "auditRecordService must not be null");
 		this.auditRecordTopic = Objects.requireNonNull(auditRecordTopic, "auditRecordTopic must not be null");
 		this.pageStateService = Objects.requireNonNull(pageStateService, "pageStateService must not be null");
+		this.idempotencyService = Objects.requireNonNull(idempotencyService, "idempotencyService must not be null");
 	}
 
 	/**
@@ -103,20 +104,25 @@ public class AuditController {
 	public ResponseEntity<String> receiveMessage(@RequestBody Body body) {
 		if (!hasValidPayload(body)) {
 			log.warn("Received invalid Pub/Sub payload: message or data is missing");
-			return badRequest("Invalid Pub/Sub payload");
+			return ResponseEntity.ok("Acknowledged invalid Pub/Sub payload");
+		}
+
+		String pubsubMessageId = body.getMessage().getMessageId();
+		if (idempotencyService.isAlreadyProcessed(pubsubMessageId, "audit-manager")) {
+			return ResponseEntity.ok("Duplicate message, already processed");
 		}
 
 		String payload = decodePayload(body.getMessage().getData());
 		if (payload == null) {
-			return badRequest("Invalid message encoding");
+			return ResponseEntity.ok("Acknowledged invalid message encoding");
 		}
 
 		PageBuiltMessage pageBuiltMessage = parseMessage(payload);
 		if (pageBuiltMessage == null) {
-			return badRequest("Invalid message format");
+			return ResponseEntity.ok("Acknowledged invalid message format");
 		}
 
-		return processMessage(pageBuiltMessage);
+		return processMessage(pageBuiltMessage, pubsubMessageId);
 	}
 
 	/**
@@ -126,7 +132,7 @@ public class AuditController {
 	 * @param pageBuiltMessage the validated message; must not be {@code null}
 	 * @return {@code 200 OK} on success, {@code 500} on infrastructure failure
 	 */
-	private ResponseEntity<String> processMessage(PageBuiltMessage pageBuiltMessage) {
+	private ResponseEntity<String> processMessage(PageBuiltMessage pageBuiltMessage, String pubsubMessageId) {
 		assert pageBuiltMessage != null : "pageBuiltMessage must not be null at this point";
 
 		try {
@@ -137,11 +143,12 @@ public class AuditController {
 			Optional<PageState> pageState = pageStateService.findById(pageBuiltMessage.getPageId());
 
 			if (!alreadyAudited && isLandable && pageState.isPresent()) {
-				return createAndPublishAudit(pageBuiltMessage, pageState.get(), auditNames);
+				return createAndPublishAudit(pageBuiltMessage, pageState.get(), auditNames, pubsubMessageId);
 			}
 
 			log.info("Skipping pageId={} (alreadyAudited={}, landable={}, pageStatePresent={})",
 				pageBuiltMessage.getPageId(), alreadyAudited, isLandable, pageState.isPresent());
+			idempotencyService.markProcessed(pubsubMessageId, "audit-manager");
 			return ResponseEntity.ok("Successfully processed message");
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
@@ -168,7 +175,8 @@ public class AuditController {
 	 * @throws ExecutionException      if the Pub/Sub publish future fails
 	 * @throws InterruptedException    if the current thread is interrupted while publishing
 	 */
-	private ResponseEntity<String> createAndPublishAudit(PageBuiltMessage pageBuiltMessage, PageState pageState, Set<AuditName> auditNames)
+	@Transactional
+	private ResponseEntity<String> createAndPublishAudit(PageBuiltMessage pageBuiltMessage, PageState pageState, Set<AuditName> auditNames, String pubsubMessageId)
 		throws JsonProcessingException, ExecutionException, InterruptedException {
 		assert pageBuiltMessage != null : "pageBuiltMessage must not be null";
 		assert pageState != null : "pageState must not be null";
@@ -190,9 +198,10 @@ public class AuditController {
 		auditRecordService.addPageToAuditRecord(auditRecord.getId(), pageBuiltMessage.getPageId());
 
 		PageAuditMessage auditMessage = new PageAuditMessage(pageBuiltMessage.getAccountId(), auditRecord.getId());
-		String auditRecordJson = OUTPUT_MAPPER.writeValueAsString(auditMessage);
+		String auditRecordJson = JacksonConfig.mapper().writeValueAsString(auditMessage);
 		log.info("Sending PageAuditMessage to Pub/Sub for pageAuditId={}", auditRecord.getId());
 		auditRecordTopic.publish(auditRecordJson);
+		idempotencyService.markProcessed(pubsubMessageId, "audit-manager");
 		return ResponseEntity.ok("Successfully processed message");
 	}
 
@@ -279,7 +288,7 @@ public class AuditController {
 	private PageBuiltMessage parseMessage(String payload) {
 		assert payload != null : "payload must not be null when called";
 		try {
-			return INPUT_MAPPER.readValue(payload, PageBuiltMessage.class);
+			return JacksonConfig.mapper().readValue(payload, PageBuiltMessage.class);
 		} catch (JsonProcessingException e) {
 			log.error("Error occurred while mapping payload to PageBuiltMessage", e);
 			return null;
