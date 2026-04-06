@@ -4,11 +4,8 @@ import static org.junit.Assert.*;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 
 import javax.imageio.ImageIO;
@@ -25,6 +22,7 @@ import com.looksee.browsing.helpers.BrowserConnectionHelper;
 import com.looksee.browsing.enums.BrowserEnvironment;
 import com.looksee.browsing.enums.BrowserType;
 import com.looksee.services.BrowserService;
+import com.looksee.utils.HtmlUtils;
 
 
 /**
@@ -46,19 +44,7 @@ public class BrowserTest {
 	}
 
 	
-	@Test
-	public void verifyUrlReaderForHttps() throws MalformedURLException {
-		URL url = new URL("https://www.amazon.com");
-		try {
-			String output = Browser.URLReader(url);
-			System.out.println("output           :: "+output);
-			assertTrue(output!= null);
-			assertTrue(!output.isEmpty());
-		} catch (KeyManagementException | NoSuchAlgorithmException | IOException e) {
-			e.printStackTrace();
-			assertTrue(false);
-		}
-	}
+	// URLReader test removed - method moved out of Browser in core refactoring
 	
 	@Test
 	public void verifyGenerateParentXpath(){
@@ -126,7 +112,7 @@ public class BrowserTest {
 	public void verifyCleanSrc() {
 		String src = "<html><script src=''></script><link href=''/><style>.style{}</style><head></head><body><div>This is a test</div></body></html>";
 		
-		String cleaned_src = Browser.cleanSrc(src);
+		String cleaned_src = HtmlUtils.cleanSrc(src);
 		assertFalse(cleaned_src.contains("<script"));
 		assertFalse(cleaned_src.contains("<style"));
 	}
