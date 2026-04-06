@@ -82,7 +82,7 @@ All endpoints are prefixed with `v1/`. Authentication via Auth0 JWT bearer token
 | GET | `/v1/domains/{id}/competitors` | List competitors |
 | POST | `/v1/domains/{id}/competitors` | Add competitor |
 | POST | `/v1/domains/{id}/competitors/{comp_id}/palette` | Manage competitor palette |
-| POST | `/v1/domains/{id}/audit/start` | Start domain audit |
+| POST | `/v1/domains/{id}/start` | Start domain audit |
 | GET | `/v1/domains/{id}/audits` | Get audit records for domain |
 | GET | `/v1/domains/{id}/audits/{audit_id}/report/excel` | Export Excel report |
 | GET | `/v1/domains/{id}/audits/{audit_id}/report/pdf` | Export PDF report |
@@ -254,8 +254,8 @@ The `-ea` flag enables Java assertions used for Design by Contract checks.
 ## Docker
 
 ```bash
-docker build -t deepthought42/crawler-api:latest .
-docker run -p 9080:9080 -p 80:80 deepthought42/crawler-api:latest
+docker build -t deepthought42/looksee-api:latest .
+docker run -p 9080:9080 -p 80:80 deepthought42/looksee-api:latest
 ```
 
 The multi-stage Dockerfile uses Maven 3.9.6 + Eclipse Temurin 21 for building and Temurin 21 JRE for runtime. The container starts with `-Xms800M` minimum heap.
@@ -263,8 +263,8 @@ The multi-stage Dockerfile uses Maven 3.9.6 + Eclipse Temurin 21 for building an
 ### Deploy to Docker Hub
 
 ```bash
-docker build -t deepthought42/crawler-api:<version> .
-docker push deepthought42/crawler-api:<version>
+docker build -t deepthought42/looksee-api:<version> .
+docker push deepthought42/looksee-api:<version>
 ```
 
 ## Testing
