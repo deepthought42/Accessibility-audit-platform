@@ -114,7 +114,7 @@ public class AuditController {
 			browser.navigateTo(url.toString());
 			browser.removeDriftChat();
 
-			List<ElementState> element_states = element_state_service.findAllForPage(page_state.getId());
+			List<ElementState> element_states = page_state_service.getElementStates(page_state.getId());
 			element_states = browser_service.enrichElementStates(element_states, page_state, browser, url.getHost());
 			element_states = ElementStateUtils.enrichBackgroundColor(element_states).collect(Collectors.toList());
 			

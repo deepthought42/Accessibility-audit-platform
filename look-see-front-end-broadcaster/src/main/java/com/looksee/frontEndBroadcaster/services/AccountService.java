@@ -1,7 +1,6 @@
 package com.looksee.frontEndBroadcaster.services;
 
 import java.util.Optional;
-import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -54,7 +53,7 @@ public class AccountService {
 		return account_repo.findById(id);
 	}
 
-	public Set<Account> findForAuditRecord(long id) {
+	public Account findForAuditRecord(long id) {
 		return account_repo.findAllForAuditRecord(id);
 	}
 
