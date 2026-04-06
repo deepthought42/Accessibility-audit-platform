@@ -60,13 +60,16 @@ jobs:
               - 'LookseeCore/**'
             element-enrichment:
               - 'element-enrichment/**'
+              - 'LookseeCore/**'
             info-arch-audit:
               - 'informationArchitectureAudit/**'
               - 'LookseeCore/**'
             journey-map-cleanup:
               - 'journey-map-cleanup/**'
+              - 'LookseeCore/**'
             journey-errors:
               - 'journeyErrors/**'
+              - 'LookseeCore/**'
             journey-executor:
               - 'journeyExecutor/**'
               - 'LookseeCore/**'
@@ -75,6 +78,7 @@ jobs:
               - 'LookseeCore/**'
             frontend-broadcaster:
               - 'look-see-front-end-broadcaster/**'
+              - 'LookseeCore/**'
             visual-design-audit:
               - 'visualDesignAudit/**'
               - 'LookseeCore/**'
@@ -149,6 +153,14 @@ jobs:
             flag: journey-expander
           - project: visualDesignAudit
             flag: visual-design-audit
+          - project: element-enrichment
+            flag: element-enrichment
+          - project: journeyErrors
+            flag: journey-errors
+          - project: look-see-front-end-broadcaster
+            flag: frontend-broadcaster
+          - project: journey-map-cleanup
+            flag: journey-map-cleanup
     if: >
       needs.changes.outputs.audit-manager == 'true' ||
       needs.changes.outputs.page-builder == 'true' ||
@@ -157,7 +169,11 @@ jobs:
       needs.changes.outputs.info-arch-audit == 'true' ||
       needs.changes.outputs.journey-executor == 'true' ||
       needs.changes.outputs.journey-expander == 'true' ||
-      needs.changes.outputs.visual-design-audit == 'true'
+      needs.changes.outputs.visual-design-audit == 'true' ||
+      needs.changes.outputs.element-enrichment == 'true' ||
+      needs.changes.outputs.journey-errors == 'true' ||
+      needs.changes.outputs.frontend-broadcaster == 'true' ||
+      needs.changes.outputs.journey-map-cleanup == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -223,59 +239,6 @@ jobs:
         run: mvn -B -ntp test
 
       - name: Build
-        run: mvn -B -ntp package -DskipTests
-
-  # ---------------------------------------------------------------------------
-  # Java 8 services (no LookseeCore JAR - these have forked copies)
-  # ---------------------------------------------------------------------------
-  java8-services:
-    needs: changes
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - project: element-enrichment
-            flag: element-enrichment
-          - project: journeyErrors
-            flag: journey-errors
-          - project: look-see-front-end-broadcaster
-            flag: frontend-broadcaster
-          - project: journey-map-cleanup
-            flag: journey-map-cleanup
-    if: >
-      needs.changes.outputs.element-enrichment == 'true' ||
-      needs.changes.outputs.journey-errors == 'true' ||
-      needs.changes.outputs.frontend-broadcaster == 'true' ||
-      needs.changes.outputs.journey-map-cleanup == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ${{ matrix.project }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check if project changed
-        id: should-run
-        run: |
-          FLAG="${{ needs.changes.outputs[matrix.flag] }}"
-          echo "run=$FLAG" >> "$GITHUB_OUTPUT"
-        working-directory: .
-
-      - name: Set up JDK 8
-        if: steps.should-run.outputs.run == 'true'
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '8'
-          cache: maven
-          cache-dependency-path: ${{ matrix.project }}/pom.xml
-
-      - name: Test
-        if: steps.should-run.outputs.run == 'true'
-        run: mvn -B -ntp clean test
-
-      - name: Build
-        if: steps.should-run.outputs.run == 'true'
         run: mvn -B -ntp package -DskipTests
 
   # ---------------------------------------------------------------------------
@@ -382,7 +345,6 @@ jobs:
       - looksee-core
       - java17-services
       - crawler-api
-      - java8-services
       - ui
     # Run only on push (not PRs), and even if upstream jobs were skipped (no changes),
     # but not if any that actually ran have failed
