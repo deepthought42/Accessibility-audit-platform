@@ -13,12 +13,12 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.looksee.journeyMapCleanup.mapper.Body;
-import com.looksee.journeyMapCleanup.models.enums.JourneyStatus;
-import com.looksee.journeyMapCleanup.models.journeys.DomainMap;
-import com.looksee.journeyMapCleanup.models.journeys.Journey;
-import com.looksee.journeyMapCleanup.services.DomainMapService;
-import com.looksee.journeyMapCleanup.services.JourneyService;
+import com.looksee.mapper.Body;
+import com.looksee.models.enums.JourneyStatus;
+import com.looksee.models.journeys.DomainMap;
+import com.looksee.models.journeys.Journey;
+import com.looksee.services.DomainMapService;
+import com.looksee.services.JourneyService;
 
 
 /*

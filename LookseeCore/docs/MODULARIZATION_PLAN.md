@@ -284,3 +284,24 @@ Each sub-library should have its own Spring Boot auto-configuration class regist
 - Run existing tests in each consumer service after switching dependencies
 - Verify no circular dependencies between new modules
 - Check that each consumer's classpath is smaller than before
+
+---
+
+## Consolidation Completed (April 2026)
+
+Four modules that previously maintained forked copies of core code have been migrated to use `A11yCore`:
+
+| Module | Files Removed | Now Uses |
+|--------|--------------|----------|
+| `element-enrichment` | ~178 | A11yCore 0.5.0 |
+| `journeyErrors` | ~121 | A11yCore 0.5.0 |
+| `look-see-front-end-broadcaster` | ~144 | A11yCore 0.5.0 |
+| `journey-map-cleanup` | ~78 | A11yCore 0.5.0 |
+
+This removed ~51,000 lines of duplicated models, enums, utilities, services, repositories, and GCP integration code. All four modules were also upgraded from Java 8 to Java 17.
+
+Methods that only existed in the local forks were added to the core:
+- `DomainMapRepository.getAllMapsWithinLastDay()` / `DomainMapService.getAllMapsWithinLastDay()`
+- `JourneyRepository.getDomainMapJourneys()` / `JourneyService.getDomainMapJourneys()`
+- `JourneyRepository.changeJourneyStatus()` / `JourneyService.changeJourneyStatus()`
+- `PageStateDto(long auditRecordId, PageState)` constructor

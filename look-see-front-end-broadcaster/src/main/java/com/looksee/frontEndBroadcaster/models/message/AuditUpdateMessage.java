@@ -1,11 +1,13 @@
 package com.looksee.frontEndBroadcaster.models.message;
 
+import com.looksee.models.message.Message;
+
 import lombok.Getter;
 import lombok.Setter;
 
 /**
- * 
- * 
+ *
+ *
  */
 public class AuditUpdateMessage extends Message {
 

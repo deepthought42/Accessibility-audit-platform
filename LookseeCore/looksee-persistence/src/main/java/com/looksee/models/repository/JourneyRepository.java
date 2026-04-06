@@ -3,6 +3,7 @@ package com.looksee.models.repository;
 import com.looksee.models.enums.JourneyStatus;
 import com.looksee.models.journeys.Journey;
 import java.util.List;
+import java.util.Set;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.data.repository.query.Param;
@@ -137,4 +138,23 @@ public interface JourneyRepository extends Neo4jRepository<Journey, Long>  {
 	 */
 	@Query("MATCH (audit:DomainAuditRecord) WHERE id(audit)=$audit_id MATCH (audit)-[*2]->(j:Journey) WHERE NOT j.status=$status RETURN COUNT(j)")
 	public int findAllNonStatusJourneysForDomainAudit(@Param("audit_id") long audit_id, @Param("status") String status);
+
+	/**
+	 * Gets all journeys for a domain map created within the last 30 minutes
+	 *
+	 * @param map_id the ID of the domain map
+	 * @return the set of journeys
+	 */
+	@Query("MATCH (map:DomainMap) WHERE id(map)=$map_id MATCH (map)-[]->(journey:Journey) WHERE duration.inSeconds(journey.createdAt, datetime()).minutes <= 30 RETURN journey")
+	public Set<Journey> getDomainMapJourneys(@Param("map_id") long map_id);
+
+	/**
+	 * Changes journey status for all candidate journeys in a domain map
+	 *
+	 * @param map_id the ID of the domain map
+	 * @param status the current status to match
+	 * @param goal_status the target status to set
+	 */
+	@Query("MATCH (map:DomainMap)-[]->(journey:Journey) WHERE id(map)=$map_id AND journey.status=\"CANDIDATE\" SET journey.status=\"ERROR\" RETURN journey")
+	public void changeJourneyStatus(@Param("map_id") long map_id, @Param("status") String status, @Param("goal_status") String goal_status);
 }

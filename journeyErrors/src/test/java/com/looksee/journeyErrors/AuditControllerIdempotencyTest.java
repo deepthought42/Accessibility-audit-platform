@@ -15,8 +15,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import com.looksee.journeyErrors.mapper.Body;
-import com.looksee.journeyErrors.services.JourneyService;
+import com.looksee.mapper.Body;
+import com.looksee.services.JourneyService;
 
 @ExtendWith(MockitoExtension.class)
 class AuditControllerIdempotencyTest {

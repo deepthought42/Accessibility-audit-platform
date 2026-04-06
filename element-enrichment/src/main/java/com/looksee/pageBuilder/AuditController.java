@@ -28,16 +28,16 @@ import com.looksee.pageBuilder.gcp.PubSubErrorPublisherImpl;
 import com.looksee.pageBuilder.gcp.PubSubJourneyVerifiedPublisherImpl;
 import com.looksee.pageBuilder.gcp.PubSubPageAuditPublisherImpl;
 import com.looksee.pageBuilder.gcp.PubSubPageCreatedPublisherImpl;
-import com.looksee.pageBuilder.mapper.Body;
-import com.looksee.pageBuilder.models.Browser;
-import com.looksee.pageBuilder.models.ElementState;
-import com.looksee.pageBuilder.models.PageState;
-import com.looksee.pageBuilder.models.enums.BrowserEnvironment;
-import com.looksee.pageBuilder.models.enums.BrowserType;
-import com.looksee.pageBuilder.models.message.PageBuiltMessage;
-import com.looksee.pageBuilder.services.BrowserService;
-import com.looksee.pageBuilder.services.ElementStateService;
-import com.looksee.pageBuilder.services.PageStateService;
+import com.looksee.mapper.Body;
+import com.looksee.models.Browser;
+import com.looksee.models.ElementState;
+import com.looksee.models.PageState;
+import com.looksee.browsing.enums.BrowserEnvironment;
+import com.looksee.browsing.enums.BrowserType;
+import com.looksee.models.message.PageBuiltMessage;
+import com.looksee.services.BrowserService;
+import com.looksee.services.ElementStateService;
+import com.looksee.services.PageStateService;
 import com.looksee.utils.BrowserUtils;
 import com.looksee.utils.ElementStateUtils;
 
@@ -114,7 +114,7 @@ public class AuditController {
 			browser.navigateTo(url.toString());
 			browser.removeDriftChat();
 
-			List<ElementState> element_states = element_state_service.findAllForPage(page_state.getId());
+			List<ElementState> element_states = page_state_service.getElementStates(page_state.getId());
 			element_states = browser_service.enrichElementStates(element_states, page_state, browser, url.getHost());
 			element_states = ElementStateUtils.enrichBackgroundColor(element_states).collect(Collectors.toList());
 			

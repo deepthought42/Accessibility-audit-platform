@@ -1,7 +1,8 @@
 package com.looksee.frontEndBroadcaster.models.message;
 
-import com.looksee.frontEndBroadcaster.models.enums.AuditCategory;
-import com.looksee.frontEndBroadcaster.models.enums.AuditLevel;
+import com.looksee.models.enums.AuditCategory;
+import com.looksee.models.enums.AuditLevel;
+import com.looksee.models.message.Message;
 
 import lombok.Getter;
 import lombok.Setter;

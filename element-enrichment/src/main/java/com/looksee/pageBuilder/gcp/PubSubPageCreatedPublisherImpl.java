@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
-public class PubSubPageCreatedPublisherImpl extends PubSubPublisher {
+public class PubSubPageCreatedPublisherImpl extends com.looksee.gcp.PubSubPublisher {
 
     private static Logger LOG = LoggerFactory.getLogger(PubSubPageCreatedPublisherImpl.class);
 

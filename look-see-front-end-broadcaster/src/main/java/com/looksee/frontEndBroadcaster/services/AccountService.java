@@ -1,13 +1,12 @@
 package com.looksee.frontEndBroadcaster.services;
 
 import java.util.Optional;
-import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.looksee.frontEndBroadcaster.models.Account;
-import com.looksee.frontEndBroadcaster.models.repository.AccountRepository;
+import com.looksee.models.Account;
+import com.looksee.models.repository.AccountRepository;
 
 /**
  * Contains business logic for interacting with and managing accounts
@@ -54,7 +53,7 @@ public class AccountService {
 		return account_repo.findById(id);
 	}
 
-	public Set<Account> findForAuditRecord(long id) {
+	public Account findForAuditRecord(long id) {
 		return account_repo.findAllForAuditRecord(id);
 	}
 

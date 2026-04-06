@@ -3,6 +3,8 @@ package com.looksee.frontEndBroadcaster.gcp;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import com.looksee.gcp.PubSubPublisher;
+
 @Component
 public class PubSubErrorPublisherImpl extends PubSubPublisher {
     @Value("${pubsub.error_topic}")

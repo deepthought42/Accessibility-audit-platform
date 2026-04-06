@@ -6,7 +6,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.junit.Test;
 
-import com.looksee.journeyExecutor.services.BrowserService;
+import com.looksee.services.BrowserService;
 
 public class BrowserTest {
 
