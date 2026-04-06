@@ -20,11 +20,11 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 
-import com.looksee.pageBuilder.models.Browser;
-import com.looksee.pageBuilder.models.BrowserConnectionHelper;
-import com.looksee.pageBuilder.models.enums.BrowserEnvironment;
-import com.looksee.pageBuilder.models.enums.BrowserType;
-import com.looksee.pageBuilder.services.BrowserService;
+import com.looksee.models.Browser;
+import com.looksee.browsing.helpers.BrowserConnectionHelper;
+import com.looksee.browsing.enums.BrowserEnvironment;
+import com.looksee.browsing.enums.BrowserType;
+import com.looksee.services.BrowserService;
 
 
 /**

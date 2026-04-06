@@ -22,10 +22,10 @@ import com.looksee.pageBuilder.gcp.PubSubErrorPublisherImpl;
 import com.looksee.pageBuilder.gcp.PubSubJourneyVerifiedPublisherImpl;
 import com.looksee.pageBuilder.gcp.PubSubPageAuditPublisherImpl;
 import com.looksee.pageBuilder.gcp.PubSubPageCreatedPublisherImpl;
-import com.looksee.pageBuilder.mapper.Body;
-import com.looksee.pageBuilder.services.BrowserService;
-import com.looksee.pageBuilder.services.ElementStateService;
-import com.looksee.pageBuilder.services.PageStateService;
+import com.looksee.mapper.Body;
+import com.looksee.services.BrowserService;
+import com.looksee.services.ElementStateService;
+import com.looksee.services.PageStateService;
 
 @ExtendWith(MockitoExtension.class)
 class AuditControllerIdempotencyTest {
