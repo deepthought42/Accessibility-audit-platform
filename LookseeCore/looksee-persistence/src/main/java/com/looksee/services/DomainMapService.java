@@ -4,6 +4,7 @@ package com.looksee.services;
 import com.looksee.models.journeys.DomainMap;
 import com.looksee.models.repository.DomainMapRepository;
 import io.github.resilience4j.retry.annotation.Retry;
+import java.util.Set;
 import lombok.NoArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,7 +106,20 @@ public class DomainMapService {
     public void addPageToDomainMap(long domain_map_id, long page_state_id) {
 		assert domain_map_id > 0;
 		assert page_state_id > 0;
-		
+
         domain_map_repo.addPageToDomainMap(domain_map_id, page_state_id);
     }
+
+	/**
+	 * Get all domain maps created within the last N days
+	 *
+	 * @param number_of_days the number of days to look back
+	 * @return the set of domain maps
+	 *
+	 * precondition: number_of_days > 0
+	 */
+	public Set<DomainMap> getAllMapsWithinLastDay(int number_of_days) {
+		assert number_of_days > 0;
+		return domain_map_repo.getAllMapsWithinLastDay(number_of_days);
+	}
 }

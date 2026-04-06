@@ -6,6 +6,7 @@ import com.looksee.models.journeys.Step;
 import com.looksee.models.repository.JourneyRepository;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import lombok.NoArgsConstructor;
 import lombok.Synchronized;
 import org.slf4j.Logger;
@@ -205,5 +206,38 @@ public class JourneyService {
 		assert journey_id > 0;
 		assert status != null;
 		return journey_repo.updateStatus(journey_id, status.toString());
+	}
+
+	/**
+	 * Gets all journeys for a domain map created within the last 30 minutes
+	 *
+	 * @param domain_map_id the ID of the domain map
+	 * @return the set of journeys
+	 *
+	 * precondition: domain_map_id > 0
+	 */
+	@Retryable
+	public Set<Journey> getDomainMapJourneys(long domain_map_id) {
+		assert domain_map_id > 0;
+		return journey_repo.getDomainMapJourneys(domain_map_id);
+	}
+
+	/**
+	 * Changes journey status for journeys in a domain map
+	 *
+	 * @param map_id the ID of the domain map
+	 * @param status the current status to match
+	 * @param goal the target status to set
+	 *
+	 * precondition: map_id > 0
+	 * precondition: status != null
+	 * precondition: goal != null
+	 */
+	@Retryable
+	public void changeJourneyStatus(long map_id, JourneyStatus status, JourneyStatus goal) {
+		assert map_id > 0;
+		assert status != null;
+		assert goal != null;
+		journey_repo.changeJourneyStatus(map_id, status.toString(), goal.toString());
 	}
 }

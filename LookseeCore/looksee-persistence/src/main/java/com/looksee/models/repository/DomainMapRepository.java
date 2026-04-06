@@ -2,6 +2,7 @@ package com.looksee.models.repository;
 
 
 import com.looksee.models.journeys.DomainMap;
+import java.util.Set;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.data.repository.query.Param;
@@ -63,4 +64,13 @@ public interface DomainMapRepository extends Neo4jRepository<DomainMap, Long>{
 	 */
 	@Query("MATCH (dm:DomainMap) WHERE id(dm)=$domain_map_id MATCH (page:PageState) WHERE id(page)=$page_state_id MERGE (dm)-[:CONTAINS]->(page) RETURN dm LIMIT 1")
 	public DomainMap addPageToDomainMap(@Param("domain_map_id") long domain_map_id, @Param("page_state_id") long page_state_id);
+
+	/**
+	 * Finds all domain maps created within the last N days
+	 *
+	 * @param days the number of days
+	 * @return the set of domain maps
+	 */
+	@Query("MATCH (dm:DomainMap) WHERE duration.inSeconds(dm.createdAt, datetime()).days <= $days RETURN dm")
+	public Set<DomainMap> getAllMapsWithinLastDay(@Param("days") int days);
 }
