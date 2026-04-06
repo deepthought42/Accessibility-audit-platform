@@ -462,19 +462,3 @@ For technical support or questions about Look-see:
 ## License
 
 This project is proprietary software owned by Look-see, Inc. All rights reserved.
-
-
-##Deploy
-
-docker build --no-cache -t gcr.io/cosmic-envoy-280619/look-see-ui:vx.x.x .
-docker push gcr.io/cosmic-envoy-280619/look-see-ui:vx.x.x
-
-    ```bash
-    gcloud auth print-access-token | sudo docker login -u oauth2accesstoken --password-stdin https://us-central1-docker.pkg.dev
-	sudo docker build --no-cache -t us-central1-docker.pkg.dev/cosmic-envoy-280619/user-interface/#.#.# .
-	sudo docker push us-central1-docker.pkg.dev/cosmic-envoy-280619/user-interface/#.#.#
-    ```
-
-//Configuring Auth0
-
-

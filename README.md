@@ -31,6 +31,23 @@ This migration uses a **single new history** at the root (previous per-repo comm
 | `qa-testbed` | QA test fixture pages for accessibility testing | -- | -- |
 | `visualDesignAudit` | Audits visual design (color contrast, typography, imagery, whitespace) | 17 | A11yCore |
 
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Backend Services | Java 17/21, Spring Boot 2.6.13, Maven |
+| Shared Library | LookseeCore (A11yCore Maven artifact) |
+| Database | Neo4j (graph database) via Spring Data Neo4j |
+| Messaging | Google Cloud Pub/Sub (async), Pusher (real-time WebSocket) |
+| Browser Automation | Selenium WebDriver 3.141.59 |
+| Cloud Platform | Google Cloud (Cloud Run, Storage, Vision, NLP, Secret Manager) |
+| Frontend | Angular 17, TypeScript 5.5, Tailwind CSS, Angular Material |
+| Authentication | Auth0 (OAuth2 / JWT) |
+| Payments | Stripe (subscription billing) |
+| Analytics | Segment (customer data platform) |
+| Infrastructure | Terraform (GCP), GitHub Actions (CI/CD) |
+| Container Runtime | Docker, Google Cloud Run (serverless) |
+
 ## Architecture
 
 All Java backend services share the **LookseeCore** library (`A11yCore` Maven artifact) which provides:
@@ -43,9 +60,157 @@ All Java backend services share the **LookseeCore** library (`A11yCore` Maven ar
 
 Services communicate asynchronously via **Google Cloud Pub/Sub** push subscriptions. Each service is a standalone Spring Boot application deployed as a Docker container on **Google Cloud Run**.
 
+### Service Communication (Pub/Sub Message Flow)
+
+```
+                                    Look-see Platform Architecture
+                                    ==============================
+
+  User Browser
+       |
+       v
+  [Look-see-UI-v3]  <-----(Pusher WebSocket)-----  [front-end-broadcaster]
+       |                                                     ^
+       | HTTP/REST                                           |
+       v                                                     |
+  [CrawlerAPI]                                               |
+       |                                                     |
+       | publishes AuditStartMessage                         |
+       v                                                     |
+  (url topic)                                     (page_created topic)
+       |                                                     |
+       v                                                     |
+  [PageBuilder] -----publishes PageBuiltMessage------>-------+
+       |                                                     |
+       | publishes PageBuiltMessage         publishes PageBuiltMessage
+       v                                                     v
+  (page_created topic)                          [element-enrichment]
+       |
+       v
+  [AuditManager]
+       |
+       | publishes PageAuditMessage
+       v
+  (page_audit topic)
+       |
+       +-------------------+-------------------+
+       |                   |                   |
+       v                   v                   v
+  [contentAudit]   [visualDesign    [informationArchitecture
+                    Audit]           Audit]
+       |                   |                   |
+       +-------------------+-------------------+
+       |
+       | publishes AuditProgressUpdate
+       v
+  (audit_update topic)
+       |
+       v
+  [audit-service] -----(Pusher WebSocket)-----> [Look-see-UI-v3]
+
+
+  Journey Pipeline (domain-level audits)
+  ======================================
+
+  [PageBuilder]
+       |
+       | publishes VerifiedJourneyMessage
+       v
+  (journey_verified topic)
+       |
+       v
+  [journeyExpander]
+       |
+       | publishes JourneyCandidateMessage
+       v
+  (journey_candidate topic)
+       |
+       v
+  [journeyExecutor]
+       |
+       +---> (journey_verified topic)    [re-enter expansion loop]
+       +---> (discarded_journey topic)   [journey rejected]
+       +---> (audit_error topic)         [processing failed]
+
+  Dead-letter & Cleanup
+  =====================
+
+  (journey_candidate dead-letter) ---> [journeyErrors]     marks failed journeys as ERROR
+  (scheduled trigger)             ---> [journey-map-cleanup] cleans stale CANDIDATE journeys
+```
+
+### Key Pub/Sub Topics
+
+| Topic | Publishers | Subscribers | Payload |
+|-------|-----------|-------------|---------|
+| `url` | CrawlerAPI | PageBuilder | `AuditStartMessage` (URL, audit level, account) |
+| `page_created` | PageBuilder | AuditManager, front-end-broadcaster | `PageBuiltMessage` (account, page, audit record IDs) |
+| `page_audit` | AuditManager | contentAudit, visualDesignAudit, informationArchitectureAudit | `PageAuditMessage` (page audit, page, account IDs) |
+| `audit_update` | Audit services | audit-service | `AuditProgressUpdate` (progress, category, status) |
+| `audit_error` | All services | (logging/monitoring) | Error details |
+| `journey_verified` | PageBuilder, journeyExecutor | journeyExpander | `VerifiedJourneyMessage` (journey, account, audit record) |
+| `journey_candidate` | journeyExpander | journeyExecutor | `JourneyCandidateMessage` (journey, browser, map) |
+| `journey_discarded` | journeyExecutor | CrawlerAPI | `DiscardedJourneyMessage` |
+| `journey_completion_cleanup` | (scheduled) | journey-map-cleanup | Trigger payload |
+
 ### CI/CD
 
 The monorepo CI (`.github/workflows/ci.yml`) uses path-based change detection to only build/test affected modules. All Java 17 services first build and install `LookseeCore` locally before compiling.
+
+Each service also has its own CI workflows:
+- **`docker-ci-test.yml`** -- Runs on pull requests: builds, tests, and Docker build verification
+- **`docker-ci-release.yml`** -- Runs on merge to main: tests, semantic version bump, Docker image push to Docker Hub
+
+## Quick Start (Local Development)
+
+### Prerequisites
+
+- Java 17+ (Eclipse Temurin recommended; CrawlerAPI requires Java 21)
+- Maven 3.9+
+- Node.js 18.19+ and npm 10+ (for the Angular UI)
+- Neo4j database instance
+- Docker (optional, for containerized runs)
+- Google Cloud SDK (optional, for GCP integrations)
+
+### 1. Build the Shared Library
+
+All Java services depend on LookseeCore. Build it first:
+
+```bash
+cd LookseeCore
+mvn clean install -DskipTests
+cd ..
+```
+
+### 2. Build and Run Any Service
+
+```bash
+cd <service-directory>    # e.g., cd AuditManager
+mvn clean package -DskipTests
+java -ea -jar target/*.jar
+```
+
+The `-ea` flag enables Java assertions used for Design by Contract checks across all services.
+
+### 3. Build and Run the UI
+
+```bash
+cd Look-see-UI-v3
+npm install
+ng serve
+```
+
+Navigate to `http://localhost:4200/`.
+
+### 4. Run with Docker
+
+Each service includes a Dockerfile:
+
+```bash
+cd <service-directory>
+docker build -t <service-name> .
+docker run -p 8080:8080 <service-name>
+```
 
 ## GitHub
 
