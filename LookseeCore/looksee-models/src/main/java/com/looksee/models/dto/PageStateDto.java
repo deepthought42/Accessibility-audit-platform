@@ -17,7 +17,8 @@ public class PageStateDto {
 	private String key;
 	private String url;
 	private String type;
-	
+	private long auditRecordId;
+
 	/**
 	 * Constructor for PageStateDto
 	 * @param page the page state
@@ -27,6 +28,21 @@ public class PageStateDto {
 	public PageStateDto(PageState page){
 		assert page != null;
 
+		setKey(page.getKey());
+		setUrl(page.getUrl());
+	}
+
+	/**
+	 * Constructor for PageStateDto with audit record ID
+	 * @param audit_record_id the audit record ID
+	 * @param page the page state
+	 *
+	 * precondition: page != null
+	 */
+	public PageStateDto(long audit_record_id, PageState page){
+		assert page != null;
+
+		setAuditRecordId(audit_record_id);
 		setKey(page.getKey());
 		setUrl(page.getUrl());
 	}
