@@ -1,19 +1,15 @@
 package com.looksee.services;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.google.cloud.spring.pubsub.core.PubSubTemplate;
-import com.looksee.messaging.observability.TraceContextPropagation;
 import com.looksee.models.OutboxEvent;
 import com.looksee.models.repository.OutboxEventRepository;
 
@@ -23,6 +19,13 @@ import com.looksee.models.repository.OutboxEventRepository;
  * <p>This implements the Transactional Outbox pattern: services write an
  * OutboxEvent in the same Neo4j transaction as their domain changes, and
  * this publisher asynchronously delivers them to PubSub with retry logic.
+ *
+ * <p>Note on distributed tracing: the outbox publisher runs on a scheduled
+ * background thread, so there is no caller span to propagate as Pub/Sub
+ * message attributes. Wave 2.2 of the architecture review intentionally
+ * leaves trace propagation here as a follow-up; consumers still extract
+ * trace context from any attributes the producer attached, so direct
+ * in-request publishers can be wired up independently of the outbox.
  */
 @Service
 public class OutboxEventPublisher {
@@ -43,18 +46,7 @@ public class OutboxEventPublisher {
         List<OutboxEvent> pendingEvents = outboxEventRepository.findRetryableEvents();
         for (OutboxEvent event : pendingEvents) {
             try {
-                // Inject the active OpenTelemetry trace context as Pub/Sub
-                // message attributes so downstream consumers can stitch the
-                // distributed trace together (Wave 2.2 of the architecture
-                // review). Safe when no span is active: the map is empty.
-                Map<String, String> headers = new HashMap<>();
-                TraceContextPropagation.inject(headers);
-                pubSubTemplate.publish(
-                    event.getTopic(),
-                    MessageBuilder.withPayload(event.getPayload())
-                        .copyHeaders(headers)
-                        .build()
-                ).get();
+                pubSubTemplate.publish(event.getTopic(), event.getPayload()).get();
                 event.setStatus("PROCESSED");
                 event.setProcessedAt(LocalDateTime.now());
                 outboxEventRepository.save(event);
