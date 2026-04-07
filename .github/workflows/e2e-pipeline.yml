@@ -43,23 +43,12 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
-      pubsub-emulator:
-        image: gcr.io/google.com/cloudsdktool/cloud-sdk:emulators
-        ports:
-          - 8085:8085
-        options: >-
-          --health-cmd "curl -fsS http://localhost:8085 || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-          --entrypoint /bin/sh
-        env:
-          PUBSUB_PROJECT_ID: looksee-test
-        # NOTE: GitHub Actions service containers don't accept entrypoint
-        # overrides. The pubsub emulator is started by the test driver below
-        # via a sidecar container instead. This block exists so that local
-        # `act` runs can pull the same image; the actual emulator process is
-        # started in the `Start Pub/Sub emulator` step.
+      # NOTE: the Pub/Sub emulator is intentionally NOT a `services:` entry.
+      # GitHub Actions service containers cannot override the image
+      # entrypoint, and the cloud-sdk:emulators image exits immediately
+      # without an explicit `gcloud beta emulators pubsub start` command.
+      # It is launched via `docker run -d` in the "Start Pub/Sub emulator"
+      # step below instead.
 
     env:
       PUBSUB_EMULATOR_HOST: localhost:8085
