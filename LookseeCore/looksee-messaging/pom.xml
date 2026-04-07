@@ -50,6 +50,18 @@
 			<artifactId>opentelemetry-context</artifactId>
 		</dependency>
 
+		<!--
+		    Needed at compile time so TracingPubSubPublisher and the
+		    auto-configuration can reference PubSubTemplate. Marked
+		    `optional` so services that don't use Pub/Sub (e.g. tests in
+		    other looksee-* modules) don't inherit it transitively.
+		-->
+		<dependency>
+			<groupId>com.google.cloud</groupId>
+			<artifactId>spring-cloud-gcp-starter-pubsub</artifactId>
+			<optional>true</optional>
+		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
