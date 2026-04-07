@@ -85,7 +85,7 @@ public abstract class PubSubAuditController<T> {
     protected abstract void handle(T payload) throws Exception;
 
     @PostMapping("/")
-    public ResponseEntity<String> receive(@RequestBody Body body) {
+    public ResponseEntity<String> receiveMessage(@RequestBody Body body) {
         if (body == null || body.getMessage() == null
                 || body.getMessage().getData() == null
                 || body.getMessage().getData().isBlank()) {
