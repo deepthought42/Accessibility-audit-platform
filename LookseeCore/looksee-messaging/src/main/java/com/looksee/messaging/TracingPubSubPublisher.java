@@ -7,8 +7,8 @@ import java.util.concurrent.ExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.util.concurrent.ListenableFuture;
 
-import com.google.api.core.ApiFuture;
 import com.google.cloud.spring.pubsub.core.PubSubTemplate;
 import com.looksee.messaging.observability.TraceContextPropagation;
 
@@ -60,10 +60,15 @@ public class TracingPubSubPublisher {
      *
      * @param topic   the Pub/Sub topic name (short form, not the full path)
      * @param payload the JSON-serialized message body
-     * @return an {@link ApiFuture} that completes when the emulator or
-     *         real Pub/Sub service has acknowledged the publish
+     * @return a {@link ListenableFuture} that completes when the emulator
+     *         or real Pub/Sub service has acknowledged the publish. Spring
+     *         Cloud GCP 3.x's {@code PubSubTemplate.publish(Message)}
+     *         returns Spring's {@code ListenableFuture}, not Google's
+     *         {@code ApiFuture}; Wave 4 of the architecture review's move
+     *         to Spring Cloud GCP 5 will promote this to {@code
+     *         CompletableFuture}.
      */
-    public ApiFuture<String> publish(String topic, String payload) {
+    public ListenableFuture<String> publish(String topic, String payload) {
         Map<String, String> attributes = new HashMap<>();
         TraceContextPropagation.inject(attributes);
         if (log.isDebugEnabled()) {
