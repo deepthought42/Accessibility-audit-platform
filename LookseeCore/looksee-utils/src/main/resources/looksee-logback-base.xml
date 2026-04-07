@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Shared Logback include used by every Looksee service. Sourced via
+    `<include resource="looksee-logback-base.xml"/>` from each service's
+    `logback-spring.xml`. Centralizes structured JSON logging so Cloud
+    Logging entries carry the OpenTelemetry trace_id/span_id MDC keys
+    populated by `opentelemetry-logback-mdc-1.0`.
+
+    Wave 2.3 of the architecture review.
+-->
+<included>
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>trace_id</includeMdcKeyName>
+            <includeMdcKeyName>span_id</includeMdcKeyName>
+            <includeMdcKeyName>trace_flags</includeMdcKeyName>
+            <customFields>{"component":"looksee"}</customFields>
+            <timeZone>UTC</timeZone>
+        </encoder>
+    </appender>
+
+    <!--
+        Wrap the JSON appender with the OTel Logback MDC instrumentation
+        appender so trace IDs from active OpenTelemetry spans are copied
+        into MDC just before the encoder runs.
+    -->
+    <appender name="OTEL_JSON"
+              class="io.opentelemetry.instrumentation.logback.mdc.v1_0.OpenTelemetryAppender">
+        <appender-ref ref="JSON"/>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="OTEL_JSON"/>
+    </root>
+
+    <!-- Quiet noisy framework loggers; matches the historical per-service config. -->
+    <logger name="org.springframework" level="WARN"/>
+    <logger name="org.neo4j" level="WARN"/>
+    <logger name="com.google.cloud" level="WARN"/>
+</included>

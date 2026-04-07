@@ -1,0 +1,48 @@
+# syntax=docker/dockerfile:1.6
+#
+# Shared base image for every Looksee Java service.
+#
+# Builds two stages that downstream service Dockerfiles consume:
+#
+#   * `build-base`   — Maven + JDK 17 + curl + the canonical
+#                      `download-core.sh` script wired into PATH so each
+#                      service Dockerfile only needs to call
+#                      `download-core.sh "${LOOKSEE_CORE_VERSION}"`.
+#
+#   * `runtime-base` — JRE 17 + non-root user + actuator HEALTHCHECK.
+#
+# Wave 3.2 of the architecture review. Published as
+# `docker.io/deepthought42/looksee-java-base:17` by
+# `.github/workflows/base-image.yml`.
+
+FROM eclipse-temurin:17-jdk AS build-base
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends maven curl ca-certificates bash \
+ && rm -rf /var/lib/apt/lists/*
+
+# `scripts/download-core.sh` is the single source of truth for how services
+# fetch the LookseeCore JAR matching the repo-root LOOKSEE_CORE_VERSION file.
+COPY scripts/download-core.sh /usr/local/bin/download-core.sh
+RUN chmod +x /usr/local/bin/download-core.sh
+
+WORKDIR /app
+
+# ----------------------------------------------------------------------------
+
+FROM eclipse-temurin:17-jre AS runtime-base
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends wget ca-certificates \
+ && rm -rf /var/lib/apt/lists/* \
+ && useradd --system --uid 1001 --user-group --home /app looksee
+
+WORKDIR /app
+USER looksee
+
+EXPOSE 8080
+
+# Cloud Run does not honour Docker HEALTHCHECK, but local docker-compose
+# E2E tests (Wave 5.1) and the version-consistency CI job both rely on it.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -qO- http://localhost:8080/actuator/health || exit 1

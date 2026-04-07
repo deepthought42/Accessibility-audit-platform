@@ -109,3 +109,38 @@ variable "min_instances" {
   type        = number
   default     = 0
 }
+
+# ----------------------------------------------------------------------------
+# Observability variables (Wave 2 of architecture review)
+# ----------------------------------------------------------------------------
+variable "otel_exporter_otlp_endpoint" {
+  description = "OTLP endpoint for OpenTelemetry trace export. Defaults to Google Cloud Trace's regional OTLP endpoint."
+  type        = string
+  default     = "https://telemetry.googleapis.com:443"
+}
+
+variable "otel_traces_sampler_arg" {
+  description = "Trace sampling ratio (0.0-1.0). 0.1 = 10% of traces sampled."
+  type        = number
+  default     = 0.1
+
+  validation {
+    condition     = var.otel_traces_sampler_arg >= 0 && var.otel_traces_sampler_arg <= 1
+    error_message = "otel_traces_sampler_arg must be between 0.0 and 1.0."
+  }
+}
+
+# ----------------------------------------------------------------------------
+# Image tag pinning (Wave 5.3 of architecture review)
+# Forbid `latest` so production deployments are always reproducible.
+# ----------------------------------------------------------------------------
+variable "image_tag" {
+  description = "Container image tag (semver). The :latest tag is forbidden in production."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.image_tag != "latest"
+    error_message = "image_tag=latest is forbidden. Pass an explicit semver tag from the service's docker-ci-release.yml output."
+  }
+}

@@ -111,3 +111,39 @@ variable "smtp_host" {
   type        = string
   default     = ""
 }
+
+# Wave 5.3 of architecture review: Stripe / Segment / SendGrid secrets.
+variable "stripe_secret_key" {
+  description = "Stripe API secret key (sk_live_... or sk_test_...). Empty disables the secret."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "stripe_webhook_secret" {
+  description = "Stripe webhook signing secret (whsec_...). Empty disables the secret."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "stripe_price_ids" {
+  description = "JSON document mapping plan names to Stripe price IDs. Empty disables the secret."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "segment_write_key" {
+  description = "Segment server-side write key. Empty disables the secret."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "sendgrid_api_key" {
+  description = "SendGrid API key for transactional email. Empty disables the secret."
+  type        = string
+  default     = ""
+  sensitive   = true
+}

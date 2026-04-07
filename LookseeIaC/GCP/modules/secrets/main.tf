@@ -307,3 +307,112 @@ resource "google_secret_manager_secret_version" "smtp_host_version" {
   secret         = google_secret_manager_secret.smtp_host[0].id
   secret_data_wo = var.smtp_host
 }
+
+# ============================================================================
+# Wave 5.3 of architecture review: bring previously-manual application secrets
+# into Terraform-managed Secret Manager so deployments are reproducible and
+# all secret material is auditable from a single source.
+# ============================================================================
+
+# ---- Stripe ----
+resource "google_secret_manager_secret" "stripe_secret_key" {
+  count     = var.stripe_secret_key != "" ? 1 : 0
+  secret_id = "stripe-secret-key"
+  project   = var.project_id
+
+  labels = {
+    environment = var.environment
+  }
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "stripe_secret_key_version" {
+  count          = var.stripe_secret_key != "" ? 1 : 0
+  secret         = google_secret_manager_secret.stripe_secret_key[0].id
+  secret_data_wo = var.stripe_secret_key
+}
+
+resource "google_secret_manager_secret" "stripe_webhook_secret" {
+  count     = var.stripe_webhook_secret != "" ? 1 : 0
+  secret_id = "stripe-webhook-secret"
+  project   = var.project_id
+
+  labels = {
+    environment = var.environment
+  }
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "stripe_webhook_secret_version" {
+  count          = var.stripe_webhook_secret != "" ? 1 : 0
+  secret         = google_secret_manager_secret.stripe_webhook_secret[0].id
+  secret_data_wo = var.stripe_webhook_secret
+}
+
+resource "google_secret_manager_secret" "stripe_price_ids" {
+  count     = var.stripe_price_ids != "" ? 1 : 0
+  secret_id = "stripe-price-ids"
+  project   = var.project_id
+
+  labels = {
+    environment = var.environment
+  }
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "stripe_price_ids_version" {
+  count          = var.stripe_price_ids != "" ? 1 : 0
+  secret         = google_secret_manager_secret.stripe_price_ids[0].id
+  secret_data_wo = var.stripe_price_ids
+}
+
+# ---- Segment ----
+resource "google_secret_manager_secret" "segment_write_key" {
+  count     = var.segment_write_key != "" ? 1 : 0
+  secret_id = "segment-write-key"
+  project   = var.project_id
+
+  labels = {
+    environment = var.environment
+  }
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "segment_write_key_version" {
+  count          = var.segment_write_key != "" ? 1 : 0
+  secret         = google_secret_manager_secret.segment_write_key[0].id
+  secret_data_wo = var.segment_write_key
+}
+
+# ---- SendGrid ----
+resource "google_secret_manager_secret" "sendgrid_api_key" {
+  count     = var.sendgrid_api_key != "" ? 1 : 0
+  secret_id = "sendgrid-api-key"
+  project   = var.project_id
+
+  labels = {
+    environment = var.environment
+  }
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "sendgrid_api_key_version" {
+  count          = var.sendgrid_api_key != "" ? 1 : 0
+  secret         = google_secret_manager_secret.sendgrid_api_key[0].id
+  secret_data_wo = var.sendgrid_api_key
+}

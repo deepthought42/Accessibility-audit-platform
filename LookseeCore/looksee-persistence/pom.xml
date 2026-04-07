@@ -20,6 +20,11 @@
 			<groupId>com.looksee</groupId>
 			<artifactId>A11yGcp</artifactId>
 		</dependency>
+		<!-- Needed for TraceContextPropagation injection in OutboxEventPublisher (Wave 2.2). -->
+		<dependency>
+			<groupId>com.looksee</groupId>
+			<artifactId>A11yMessaging</artifactId>
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

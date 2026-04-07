@@ -31,6 +31,11 @@
 		<lombok.version>1.18.30</lombok.version>
 		<spring-cloud-gcp.version>3.9.5</spring-cloud-gcp.version>
 		<looksee.version>0.5.0</looksee.version>
+		<!-- Observability stack (Wave 2 of architecture review) -->
+		<micrometer.version>1.10.13</micrometer.version>
+		<opentelemetry.version>1.32.0</opentelemetry.version>
+		<opentelemetry-instrumentation.version>1.32.0-alpha</opentelemetry-instrumentation.version>
+		<logstash-encoder.version>7.4</logstash-encoder.version>
 	</properties>
 
 	<dependencyManagement>
@@ -99,6 +104,55 @@
 				<groupId>com.looksee</groupId>
 				<artifactId>A11yUtils</artifactId>
 				<version>${looksee.version}</version>
+			</dependency>
+
+			<!-- ============================================================
+			     Observability stack (Wave 2 of architecture review)
+			     ============================================================ -->
+			<dependency>
+				<groupId>io.micrometer</groupId>
+				<artifactId>micrometer-core</artifactId>
+				<version>${micrometer.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>io.micrometer</groupId>
+				<artifactId>micrometer-registry-stackdriver</artifactId>
+				<version>${micrometer.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>io.micrometer</groupId>
+				<artifactId>micrometer-registry-prometheus</artifactId>
+				<version>${micrometer.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>io.opentelemetry</groupId>
+				<artifactId>opentelemetry-api</artifactId>
+				<version>${opentelemetry.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>io.opentelemetry</groupId>
+				<artifactId>opentelemetry-sdk</artifactId>
+				<version>${opentelemetry.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>io.opentelemetry</groupId>
+				<artifactId>opentelemetry-context</artifactId>
+				<version>${opentelemetry.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>io.opentelemetry</groupId>
+				<artifactId>opentelemetry-exporter-otlp</artifactId>
+				<version>${opentelemetry.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>io.opentelemetry.instrumentation</groupId>
+				<artifactId>opentelemetry-logback-mdc-1.0</artifactId>
+				<version>${opentelemetry-instrumentation.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>net.logstash.logback</groupId>
+				<artifactId>logstash-logback-encoder</artifactId>
+				<version>${logstash-encoder.version}</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>

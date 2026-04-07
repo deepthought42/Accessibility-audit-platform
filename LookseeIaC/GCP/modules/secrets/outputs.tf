@@ -149,3 +149,29 @@ output "smtp_host_secret_name" {
   description = "The name of the SMTP host secret (empty if not configured)"
   value       = var.smtp_host != "" ? google_secret_manager_secret.smtp_host[0].secret_id : ""
 }
+
+# Wave 5.3 of architecture review.
+output "stripe_secret_key_secret_name" {
+  description = "Name of the Stripe secret key in Secret Manager (empty if not configured)"
+  value       = var.stripe_secret_key != "" ? google_secret_manager_secret.stripe_secret_key[0].secret_id : ""
+}
+
+output "stripe_webhook_secret_secret_name" {
+  description = "Name of the Stripe webhook signing secret in Secret Manager (empty if not configured)"
+  value       = var.stripe_webhook_secret != "" ? google_secret_manager_secret.stripe_webhook_secret[0].secret_id : ""
+}
+
+output "stripe_price_ids_secret_name" {
+  description = "Name of the Stripe price IDs JSON secret in Secret Manager (empty if not configured)"
+  value       = var.stripe_price_ids != "" ? google_secret_manager_secret.stripe_price_ids[0].secret_id : ""
+}
+
+output "segment_write_key_secret_name" {
+  description = "Name of the Segment write key secret in Secret Manager (empty if not configured)"
+  value       = var.segment_write_key != "" ? google_secret_manager_secret.segment_write_key[0].secret_id : ""
+}
+
+output "sendgrid_api_key_secret_name" {
+  description = "Name of the SendGrid API key secret in Secret Manager (empty if not configured)"
+  value       = var.sendgrid_api_key != "" ? google_secret_manager_secret.sendgrid_api_key[0].secret_id : ""
+}

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    This file intentionally delegates almost everything to LookseeCore's
+    shared logback include so all services emit identical structured JSON
+    logs with OpenTelemetry trace_id/span_id MDC keys (Wave 2.3 of the
+    architecture review). Override the root level here if a particular
+    service needs a different verbosity.
+-->
+<configuration>
+    <include resource="looksee-logback-base.xml"/>
+</configuration>

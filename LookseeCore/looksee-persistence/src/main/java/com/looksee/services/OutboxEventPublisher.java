@@ -1,15 +1,19 @@
 package com.looksee.services;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.google.cloud.spring.pubsub.core.PubSubTemplate;
+import com.looksee.messaging.observability.TraceContextPropagation;
 import com.looksee.models.OutboxEvent;
 import com.looksee.models.repository.OutboxEventRepository;
 
@@ -39,7 +43,18 @@ public class OutboxEventPublisher {
         List<OutboxEvent> pendingEvents = outboxEventRepository.findRetryableEvents();
         for (OutboxEvent event : pendingEvents) {
             try {
-                pubSubTemplate.publish(event.getTopic(), event.getPayload()).get();
+                // Inject the active OpenTelemetry trace context as Pub/Sub
+                // message attributes so downstream consumers can stitch the
+                // distributed trace together (Wave 2.2 of the architecture
+                // review). Safe when no span is active: the map is empty.
+                Map<String, String> headers = new HashMap<>();
+                TraceContextPropagation.inject(headers);
+                pubSubTemplate.publish(
+                    event.getTopic(),
+                    MessageBuilder.withPayload(event.getPayload())
+                        .copyHeaders(headers)
+                        .build()
+                ).get();
                 event.setStatus("PROCESSED");
                 event.setProcessedAt(LocalDateTime.now());
                 outboxEventRepository.save(event);

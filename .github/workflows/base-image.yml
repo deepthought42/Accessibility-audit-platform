@@ -1,0 +1,61 @@
+name: Base Image
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'LookseeCore/docker/Dockerfile.base'
+      - 'scripts/download-core.sh'
+      - '.github/workflows/base-image.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'LookseeCore/docker/Dockerfile.base'
+      - 'scripts/download-core.sh'
+      - '.github/workflows/base-image.yml'
+  workflow_dispatch:
+
+# Builds and publishes the shared `looksee-java-base:17` image consumed by
+# every Java service Dockerfile after Wave 3.2 of the architecture review.
+# Service Dockerfiles depend on this image existing on Docker Hub; pushes
+# only happen on master/main, PRs build-and-discard so the build is still
+# verified.
+jobs:
+  base-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build (and push on master)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: LookseeCore/docker/Dockerfile.base
+          target: runtime-base
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            deepthought42/looksee-java-base:17
+            deepthought42/looksee-java-base:latest
+
+      - name: Build build-base stage
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: LookseeCore/docker/Dockerfile.base
+          target: build-base
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            deepthought42/looksee-java-base-build:17
+            deepthought42/looksee-java-base-build:latest
