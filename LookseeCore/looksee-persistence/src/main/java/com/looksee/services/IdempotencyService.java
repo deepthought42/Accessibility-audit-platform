@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import com.looksee.messaging.idempotency.IdempotencyGuard;
 import com.looksee.models.ProcessedMessage;
 import com.looksee.models.repository.ProcessedMessageRepository;
 
@@ -31,7 +32,7 @@ import com.looksee.models.repository.ProcessedMessageRepository;
  * provides adequate coverage with margin).
  */
 @Service
-public class IdempotencyService {
+public class IdempotencyService implements IdempotencyGuard {
     private static final Logger log = LoggerFactory.getLogger(IdempotencyService.class);
     private static final int RETENTION_DAYS = 3;
 
@@ -45,6 +46,7 @@ public class IdempotencyService {
      * @param serviceName the service checking for duplicates
      * @return true if the message was already processed
      */
+    @Override
     public boolean isAlreadyProcessed(String pubsubMessageId, String serviceName) {
         if (processedMessageRepository == null || pubsubMessageId == null || pubsubMessageId.isEmpty()) {
             return false;
@@ -63,6 +65,7 @@ public class IdempotencyService {
      * @param pubsubMessageId the PubSub envelope messageId
      * @param serviceName the service that processed the message
      */
+    @Override
     public void markProcessed(String pubsubMessageId, String serviceName) {
         if (processedMessageRepository == null || pubsubMessageId == null || pubsubMessageId.isEmpty()) {
             return;

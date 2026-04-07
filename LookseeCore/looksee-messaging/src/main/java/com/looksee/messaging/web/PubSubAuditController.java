@@ -12,9 +12,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.looksee.mapper.Body;
+import com.looksee.messaging.idempotency.IdempotencyGuard;
 import com.looksee.messaging.observability.PubSubMetrics;
 import com.looksee.messaging.observability.TraceContextPropagation;
-import com.looksee.services.IdempotencyService;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
@@ -57,7 +57,7 @@ public abstract class PubSubAuditController<T> {
     private static final Logger log = LoggerFactory.getLogger(PubSubAuditController.class);
 
     @Autowired
-    protected IdempotencyService idempotencyService;
+    protected IdempotencyGuard idempotencyService;
 
     @Autowired
     protected ObjectMapper objectMapper;
