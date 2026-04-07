@@ -13,6 +13,62 @@ concurrency:
 
 jobs:
   # ---------------------------------------------------------------------------
+  # Verify every service builds against the same LookseeCore release.
+  # The single source of truth is the repo-root LOOKSEE_CORE_VERSION file.
+  # ---------------------------------------------------------------------------
+  version-consistency:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify LookseeCore version is unified
+        run: |
+          set -euo pipefail
+          if [ ! -f LOOKSEE_CORE_VERSION ]; then
+            echo "LOOKSEE_CORE_VERSION file is missing from the repo root" >&2
+            exit 1
+          fi
+          expected="$(cat LOOKSEE_CORE_VERSION)"
+          echo "Expected LookseeCore version: $expected"
+
+          # 1. No service Dockerfile may bake in a hardcoded LookseeCore version.
+          bad_dockerfile=$(grep -rEn 'libs/core-[0-9]+\.[0-9]+\.[0-9]+\.jar|LOOKSEE_CORE_VERSION=[0-9]' \
+                              --include='Dockerfile' . || true)
+          if [ -n "$bad_dockerfile" ]; then
+            echo "Hardcoded LookseeCore version found in Dockerfile(s):" >&2
+            echo "$bad_dockerfile" >&2
+            exit 1
+          fi
+
+          # 2. Every service pom.xml that pins LookseeCore must match the root file.
+          mismatches=$(grep -rEn '<(looksee-core|core)\.version>([^<]+)</' --include='pom.xml' . \
+                       | grep -v ">${expected}<" || true)
+          if [ -n "$mismatches" ]; then
+            echo "pom.xml files pin a LookseeCore version != $expected:" >&2
+            echo "$mismatches" >&2
+            exit 1
+          fi
+
+          # 3. scripts/download-core.sh must exist and be executable.
+          test -x scripts/download-core.sh || (echo "scripts/download-core.sh missing or not executable" >&2; exit 1)
+
+          echo "OK: LookseeCore version $expected is unified across the monorepo."
+
+      - name: Forbid System.out / System.err in main Java sources
+        run: |
+          set -euo pipefail
+          # Test code is allowed to use println for diagnostics; only enforce on main.
+          hits=$(grep -rEn 'System\.(out|err)\.' \
+                  --include='*.java' \
+                  $(find . -type d -path '*/src/main/java' 2>/dev/null) \
+                  || true)
+          if [ -n "$hits" ]; then
+            echo "System.out/System.err is forbidden in main Java sources. Use SLF4J instead." >&2
+            echo "$hits" >&2
+            exit 1
+          fi
+          echo "OK: no System.out/System.err in main sources."
+
+  # ---------------------------------------------------------------------------
   # Detect which projects changed to skip unnecessary work
   # ---------------------------------------------------------------------------
   changes:

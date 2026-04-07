@@ -1,5 +1,7 @@
 package com.looksee.audit.informationArchitecture.audits;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -35,6 +37,8 @@ import com.looksee.services.PageStateService;
  */
 @Component
 public class ReflowAudit implements IExecutablePageStateAudit {
+    private static final Logger log = LoggerFactory.getLogger(ReflowAudit.class);
+
 
 	@Autowired
 	private AuditService auditService;
@@ -133,7 +137,7 @@ public class ReflowAudit implements IExecutablePageStateAudit {
         String overflow = element.getRenderedCssValues().get("overflow");
 
         if (isFixedWidth(width) && !"visible".equals(overflow)) {
-            System.out.println("Potential reflow issue found in element: " + element.getName() + " with CSS Selector: " + element.getCssSelector());
+            log.info("{}", "Potential reflow issue found in element: " + element.getName() + " with CSS Selector: " + element.getCssSelector());
 
             String description = "Web content doesn't properly adjust to fit within the viewport, causing users to scroll horizontally or lose access to information. This often happens on small screens or when zoomed in, making it difficult for users to read or interact with the content effectively.";
             String wcag_compliance = "WCAG 2.1 Section 1.4.10 - Reflow";

@@ -150,12 +150,12 @@ public class ElementState extends LookseeObject implements Comparable<ElementSta
 	 * Prints the attributes of the element in a prettyish format
 	 */
 	public void printAttributes(){
-		System.out.print("+++++++++++++++++++++++++++++++++++++++");
+		log.info("{}", "+++++++++++++++++++++++++++++++++++++++");
 		for(String attribute : this.attributes.keySet()){
-			System.out.print(attribute + " : ");
-			System.out.print( attributes.get(attribute) + " ");
+			log.info("{}", attribute + " : ");
+			log.info("{}", attributes.get(attribute) + " ");
 		}
-		System.out.print("\n+++++++++++++++++++++++++++++++++++++++");
+		log.info("{}", "\n+++++++++++++++++++++++++++++++++++++++");
 	}
 	
 	/** GETTERS AND SETTERS  **/

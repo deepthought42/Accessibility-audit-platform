@@ -1,30 +1,30 @@
-# Use an official Maven image to build the project
+# syntax=docker/dockerfile:1.6
+# LookseeCore version is supplied at build time via --build-arg.
+# CI reads it from the repo-root LOOKSEE_CORE_VERSION file so every
+# service is guaranteed to ship against the same Core release.
 FROM maven:3.9.6-eclipse-temurin-17 AS build
 
-ARG LOOKSEE_CORE_VERSION=0.3.16
+ARG LOOKSEE_CORE_VERSION
+RUN test -n "${LOOKSEE_CORE_VERSION}" || (echo "LOOKSEE_CORE_VERSION build-arg is required" >&2; exit 1)
 
-# Set the working directory inside the container
 WORKDIR /app
 
-# Copy build metadata and helper scripts first for better layer caching
 COPY pom.xml .
-COPY scripts/download-core.sh ./scripts/download-core.sh
-RUN chmod +x ./scripts/download-core.sh
 
-# Download and install Looksee Core dependency used by this service
-RUN bash ./scripts/download-core.sh "${LOOKSEE_CORE_VERSION}"
-RUN mvn install:install-file     -Dfile="libs/core-${LOOKSEE_CORE_VERSION}.jar"     -DgroupId=com.looksee     -DartifactId=core     -Dversion="${LOOKSEE_CORE_VERSION}"     -Dpackaging=jar
+# Download and install LookseeCore from the GitHub release matching the build-arg.
+RUN curl -fsSL "https://github.com/deepthought42/LookseeCore/releases/download/v${LOOKSEE_CORE_VERSION}/looksee-core-${LOOKSEE_CORE_VERSION}.jar" \
+        -o "/tmp/core-${LOOKSEE_CORE_VERSION}.jar" \
+ && mvn -q install:install-file \
+        -Dfile="/tmp/core-${LOOKSEE_CORE_VERSION}.jar" \
+        -DgroupId=com.looksee \
+        -DartifactId=core \
+        -Dversion="${LOOKSEE_CORE_VERSION}" \
+        -Dpackaging=jar
 
-# Copy source and build the application
 COPY src ./src
-RUN mvn clean install -DskipTests
+RUN mvn -B clean package -DskipTests
 
-# Use a smaller JRE image to run the app
 FROM eclipse-temurin:17-jre
-
-# Copy the built JAR file from the previous stage
-COPY --from=build /app/target/*.jar app.jar
-
+COPY --from=build /app/target/*.jar /app/app.jar
 EXPOSE 8080
-EXPOSE 80
-ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-Xms512M", "-jar", "app.jar"]
+ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-Xms512M","-jar","/app/app.jar"]

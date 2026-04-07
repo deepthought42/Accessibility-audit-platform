@@ -75,7 +75,7 @@ jobs:
         
       - name: Build Docker image
         run: |
-          docker build -t deepthought42/looksee-api:${{ env.VERSION }} .
+          docker build --build-arg LOOKSEE_CORE_VERSION="$(cat ../LOOKSEE_CORE_VERSION)" -t deepthought42/looksee-api:${{ env.VERSION }} .
           docker tag deepthought42/looksee-api:${{ env.VERSION }} deepthought42/looksee-api:latest
 
       - name: Login to DockerHub

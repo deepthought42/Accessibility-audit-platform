@@ -207,10 +207,10 @@ public class ContentUtils {
 	 * @param args the command line arguments
 	 */
 	public static void main(String[] args) {
-		System.out.println(getReadingGradeLevel(90));
-		System.out.println(getReadingDifficultyRating(90));
-		System.out.println(getReadingDifficultyRatingByEducationLevel(90, "HS"));
-		System.out.println(getReadingDifficultyRatingByEducationLevel(90, "College"));
-		System.out.println(getReadingDifficultyRatingByEducationLevel(90, "Advanced"));
+		log.info("{}", getReadingGradeLevel(90));
+		log.info("{}", getReadingDifficultyRating(90));
+		log.info("{}", getReadingDifficultyRatingByEducationLevel(90, "HS"));
+		log.info("{}", getReadingDifficultyRatingByEducationLevel(90, "College"));
+		log.info("{}", getReadingDifficultyRatingByEducationLevel(90, "Advanced"));
 	}
 }

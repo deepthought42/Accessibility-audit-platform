@@ -436,7 +436,7 @@ public class CloudVisionUtils {
 
 			for (AnnotateImageResponse res : responses) {
 				if (res.hasError()) {
-					System.out.format("Error: %s%n", res.getError().getMessage());
+					log.info(String.format("Error: %s%n", res.getError().getMessage()));
 					return color_usage_stats;
 				}
 		
@@ -445,13 +445,12 @@ public class CloudVisionUtils {
 				// For full list of available annotations, see http://g.co/cloud/vision/docs
 				for (ColorInfo color : colors.getColorsList()) {
 					/*
-					System.out.format(
-						"fraction: %f%nr: %f, g: %f, b: %f, score: %f%n",
+					log.info(String.format("fraction: %f%nr: %f, g: %f, b: %f, score: %f%n",
 						color.getPixelFraction(),
 						color.getColor().getRed(),
 						color.getColor().getGreen(),
 						color.getColor().getBlue(),
-						color.getScore());
+						color.getScore()));
 						*/
 					ColorUsageStat color_stat = new ColorUsageStat(color.getColor().getRed(), color.getColor().getGreen(), color.getColor().getBlue(), color.getPixelFraction(), color.getScore());
 					color_usage_stats.add(color_stat);
@@ -499,7 +498,7 @@ public class CloudVisionUtils {
 
 			for (AnnotateImageResponse res : responses) {
 				if (res.hasError()) {
-					System.out.format("Error: %s%n", res.getError().getMessage());
+					log.info(String.format("Error: %s%n", res.getError().getMessage()));
 					return null;
 				}
 

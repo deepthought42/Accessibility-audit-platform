@@ -213,3 +213,32 @@ resource "google_pubsub_topic" "audit_error_topic" {
     }
   }
 }
+
+# ---------------------------------------------------------------------------
+# audit_error monitor subscription
+#
+# Services publish application-level errors to the audit_error topic but no
+# Cloud Run service consumes them, so failed messages were silently dropped
+# once retention expired and there was no alerting on accumulation. This pull
+# subscription gives the topic a single durable consumer (held for 7 days),
+# which lets Cloud Monitoring alert on oldest_unacked_message_age and lets
+# operators inspect failures via `gcloud pubsub subscriptions pull`.
+#
+# When the dedicated dlq-handler service from Wave 1 of the architecture plan
+# lands, this can be converted to a push subscription that targets it.
+# ---------------------------------------------------------------------------
+resource "google_pubsub_subscription" "audit_error_monitor" {
+  name    = "${var.audit_error_topic_name}-monitor"
+  topic   = google_pubsub_topic.audit_error_topic.name
+  project = var.project_id
+  labels  = var.labels
+
+  ack_deadline_seconds       = 60
+  message_retention_duration = "604800s" # 7 days
+  retain_acked_messages      = false
+  enable_message_ordering    = false
+
+  expiration_policy {
+    ttl = "" # never expire
+  }
+}

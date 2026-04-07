@@ -91,3 +91,8 @@ output "audit_error_topic_id" {
   description = "The ID of the AuditError topic"
   value       = google_pubsub_topic.audit_error_topic.id
 }
+
+output "audit_error_monitor_subscription_name" {
+  description = "Pull subscription that retains audit_error messages for triage and alerting"
+  value       = google_pubsub_subscription.audit_error_monitor.name
+}

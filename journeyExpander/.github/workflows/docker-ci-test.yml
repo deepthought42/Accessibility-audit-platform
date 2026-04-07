@@ -50,5 +50,5 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t deepthought42/journey-expander:${{ env.SAFE_TAG }} .
+          docker build --build-arg LOOKSEE_CORE_VERSION="$(cat ../LOOKSEE_CORE_VERSION)" -t deepthought42/journey-expander:${{ env.SAFE_TAG }} .
           docker tag deepthought42/journey-expander:${{ env.SAFE_TAG }} deepthought42/journey-expander:latest

@@ -93,8 +93,8 @@ public class CloudNLPUtils {
 	    
     	Sentiment sentiment = language.analyzeSentiment(doc).getDocumentSentiment();
     	language.shutdown();
-    	System.out.printf("Text: %s%n", text);
-    	System.out.printf("Sentiment: %s, %s%n", sentiment.getScore(), sentiment.getMagnitude());
+    	log.info(String.format("Text: %s%n", text));
+    	log.info(String.format("Sentiment: %s, %s%n", sentiment.getScore(), sentiment.getMagnitude()));
     	return sentiment;
 	}
 	
@@ -117,8 +117,8 @@ public class CloudNLPUtils {
 		
 		List<Entity> entities = language.analyzeEntities(doc).getEntitiesList();
 		language.shutdown();
-		System.out.printf("Text: %s%n", text);
-		System.out.printf("Entities: %n, %s", entities.size(), entities.toString());
+		log.info(String.format("Text: %s%n", text));
+		log.info(String.format("Entities: %n, %s", entities.size(), entities.toString()));
 		return entities;
 	}
 	
@@ -155,22 +155,22 @@ public class CloudNLPUtils {
 		AnalyzeSyntaxResponse response = language.analyzeSyntax(request);
 		
 		for (Token token : response.getTokensList()) {
-			System.out.printf("\tText: %s\n", token.getText().getContent());
-			System.out.printf("\tBeginOffset: %d\n", token.getText().getBeginOffset());
-			System.out.printf("Lemma: %s\n", token.getLemma());
-			System.out.printf("PartOfSpeechTag: %s\n", token.getPartOfSpeech().getTag());
-			System.out.printf("\tAspect: %s\n", token.getPartOfSpeech().getAspect());
-			System.out.printf("\tCase: %s\n", token.getPartOfSpeech().getCase());
-			System.out.printf("\tForm: %s\n", token.getPartOfSpeech().getForm());
-			System.out.printf("\tGender: %s\n", token.getPartOfSpeech().getGender());
-			System.out.printf("\tMood: %s\n", token.getPartOfSpeech().getMood());
-			System.out.printf("\tNumber: %s\n", token.getPartOfSpeech().getNumber());
-			System.out.printf("\tPerson: %s\n", token.getPartOfSpeech().getPerson());
-			System.out.printf("\tProper: %s\n", token.getPartOfSpeech().getProper());
-			System.out.printf("\tReciprocity: %s\n", token.getPartOfSpeech().getReciprocity());
-			System.out.printf("\tTense: %s\n", token.getPartOfSpeech().getTense());
-			System.out.printf("\tVoice: %s\n", token.getPartOfSpeech().getVoice().name());
-			System.out.println("-----------------------------------------------------------------------");
+			log.info(String.format("\tText: %s\n", token.getText().getContent()));
+			log.info(String.format("\tBeginOffset: %d\n", token.getText().getBeginOffset()));
+			log.info(String.format("Lemma: %s\n", token.getLemma()));
+			log.info(String.format("PartOfSpeechTag: %s\n", token.getPartOfSpeech().getTag()));
+			log.info(String.format("\tAspect: %s\n", token.getPartOfSpeech().getAspect()));
+			log.info(String.format("\tCase: %s\n", token.getPartOfSpeech().getCase()));
+			log.info(String.format("\tForm: %s\n", token.getPartOfSpeech().getForm()));
+			log.info(String.format("\tGender: %s\n", token.getPartOfSpeech().getGender()));
+			log.info(String.format("\tMood: %s\n", token.getPartOfSpeech().getMood()));
+			log.info(String.format("\tNumber: %s\n", token.getPartOfSpeech().getNumber()));
+			log.info(String.format("\tPerson: %s\n", token.getPartOfSpeech().getPerson()));
+			log.info(String.format("\tProper: %s\n", token.getPartOfSpeech().getProper()));
+			log.info(String.format("\tReciprocity: %s\n", token.getPartOfSpeech().getReciprocity()));
+			log.info(String.format("\tTense: %s\n", token.getPartOfSpeech().getTense()));
+			log.info(String.format("\tVoice: %s\n", token.getPartOfSpeech().getVoice().name()));
+			log.info("{}", "-----------------------------------------------------------------------");
 		
 			if( !token.getPartOfSpeech().getMood().toString().contains("UNKNOWN") ) {
 				moods.put(token.getPartOfSpeech().getMood().name(), Boolean.TRUE);
