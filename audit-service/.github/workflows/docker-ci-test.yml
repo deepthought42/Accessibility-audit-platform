@@ -47,5 +47,5 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t deepthought42/audit-update-service:${{ env.DOCKER_TAG }} .
+          docker build --build-arg LOOKSEE_CORE_VERSION="$(cat ../LOOKSEE_CORE_VERSION)" -t deepthought42/audit-update-service:${{ env.DOCKER_TAG }} .
           docker tag deepthought42/audit-update-service:${{ env.DOCKER_TAG }} deepthought42/audit-update-service:latest

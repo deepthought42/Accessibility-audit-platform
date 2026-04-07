@@ -1,5 +1,7 @@
 package com.looksee.audit.informationArchitecture.audits;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -43,6 +45,8 @@ import com.looksee.services.ElementStateService;
  */
 @Component
 public class UseOfColorAudit implements IExecutablePageStateAudit {
+    private static final Logger log = LoggerFactory.getLogger(UseOfColorAudit.class);
+
 
 	@Autowired
 	private AuditService auditService;
@@ -215,7 +219,7 @@ public class UseOfColorAudit implements IExecutablePageStateAudit {
         List<GenericIssue> issues = checkCompliance(doc);
 
         for (GenericIssue issue : issues) {
-            System.out.println(issue);
+            log.info("{}", issue);
         }
     }
 }

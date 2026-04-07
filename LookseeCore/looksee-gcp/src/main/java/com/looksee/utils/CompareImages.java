@@ -1,5 +1,7 @@
 package com.looksee.utils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.awt.Image;
 import java.awt.Toolkit;
 import java.awt.image.PixelGrabber;
@@ -10,6 +12,8 @@ import lombok.NoArgsConstructor;
  */
 @NoArgsConstructor
 public class CompareImages {
+    private static final Logger log = LoggerFactory.getLogger(CompareImages.class);
+
 
 	/**
 	 * Compares two images and returns true if they are the same.
@@ -60,7 +64,7 @@ public class CompareImages {
 				image2Data = (int[]) grabImage2Pixels.getPixels();
 			}
 
-			System.out.println("Pixels equal: "
+			log.info("{}", "Pixels equal: "
 					+ java.util.Arrays.equals(image1Data, image2Data));
 			return java.util.Arrays.equals(image1Data, image2Data);
 		} catch (InterruptedException e1) {

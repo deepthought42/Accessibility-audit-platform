@@ -51,6 +51,42 @@ resource "google_cloud_run_service" "service" {
           }
         }
 
+        # ----------------------------------------------------------------
+        # Observability defaults (Wave 2 of architecture review)
+        # Enable Stackdriver metric export and OpenTelemetry tracing for
+        # every service deployed via this module. Sampler ratio is low by
+        # default to keep cost predictable; override per-service via
+        # var.otel_traces_sampler_arg.
+        # ----------------------------------------------------------------
+        env {
+          name  = "MANAGEMENT_METRICS_STACKDRIVER_ENABLED"
+          value = "true"
+        }
+        env {
+          name  = "SPRING_CLOUD_GCP_PROJECT_ID"
+          value = var.project_id
+        }
+        env {
+          name  = "OTEL_SERVICE_NAME"
+          value = var.service_name
+        }
+        env {
+          name  = "OTEL_EXPORTER_OTLP_ENDPOINT"
+          value = var.otel_exporter_otlp_endpoint
+        }
+        env {
+          name  = "OTEL_TRACES_SAMPLER"
+          value = "parentbased_traceidratio"
+        }
+        env {
+          name  = "OTEL_TRACES_SAMPLER_ARG"
+          value = tostring(var.otel_traces_sampler_arg)
+        }
+        env {
+          name  = "OTEL_RESOURCE_ATTRIBUTES"
+          value = "service.name=${var.service_name},deployment.environment=${var.environment}"
+        }
+
         resources {
           limits = {
             memory = var.memory_limit

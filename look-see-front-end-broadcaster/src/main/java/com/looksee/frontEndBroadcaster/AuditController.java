@@ -61,7 +61,7 @@ public class AuditController {
 		ObjectMapper input_mapper = new ObjectMapper();
 		try{
 			PageBuiltMessage page_built_msg = input_mapper.readValue(target, PageBuiltMessage.class);
-			System.out.println("Page Built Message received : "+target);
+			log.info("{}", "Page Built Message received : "+target);
 
 			Optional<PageState> page = page_state_service.findById(page_built_msg.getPageId());
 			if(page.isPresent()){

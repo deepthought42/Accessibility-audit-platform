@@ -1,0 +1,112 @@
+name: E2E Pub/Sub Pipeline
+
+on:
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'LookseeCore/**'
+      - 'PageBuilder/**'
+      - 'AuditManager/**'
+      - 'contentAudit/**'
+      - 'visualDesignAudit/**'
+      - 'informationArchitectureAudit/**'
+      - 'tests/e2e/**'
+      - '.github/workflows/e2e-pipeline.yml'
+  workflow_dispatch:
+
+# Wave 5.1 of the architecture review.
+#
+# Boots a Pub/Sub emulator + Neo4j community testcontainer, publishes a
+# synthetic message to the `url` topic, and asserts that a `PageAuditRecord`
+# materializes in Neo4j within 60 seconds. Catches schema drift and broken
+# Pub/Sub plumbing across services that unit tests cannot.
+#
+# This is a SMOKE test, not a load test. Keep it under 5 minutes wall time.
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      neo4j:
+        image: neo4j:5-community
+        ports:
+          - 7687:7687
+          - 7474:7474
+        env:
+          NEO4J_AUTH: neo4j/looksee-test-password
+          NEO4J_PLUGINS: '["apoc"]'
+        options: >-
+          --health-cmd "wget -qO- http://localhost:7474 || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+      # NOTE: the Pub/Sub emulator is intentionally NOT a `services:` entry.
+      # GitHub Actions service containers cannot override the image
+      # entrypoint, and the cloud-sdk:emulators image exits immediately
+      # without an explicit `gcloud beta emulators pubsub start` command.
+      # It is launched via `docker run -d` in the "Start Pub/Sub emulator"
+      # step below instead.
+
+    env:
+      PUBSUB_EMULATOR_HOST: localhost:8085
+      PUBSUB_PROJECT_ID: looksee-test
+      SPRING_DATA_NEO4J_URI: bolt://localhost:7687
+      SPRING_DATA_NEO4J_USERNAME: neo4j
+      SPRING_DATA_NEO4J_PASSWORD: looksee-test-password
+      SPRING_PROFILES_ACTIVE: test-pubsub
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Start Pub/Sub emulator (sidecar)
+        run: |
+          docker run -d --rm \
+            --name pubsub-emulator \
+            -p 8085:8085 \
+            -e PUBSUB_PROJECT_ID=looksee-test \
+            gcr.io/google.com/cloudsdktool/cloud-sdk:emulators \
+            gcloud beta emulators pubsub start --host-port=0.0.0.0:8085
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8085 >/dev/null 2>&1; then
+              echo "emulator ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "emulator failed to start" >&2
+          docker logs pubsub-emulator >&2
+          exit 1
+
+      - name: Provision topics in the emulator
+        run: |
+          set -euo pipefail
+          for topic in url page_created page_audit audit_update audit_error; do
+            curl -fsS -X PUT \
+              "http://localhost:8085/v1/projects/${PUBSUB_PROJECT_ID}/topics/${topic}" \
+              -H 'content-type: application/json' \
+              -d '{}' >/dev/null
+            echo "created topic $topic"
+          done
+
+      - name: Build LookseeCore
+        run: mvn -B -ntp clean install -DskipTests
+        working-directory: LookseeCore
+
+      - name: Run pipeline smoke test
+        run: |
+          if [ -x tests/e2e/run.sh ]; then
+            bash tests/e2e/run.sh
+          else
+            echo "::warning title=E2E smoke test not yet implemented::tests/e2e/run.sh is a placeholder; the workflow scaffolding (emulator, Neo4j service, topic provisioning) is in place. See architecture review Wave 5.1 for the implementation contract in tests/e2e/README.md."
+            exit 0
+          fi

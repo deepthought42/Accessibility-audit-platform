@@ -68,7 +68,7 @@ jobs:
         
       - name: Build Docker image
         run: |
-          docker build -t deepthought42/journey-expander:${{ env.VERSION }} .
+          docker build --build-arg LOOKSEE_CORE_VERSION="$(cat ../LOOKSEE_CORE_VERSION)" -t deepthought42/journey-expander:${{ env.VERSION }} .
           docker tag deepthought42/journey-expander:${{ env.VERSION }} deepthought42/journey-expander:latest
 
       - name: Login to DockerHub

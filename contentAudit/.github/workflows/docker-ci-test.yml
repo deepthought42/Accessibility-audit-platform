@@ -50,5 +50,5 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t deepthought42/content-audit:${{ steps.docker_tag.outputs.tag }} .
+          docker build --build-arg LOOKSEE_CORE_VERSION="$(cat ../LOOKSEE_CORE_VERSION)" -t deepthought42/content-audit:${{ steps.docker_tag.outputs.tag }} .
           docker tag deepthought42/content-audit:${{ steps.docker_tag.outputs.tag }} deepthought42/content-audit:latest

@@ -1,5 +1,7 @@
 package com.looksee.audit.informationArchitecture.audits;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -41,6 +43,8 @@ import com.looksee.services.ElementStateService;
  */
 @Component
 public class OrientationAudit implements IExecutablePageStateAudit {
+    private static final Logger log = LoggerFactory.getLogger(OrientationAudit.class);
+
 
 	@Autowired
 	private AuditService auditService;
@@ -149,7 +153,7 @@ public class OrientationAudit implements IExecutablePageStateAudit {
 
             // Check for orientation media queries
             if (styleContent.contains("(orientation: portrait)") || styleContent.contains("(orientation: landscape)")) {
-                System.out.println("Warning: Content may restrict its display orientation: " + styleTag);
+                log.info("{}", "Warning: Content may restrict its display orientation: " + styleTag);
                 orientationRestrictionFound = true;
             }
         }
@@ -159,13 +163,13 @@ public class OrientationAudit implements IExecutablePageStateAudit {
         for (Element metaTag : metaTags) {
             String content = metaTag.attr("content");
             if (content.contains("orientation")) {
-                System.out.println("Warning: Viewport meta tag suggests possible orientation restriction: " + metaTag);
+                log.info("{}", "Warning: Viewport meta tag suggests possible orientation restriction: " + metaTag);
                 orientationRestrictionFound = true;
             }
         }
 
         if (!orientationRestrictionFound) {
-            System.out.println("No orientation restrictions detected.");
+            log.info("{}", "No orientation restrictions detected.");
         }
 
         return issues;

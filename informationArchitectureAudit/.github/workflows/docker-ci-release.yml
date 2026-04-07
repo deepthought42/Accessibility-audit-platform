@@ -78,7 +78,7 @@ jobs:
         
       - name: Build Docker image
         run: |
-          docker build -t deepthought42/information-architecture-audit:${{ env.VERSION }} .
+          docker build --build-arg LOOKSEE_CORE_VERSION="$(cat ../LOOKSEE_CORE_VERSION)" -t deepthought42/information-architecture-audit:${{ env.VERSION }} .
           docker tag deepthought42/information-architecture-audit:${{ env.VERSION }} deepthought42/information-architecture-audit:latest
 
       - name: Login to DockerHub

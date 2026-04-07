@@ -16,6 +16,9 @@
 
 package com.looksee.mapper;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -42,6 +45,14 @@ public class Body {
     private String messageId;
     private String publishTime;
     private String data;
+
+    /**
+     * Pub/Sub message attributes. Used as the carrier for W3C trace-context
+     * headers ({@code traceparent}, {@code tracestate}) so that distributed
+     * traces can span the entire audit pipeline. Defaults to an empty map so
+     * downstream code can call {@link Map#get(Object)} without null checks.
+     */
+    private Map<String, String> attributes = new HashMap<>();
 
     /**
      * Creates a new message

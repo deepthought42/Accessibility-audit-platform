@@ -1329,18 +1329,18 @@ public class BrowserUtils {
 		if(con!=null){
 			try {
 					
-				System.out.println("Cipher Suite : " + con.getCipherSuite());
-				System.out.println("\n");
+				log.info("{}", "Cipher Suite : " + con.getCipherSuite());
+				log.info("{}", "\n");
 							
 				Certificate[] certs = con.getServerCertificates();
 				for(Certificate cert : certs){
-					System.out.println("Cert Type : " + cert.getType());
-					System.out.println("Cert Hash Code : " + cert.hashCode());
-					System.out.println("Cert Public Key Algorithm : "
+					log.info("{}", "Cert Type : " + cert.getType());
+					log.info("{}", "Cert Hash Code : " + cert.hashCode());
+					log.info("{}", "Cert Public Key Algorithm : "
 												+ cert.getPublicKey().getAlgorithm());
-					System.out.println("Cert Public Key Format : "
+					log.info("{}", "Cert Public Key Format : "
 												+ cert.getPublicKey().getFormat());
-					System.out.println("\n");
+					log.info("{}", "\n");
 				}
 						
 			} catch (SSLPeerUnverifiedException e) {

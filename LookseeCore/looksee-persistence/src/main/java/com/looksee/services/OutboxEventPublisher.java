@@ -19,6 +19,13 @@ import com.looksee.models.repository.OutboxEventRepository;
  * <p>This implements the Transactional Outbox pattern: services write an
  * OutboxEvent in the same Neo4j transaction as their domain changes, and
  * this publisher asynchronously delivers them to PubSub with retry logic.
+ *
+ * <p>Note on distributed tracing: the outbox publisher runs on a scheduled
+ * background thread, so there is no caller span to propagate as Pub/Sub
+ * message attributes. Wave 2.2 of the architecture review intentionally
+ * leaves trace propagation here as a follow-up; consumers still extract
+ * trace context from any attributes the producer attached, so direct
+ * in-request publishers can be wired up independently of the outbox.
  */
 @Service
 public class OutboxEventPublisher {

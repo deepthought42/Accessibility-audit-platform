@@ -1,0 +1,5 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.looksee.messaging.observability.MessagingObservabilityAutoConfiguration
+
+org.springframework.boot.env.EnvironmentPostProcessor=\
+com.looksee.messaging.observability.LookseeObservabilityEnvironmentPostProcessor
