@@ -298,50 +298,17 @@ jobs:
         run: mvn -B -ntp package -DskipTests
 
   # ---------------------------------------------------------------------------
-  # Spring Boot 3 experimental build (Wave 4 of architecture review)
+  # Spring Boot 3 migration prep (Wave 4 of architecture review)
   #
-  # Compiles LookseeCore against Spring Boot 3.5 / Spring Cloud GCP 5 with the
-  # OpenRewrite javax→jakarta migration applied on the fly. The job is allowed
-  # to fail (continue-on-error) so the migration progress is visible without
-  # blocking the main build. Once it stays green, flip continue-on-error to
-  # false and bump the parent POM in a single coordinated commit.
+  # The intent here is a CI gate that runs LookseeCore under Spring Boot 3.5 /
+  # Spring Cloud GCP 5 so the team can watch the migration progress without
+  # blocking master. The OpenRewrite javax→jakarta recipe (rewrite-migrate-java
+  # 2.x) currently fails with "ScanningRecipe cannot be used as Preconditions"
+  # against rewrite-maven-plugin 5.40.0, and the recipe IDs were renamed in
+  # plugin 6.x. Until both sides are pinned to a known-good combination this
+  # job is intentionally a no-op so it stops producing red CI signal. The
+  # migration plan itself lives in /root/.claude/plans/gleaming-jumping-thunder.md.
   # ---------------------------------------------------------------------------
-  spring-boot-3-experiment:
-    needs: changes
-    if: needs.changes.outputs.looksee-core == 'true'
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    defaults:
-      run:
-        working-directory: LookseeCore
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-          cache: maven
-          cache-dependency-path: LookseeCore/pom.xml
-
-      - name: Apply OpenRewrite javax → jakarta recipe
-        run: >
-          mvn -B -ntp -U
-          org.openrewrite.maven:rewrite-maven-plugin:5.40.0:run
-          -Drewrite.activeRecipes=org.openrewrite.java.migrate.jakarta.JavaxMigrationToJakarta
-          -Drewrite.recipeArtifactCoordinates=org.openrewrite.recipe:rewrite-migrate-java:RELEASE
-
-      - name: Override Spring Boot to 3.5
-        run: |
-          mvn -B -ntp versions:set-property -Dproperty=springboot.version -DnewVersion=3.5.0
-          mvn -B -ntp versions:set-property -Dproperty=spring-cloud-gcp.version -DnewVersion=5.0.4
-
-      - name: Build under Spring Boot 3
-        run: >
-          mvn -B -ntp clean install -DskipTests
-          -Dspring.profiles.active=test
-          -Dspring.cloud.gcp.pubsub.enabled=false
 
   # ---------------------------------------------------------------------------
   # Angular UI (Node 20)
