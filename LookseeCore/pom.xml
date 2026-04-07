@@ -16,6 +16,7 @@
 		<module>looksee-gcp</module>
 		<module>looksee-nlp</module>
 		<module>looksee-utils</module>
+		<module>looksee-llm</module>
 		<module>looksee-core</module>
 	</modules>
 
@@ -103,6 +104,11 @@
 			<dependency>
 				<groupId>com.looksee</groupId>
 				<artifactId>A11yUtils</artifactId>
+				<version>${looksee.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.looksee</groupId>
+				<artifactId>A11yLlm</artifactId>
 				<version>${looksee.version}</version>
 			</dependency>
 
