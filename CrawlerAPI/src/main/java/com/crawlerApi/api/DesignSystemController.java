@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import com.looksee.browsing.Crawler;
+import com.looksee.browser.Crawler;
 import com.looksee.models.designsystem.DesignSystem;
 import com.looksee.services.AuditRecordService;
 import com.looksee.services.AuditService;

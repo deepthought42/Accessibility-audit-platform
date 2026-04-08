@@ -3,7 +3,7 @@ package com.looksee.models.enums;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.looksee.browsing.enums.BrowserType;
+import com.looksee.browser.enums.BrowserType;
 import org.junit.jupiter.api.Test;
 
 class EnumCreateMethodsTest {

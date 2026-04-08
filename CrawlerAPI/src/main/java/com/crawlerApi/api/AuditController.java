@@ -38,7 +38,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import com.crawlerApi.generators.report.GeneratePDFReport;
 import com.crawlerApi.security.SecurityConfig;
 import com.looksee.audits.performance.PerformanceInsight;
-import com.looksee.browsing.Crawler;
+import com.looksee.browser.Crawler;
 import com.looksee.exceptions.MissingSubscriptionException;
 import com.looksee.exceptions.UnknownAccountException;
 import com.looksee.models.Account;

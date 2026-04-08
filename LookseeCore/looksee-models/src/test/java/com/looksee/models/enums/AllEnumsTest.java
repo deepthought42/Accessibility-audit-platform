@@ -2,8 +2,8 @@ package com.looksee.models.enums;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.looksee.browsing.enums.BrowserEnvironment;
-import com.looksee.browsing.enums.BrowserType;
+import com.looksee.browser.enums.BrowserEnvironment;
+import com.looksee.browser.enums.BrowserType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;

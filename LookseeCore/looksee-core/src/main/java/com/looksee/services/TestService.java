@@ -1,6 +1,6 @@
 package com.looksee.services;
 
-import com.looksee.browsing.helpers.BrowserConnectionHelper;
+import com.looksee.browser.helpers.BrowserConnectionHelper;
 import com.looksee.exceptions.PagesAreNotMatchingException;
 import com.looksee.models.ActionOLD;
 import com.looksee.models.Animation;
@@ -14,8 +14,8 @@ import com.looksee.models.PageLoadAnimation;
 import com.looksee.models.PageState;
 import com.looksee.models.Test;
 import com.looksee.models.TestRecord;
-import com.looksee.browsing.enums.BrowserEnvironment;
-import com.looksee.browsing.enums.BrowserType;
+import com.looksee.browser.enums.BrowserEnvironment;
+import com.looksee.browser.enums.BrowserType;
 import com.looksee.models.enums.TestStatus;
 import com.looksee.models.journeys.Redirect;
 import com.looksee.models.repository.GroupRepository;

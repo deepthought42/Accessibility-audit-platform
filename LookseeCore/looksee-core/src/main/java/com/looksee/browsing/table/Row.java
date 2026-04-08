@@ -1,6 +1,6 @@
 package com.looksee.browsing.table;
 
-import com.looksee.browsing.ElementNode;
+import com.looksee.browser.ElementNode;
 import com.looksee.models.Element;
 import java.util.List;
 import lombok.Getter;

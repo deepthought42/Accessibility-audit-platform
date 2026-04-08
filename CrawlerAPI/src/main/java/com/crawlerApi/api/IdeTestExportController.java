@@ -26,7 +26,7 @@ import com.looksee.models.Domain;
 import com.looksee.models.Element;
 import com.looksee.models.PageState;
 import com.looksee.models.Test;
-import com.looksee.browsing.enums.BrowserType;
+import com.looksee.browser.enums.BrowserType;
 import com.looksee.models.repository.AccountRepository;
 import com.looksee.models.repository.TestRepository;
 import com.looksee.services.AccountService;

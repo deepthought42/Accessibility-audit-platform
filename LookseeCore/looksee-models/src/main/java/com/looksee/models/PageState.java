@@ -2,7 +2,7 @@ package com.looksee.models;
 
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.looksee.browsing.enums.BrowserType;
+import com.looksee.browser.enums.BrowserType;
 import com.looksee.utils.HtmlGeneralizer;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;

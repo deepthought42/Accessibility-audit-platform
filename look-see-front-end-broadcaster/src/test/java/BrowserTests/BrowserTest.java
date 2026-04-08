@@ -7,7 +7,7 @@ import org.jsoup.nodes.Document;
 import org.junit.Test;
 
 import com.looksee.services.BrowserService;
-import com.looksee.utils.HtmlUtils;
+import com.looksee.browser.utils.HtmlUtils;
 
 public class BrowserTest {
 	@Test

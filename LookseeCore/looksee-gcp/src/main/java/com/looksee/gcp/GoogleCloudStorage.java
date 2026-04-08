@@ -7,7 +7,7 @@ import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Bucket;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
-import com.looksee.browsing.enums.BrowserType;
+import com.looksee.browser.enums.BrowserType;
 import io.github.resilience4j.retry.annotation.Retry;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
