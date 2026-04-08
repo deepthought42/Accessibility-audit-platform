@@ -6,6 +6,10 @@ import org.junit.jupiter.api.Test;
 import org.openqa.selenium.Dimension;
 import org.openqa.selenium.Point;
 
+import com.looksee.browser.Coordinates;
+import com.looksee.browser.ElementNode;
+import com.looksee.browser.ValueDomain;
+
 /**
  * Unit tests for browsing package classes.
  */
