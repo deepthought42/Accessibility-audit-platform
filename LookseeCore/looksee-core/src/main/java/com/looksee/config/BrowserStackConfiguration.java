@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 
 import com.looksee.browser.config.BrowserStackProperties;
-import com.looksee.browsing.helpers.BrowserConnectionHelper;
+import com.looksee.browser.helpers.BrowserConnectionHelper;
 
 /**
  * Configuration class for BrowserStack integration.

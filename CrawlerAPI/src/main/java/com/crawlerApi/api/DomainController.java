@@ -76,7 +76,7 @@ import com.looksee.models.enums.AuditCategory;
 import com.looksee.models.enums.AuditLevel;
 import com.looksee.models.enums.AuditName;
 import com.looksee.models.enums.AuditSubcategory;
-import com.looksee.browsing.enums.BrowserType;
+import com.looksee.browser.enums.BrowserType;
 import com.looksee.models.enums.ExecutionStatus;
 import com.looksee.models.enums.JourneyStatus;
 import com.looksee.models.enums.ObservationType;

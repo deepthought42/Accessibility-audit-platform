@@ -21,7 +21,7 @@ import com.looksee.models.audit.PageAuditRecord;
 import com.looksee.models.dto.AuditRecordDto;
 import com.looksee.models.enums.AuditLevel;
 import com.looksee.models.enums.AuditName;
-import com.looksee.browsing.enums.BrowserType;
+import com.looksee.browser.enums.BrowserType;
 import com.looksee.models.enums.ExecutionStatus;
 import com.looksee.models.message.AuditStartMessage;
 import com.looksee.services.AccountService;

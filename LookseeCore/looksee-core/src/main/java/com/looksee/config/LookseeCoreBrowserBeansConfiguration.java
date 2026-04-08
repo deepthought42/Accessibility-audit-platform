@@ -3,7 +3,7 @@ package com.looksee.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import com.looksee.browsing.Crawler;
+import com.looksee.browser.Crawler;
 
 /**
  * Spring wiring for plain-Java classes that live in {@code looksee-browser}

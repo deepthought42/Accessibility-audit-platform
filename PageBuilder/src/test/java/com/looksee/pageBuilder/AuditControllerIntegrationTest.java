@@ -26,7 +26,7 @@ import com.looksee.gcp.PubSubPageAuditPublisherImpl;
 import com.looksee.gcp.PubSubPageCreatedPublisherImpl;
 import com.looksee.models.config.JacksonConfig;
 import com.looksee.models.enums.AuditLevel;
-import com.looksee.browsing.enums.BrowserType;
+import com.looksee.browser.enums.BrowserType;
 import com.looksee.models.message.AuditStartMessage;
 import com.looksee.services.AuditRecordService;
 import com.looksee.services.BrowserService;

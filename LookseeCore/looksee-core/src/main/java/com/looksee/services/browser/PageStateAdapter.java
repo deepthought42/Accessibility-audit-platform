@@ -1,13 +1,13 @@
 package com.looksee.services.browser;
 
 import com.looksee.browser.Browser;
-import com.looksee.browsing.enums.BrowserType;
+import com.looksee.browser.enums.BrowserType;
 import com.looksee.exceptions.ServiceUnavailableException;
 import com.looksee.gcp.GoogleCloudStorage;
 import com.looksee.models.PageState;
 import com.looksee.services.BrowserService;
 import com.looksee.utils.BrowserUtils;
-import com.looksee.utils.HtmlUtils;
+import com.looksee.browser.utils.HtmlUtils;
 import com.looksee.utils.ImageUtils;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
