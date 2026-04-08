@@ -17,7 +17,7 @@ import org.openqa.selenium.Dimension;
 import org.openqa.selenium.Point;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import com.looksee.models.Browser;
+import com.looksee.browser.Browser;
 import com.looksee.models.enums.TemplateType;
 import com.looksee.services.BrowserService;
 import com.looksee.utils.ImageUtils;

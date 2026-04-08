@@ -17,7 +17,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 
-import com.looksee.models.Browser;
+import com.looksee.browser.Browser;
 import com.looksee.browsing.helpers.BrowserConnectionHelper;
 import com.looksee.browsing.enums.BrowserEnvironment;
 import com.looksee.browsing.enums.BrowserType;
