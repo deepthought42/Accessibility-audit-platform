@@ -6,26 +6,37 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 
+import com.looksee.browser.config.BrowserStackProperties;
 import com.looksee.browsing.helpers.BrowserConnectionHelper;
 
 /**
  * Configuration class for BrowserStack integration.
- * Only created when browserstack.access-key property is configured.
+ * Only created when {@code browserstack.access-key} property is configured.
  *
- * When active, BrowserStack is used instead of the default Selenium and Appium URL-based connections.
+ * <p>When active, BrowserStack is used instead of the default Selenium and
+ * Appium URL-based connections.
  *
- * This configuration uses BrowserStackProperties to load values from either:
- * - application.properties: browserstack.access-key, browserstack.username, etc.
- * - Environment variables: BROWSERSTACK_ACCESS_KEY, BROWSERSTACK_USERNAME, etc.
+ * <p>This is the Spring wiring layer for the plain-Java
+ * {@link BrowserStackProperties} POJO that lives in {@code looksee-browser}.
+ * The POJO has no Spring annotations; this class binds it via a method-level
+ * {@code @ConfigurationProperties} on the {@link #browserStackProperties()}
+ * bean.
+ *
+ * <p>Properties are loaded from either:
+ * <ul>
+ *   <li>{@code application.properties}: {@code browserstack.access-key},
+ *       {@code browserstack.username}, etc.</li>
+ *   <li>Environment variables: {@code BROWSERSTACK_ACCESS_KEY},
+ *       {@code BROWSERSTACK_USERNAME}, etc.</li>
+ * </ul>
  */
 @Configuration
-@EnableConfigurationProperties({BrowserStackProperties.class})
 @ConditionalOnProperty(name = "browserstack.access-key")
 public class BrowserStackConfiguration {
 
@@ -38,6 +49,19 @@ public class BrowserStackConfiguration {
     public BrowserStackConfiguration(BrowserStackProperties browserStackProperties) {
         this.browserStackProperties = browserStackProperties;
         log.info("BrowserStackConfiguration loaded for user: {}", browserStackProperties.getUsername());
+    }
+
+    /**
+     * Binds {@code browserstack.*} properties onto a plain-Java
+     * {@link BrowserStackProperties} POJO. Declared {@code static} so Spring
+     * can call it before instantiating the enclosing {@code @Configuration}.
+     *
+     * @return a new {@link BrowserStackProperties} that Spring will populate
+     */
+    @Bean
+    @ConfigurationProperties(prefix = "browserstack")
+    public static BrowserStackProperties browserStackProperties() {
+        return new BrowserStackProperties();
     }
 
     @PostConstruct
