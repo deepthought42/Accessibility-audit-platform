@@ -2,7 +2,7 @@ package com.looksee.services;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.looksee.models.Browser;
+import com.looksee.browser.Browser;
 import com.looksee.models.enums.TemplateType;
 import com.looksee.services.BrowserService;
 import com.looksee.utils.HtmlGeneralizer;

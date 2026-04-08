@@ -7,7 +7,10 @@ import com.looksee.exceptions.ServiceUnavailableException;
 import com.looksee.gcp.CloudVisionUtils;
 import com.looksee.gcp.GoogleCloudStorage;
 import com.looksee.gcp.ImageSafeSearchAnnotation;
-import com.looksee.models.Browser;
+import com.looksee.browser.Browser;
+import com.looksee.services.browser.ElementStateAdapter;
+import com.looksee.services.browser.ImageElementStateAdapter;
+import com.looksee.services.browser.PageStateAdapter;
 import com.looksee.models.Domain;
 import com.looksee.utils.CssUtils;
 import com.looksee.utils.HtmlUtils;
@@ -107,6 +110,9 @@ public class BrowserService {
 	@Autowired
 	private ElementRuleExtractor extractor;
 
+	@Autowired
+	private PageStateAdapter pageStateAdapter;
+
 	/**
 	 * Retrieves a new browser connection
 	 *
@@ -162,37 +168,16 @@ public class BrowserService {
 			Dimension element_size,
 			Point element_location
 	) throws IOException{
-		assert xpath != null && !xpath.isEmpty();
-		assert attributes != null;
-		assert element != null;
-		assert classification != null;
-		assert rendered_css_values != null;
-		
-		String foreground_color = rendered_css_values.get("color");
-		if(foreground_color == null || foreground_color.trim().isEmpty()) {
-			foreground_color = "rgb(0,0,0)";
-		}
-		
-		ElementState element_state = new ElementState(
-											element.ownText().trim(),
-											element.text(),
-											xpath,
-											element.tagName(),
-											attributes,
-											rendered_css_values,
-											screenshot_url,
-											element_location.getX(),
-											element_location.getY(),
-											element_size.getWidth(),
-											element_size.getHeight(),
-											classification,
-											element.outerHtml(),
-											css_selector,
-											foreground_color,
-											rendered_css_values.get("background-color"),
-											false);
-		
-		return element_state;
+		return ElementStateAdapter.toElementState(
+				xpath,
+				attributes,
+				element,
+				classification,
+				rendered_css_values,
+				screenshot_url,
+				css_selector,
+				element_size,
+				element_location);
 	}
 
 	/**
@@ -232,50 +217,21 @@ public class BrowserService {
 			Dimension element_size,
 			Point element_location
 	) throws IOException{
-		assert xpath != null && !xpath.isEmpty();
-		assert attributes != null;
-		assert element != null;
-		assert classification != null;
-		assert rendered_css_values != null;
-		
-		String foreground_color = rendered_css_values.get("color");
-		if(foreground_color == null || foreground_color.trim().isEmpty()) {
-			foreground_color = "rgb(0,0,0)";
-		}
-		
-		String background_color = rendered_css_values.get("background-color");
-		if(background_color == null) {
-			background_color = "rgb(255,255,255)";
-		}
-		
-		String own_text = "";
-		if(element != null && element.ownText() != null){
-			own_text = element.ownText().trim();
-		}
-		ElementState element_state = new ImageElementState(
-													own_text,
-													element.text(),
-													xpath,
-													element.tagName(),
-													attributes,
-													rendered_css_values, 
-													screenshot_url, 
-													element_location.getX(), 
-													element_location.getY(), 
-													element_size.getWidth(), 
-													element_size.getHeight(), 
-													classification,
-													element.outerHtml(),
-													css_selector, 
-													foreground_color,
-													background_color,
-													landmark_info_set,
-													faces,
-													image_search_set,
-													logos,
-													labels);
-		
-		return element_state;
+		return ImageElementStateAdapter.toImageElementState(
+				xpath,
+				attributes,
+				element,
+				classification,
+				rendered_css_values,
+				screenshot_url,
+				css_selector,
+				landmark_info_set,
+				faces,
+				image_search_set,
+				logos,
+				labels,
+				element_size,
+				element_location);
 	}
 	
 	/**
@@ -384,74 +340,7 @@ public class BrowserService {
 													IOException,
 													NullPointerException
 	{
-		assert browser != null;
-		assert url != null;
-		
-		browser.navigateTo(url.toString());
-		browser.removeDriftChat();
-		
-		URL current_url = new URL(browser.getDriver().getCurrentUrl());
-		String url_without_protocol = BrowserUtils.getPageUrl(current_url.toString());
-		log.warn("building page state for URL :: "+current_url);
-
-		boolean is_secure = BrowserUtils.checkIfSecure(current_url);
-        int status_code = BrowserUtils.getHttpStatus(current_url);
-
-        //scroll to bottom then back to top to make sure all elements that may be hidden until the page is scrolled
-		String source = HtmlUtils.cleanSrc(browser.getDriver().getPageSource());
-
-		if(HtmlUtils.is503Error(source)) {
-			browser.close();
-			throw new ServiceUnavailableException("503(Service Unavailable) Error encountered.");
-		}
-		Document html_doc = Jsoup.parse(source);
-		Set<String> metadata = BrowserService.extractMetadata(html_doc);
-		Set<String> stylesheets = BrowserService.extractStylesheets(html_doc);
-		Set<String> script_urls =  BrowserService.extractScriptUrls(html_doc);
-		Set<String> fav_icon_links = BrowserService.extractIconLinks(html_doc);
-
-		String title = browser.getDriver().getTitle();
-
-		BufferedImage viewport_screenshot = browser.getViewportScreenshot();
-		String screenshot_checksum = ImageUtils.getChecksum(viewport_screenshot);
-		String viewport_screenshot_url = googleCloudStorage.saveImage(viewport_screenshot,
-																		current_url.getHost(),
-																		screenshot_checksum,
-																		BrowserType.create(browser.getBrowserName()));
-		viewport_screenshot.flush();
-		
-		BufferedImage full_page_screenshot = browser.getFullPageScreenshotShutterbug();
-		String full_page_screenshot_checksum = ImageUtils.getChecksum(full_page_screenshot);
-		String full_page_screenshot_url = googleCloudStorage.saveImage(full_page_screenshot,
-																		current_url.getHost(),
-																		full_page_screenshot_checksum,
-																		BrowserType.create(browser.getBrowserName()));
-		full_page_screenshot.flush();
-		
-		long x_offset = browser.getXScrollOffset();
-		long y_offset = browser.getYScrollOffset();
-		Dimension size = browser.getDriver().manage().window().getSize();
-		
-		return new PageState(viewport_screenshot_url,
-							source,
-							x_offset,
-							y_offset,
-							size.getWidth(),
-							size.getHeight(),
-							BrowserType.CHROME,
-							full_page_screenshot_url,
-							full_page_screenshot.getWidth(),
-							full_page_screenshot.getHeight(),
-							url_without_protocol,
-							title,
-							is_secure,
-							status_code,
-							current_url.toString(),
-							audit_record_id,
-							metadata,
-							stylesheets,
-							script_urls,
-							fav_icon_links);
+		return pageStateAdapter.toPageState(url, browser, isSecure, httpStatus, audit_record_id);
 	}
 	
 	/**
@@ -2179,41 +2068,15 @@ public class BrowserService {
 			String screenshot_url,
 			String css_selector
 	) throws IOException{
-		assert xpath != null && !xpath.isEmpty();
-		assert attributes != null;
-		assert element != null;
-		assert classification != null;
-		assert rendered_css_values != null;
-		assert screenshot_url != null;
-		
-		Point location = web_elem.getLocation();
-		Dimension dimension = web_elem.getSize();
-		
-		String foreground_color = rendered_css_values.get("color");
-		if(foreground_color == null || foreground_color.trim().isEmpty()) {
-			foreground_color = "rgb(0,0,0)";
-		}
-		
-		ElementState element_state = new ElementState(
-											element.ownText().trim(),
-											element.text(),
-											xpath,
-											element.tagName(),
-											attributes,
-											rendered_css_values,
-											screenshot_url,
-											location.getX(),
-											location.getY(),
-											dimension.getWidth(),
-											dimension.getHeight(),
-											classification,
-											element.outerHtml(),
-											css_selector,
-											foreground_color,
-											rendered_css_values.get("background-color"),
-											false);
-		
-		return element_state;
+		return ElementStateAdapter.toElementState(
+				xpath,
+				attributes,
+				element,
+				web_elem,
+				classification,
+				rendered_css_values,
+				screenshot_url,
+				css_selector);
 	}
 	
 	/**
@@ -2262,60 +2125,21 @@ public class BrowserService {
 			Set<Label> labels,
 			ImageSafeSearchAnnotation safe_search_annotation
 	) throws IOException{
-		assert xpath != null && !xpath.isEmpty();
-		assert attributes != null;
-		assert element != null;
-		assert classification != null;
-		assert rendered_css_values != null;
-		assert screenshot_url != null;
-		
-		Point location = web_elem.getLocation();
-		Dimension dimension = web_elem.getSize();
-		
-		String foreground_color = rendered_css_values.get("color");
-		if(foreground_color == null || foreground_color.trim().isEmpty()) {
-			foreground_color = "rgb(0,0,0)";
-		}
-		
-		String background_color = rendered_css_values.get("background-color");
-		if(background_color == null) {
-			background_color = "rgb(255,255,255)";
-		}
-		
-		// Convert gcp annotation to models annotation for ImageElementState constructor
-			com.looksee.models.ImageSafeSearchAnnotation models_ssa = new com.looksee.models.ImageSafeSearchAnnotation(
-				safe_search_annotation.getSpoof(),
-				safe_search_annotation.getMedical(),
-				safe_search_annotation.getAdult(),
-				safe_search_annotation.getViolence(),
-				safe_search_annotation.getRacy()
-			);
-
-			ElementState element_state = new ImageElementState(
-													element.ownText().trim(),
-													element.text(),
-													xpath,
-													element.tagName(),
-													attributes,
-													rendered_css_values,
-													screenshot_url,
-													location.getX(),
-													location.getY(),
-													dimension.getWidth(),
-													dimension.getHeight(),
-													classification,
-													element.outerHtml(),
-													css_selector,
-													foreground_color,
-													background_color,
-													landmark_info_set,
-													faces,
-													image_search_set,
-													logos,
-													labels,
-													models_ssa);
-
-		return element_state;
+		return ImageElementStateAdapter.toImageElementState(
+				xpath,
+				attributes,
+				element,
+				web_elem,
+				classification,
+				rendered_css_values,
+				screenshot_url,
+				css_selector,
+				landmark_info_set,
+				faces,
+				image_search_set,
+				logos,
+				labels,
+				safe_search_annotation);
 	}
 
 	/**
@@ -2904,81 +2728,7 @@ public class BrowserService {
 	 * precondition: browser != null
 	 */
 	public PageState buildPageState( Browser browser, long audit_record_id, String browser_url) throws WebDriverException, IOException {
-		assert browser != null;
-		assert browser_url != null;
-		assert !browser_url.isEmpty();
-
-		//remove 3rd party chat apps such as drift, and ...(NB: fill in as more identified)
-		
-		URL current_url = new URL(browser_url);
-		int status_code = BrowserUtils.getHttpStatus(current_url);
-		String url_without_protocol = BrowserUtils.getPageUrl(current_url.toString());
-		browser.removeDriftChat();
-		browser.removeGDPRmodals();
-		boolean is_secure = BrowserUtils.checkIfSecure(current_url);
-
-		String source = HtmlUtils.cleanSrc(browser.getDriver().getPageSource());
-		
-		if(HtmlUtils.is503Error(source)) {
-			throw new ServiceUnavailableException("503(Service Unavailable) Error encountered. Starting over..");
-		}
-		
-		Document html_doc = Jsoup.parse(source);
-		Set<String> metadata = BrowserService.extractMetadata(html_doc);
-		Set<String> stylesheets = BrowserService.extractStylesheets(html_doc);
-		Set<String> script_urls =  BrowserService.extractScriptUrls(html_doc);
-		Set<String> fav_icon_links = BrowserService.extractIconLinks(html_doc);
-		//PageState page_record = retrievePageFromDB(audit_record_id, url_without_protocol, source, BrowserType.CHROME);
-		//if(page_record != null){
-		//	return page_record;
-		//}
-		
-        //scroll to bottom then back to top to make sure all elements that may be hidden until the page is scrolled
-		String title = browser.getDriver().getTitle();
-
-		BufferedImage viewport_screenshot = browser.getViewportScreenshot();
-		String screenshot_checksum = ImageUtils.getChecksum(viewport_screenshot);
-
-		BufferedImage full_page_screenshot = browser.getFullPageScreenshotShutterbug();
-		String full_page_screenshot_checksum = ImageUtils.getChecksum(full_page_screenshot);
-		
-		String viewport_screenshot_url = googleCloudStorage.saveImage(viewport_screenshot,
-																	current_url.getHost(),
-																	screenshot_checksum,
-																	BrowserType.create(browser.getBrowserName()));
-		viewport_screenshot.flush();
-
-		String full_page_screenshot_url = googleCloudStorage.saveImage(full_page_screenshot,
-																	current_url.getHost(),
-																	full_page_screenshot_checksum,
-																	BrowserType.create(browser.getBrowserName()));
-		full_page_screenshot.flush();
-		
-		long x_offset = browser.getXScrollOffset();
-		long y_offset = browser.getYScrollOffset();
-		Dimension size = browser.getDriver().manage().window().getSize();
-		
-		return new PageState(
-							viewport_screenshot_url,
-							source,
-							x_offset,
-							y_offset,
-							size.getWidth(),
-							size.getHeight(),
-							BrowserType.CHROME,
-							full_page_screenshot_url,
-							full_page_screenshot.getWidth(),
-							full_page_screenshot.getHeight(),
-							url_without_protocol,
-							title,
-							is_secure,
-							status_code,
-							current_url.toString(),
-							audit_record_id,
-							metadata,
-							stylesheets,
-							script_urls,
-							fav_icon_links);
+		return pageStateAdapter.toPageState(browser, audit_record_id, browser_url);
 	}
 	
 

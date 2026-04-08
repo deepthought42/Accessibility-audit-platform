@@ -1,7 +1,7 @@
 package com.looksee.services;
 
 import com.looksee.browsing.ActionFactory;
-import com.looksee.models.Browser;
+import com.looksee.browser.Browser;
 import com.looksee.models.ElementState;
 import com.looksee.models.PageState;
 import com.looksee.models.enums.Action;

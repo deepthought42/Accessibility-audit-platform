@@ -35,7 +35,7 @@ import com.looksee.gcp.PubSubDiscardedJourneyPublisherImpl;
 import com.looksee.gcp.PubSubJourneyVerifiedPublisherImpl;
 import com.looksee.gcp.PubSubPageBuiltPublisherImpl;
 import com.looksee.mapper.Body;
-import com.looksee.models.Browser;
+import com.looksee.browser.Browser;
 import com.looksee.models.Domain;
 import com.looksee.models.ElementState;
 import com.looksee.models.PageState;

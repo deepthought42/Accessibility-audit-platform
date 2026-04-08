@@ -29,7 +29,7 @@ import com.looksee.pageBuilder.gcp.PubSubJourneyVerifiedPublisherImpl;
 import com.looksee.pageBuilder.gcp.PubSubPageAuditPublisherImpl;
 import com.looksee.pageBuilder.gcp.PubSubPageCreatedPublisherImpl;
 import com.looksee.mapper.Body;
-import com.looksee.models.Browser;
+import com.looksee.browser.Browser;
 import com.looksee.models.ElementState;
 import com.looksee.models.PageState;
 import com.looksee.browsing.enums.BrowserEnvironment;

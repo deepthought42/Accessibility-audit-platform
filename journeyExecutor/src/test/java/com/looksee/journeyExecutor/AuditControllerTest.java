@@ -18,7 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import com.looksee.mapper.Body;
-import com.looksee.models.Browser;
+import com.looksee.browser.Browser;
 import com.looksee.models.journeys.Step;
 import com.looksee.services.IdempotencyService;
 import com.looksee.services.StepExecutor;

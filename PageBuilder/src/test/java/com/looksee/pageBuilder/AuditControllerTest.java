@@ -23,7 +23,7 @@ import com.looksee.gcp.PubSubErrorPublisherImpl;
 import com.looksee.gcp.PubSubJourneyVerifiedPublisherImpl;
 import com.looksee.gcp.PubSubPageAuditPublisherImpl;
 import com.looksee.gcp.PubSubPageCreatedPublisherImpl;
-import com.looksee.models.Browser;
+import com.looksee.browser.Browser;
 import com.looksee.models.PageState;
 import com.looksee.browsing.enums.BrowserEnvironment;
 import com.looksee.browsing.enums.BrowserType;

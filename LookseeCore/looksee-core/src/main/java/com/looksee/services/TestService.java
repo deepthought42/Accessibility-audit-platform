@@ -4,7 +4,7 @@ import com.looksee.browsing.helpers.BrowserConnectionHelper;
 import com.looksee.exceptions.PagesAreNotMatchingException;
 import com.looksee.models.ActionOLD;
 import com.looksee.models.Animation;
-import com.looksee.models.Browser;
+import com.looksee.browser.Browser;
 import com.looksee.models.Domain;
 import com.looksee.models.Element;
 import com.looksee.models.ElementState;
