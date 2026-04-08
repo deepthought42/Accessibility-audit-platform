@@ -4,7 +4,7 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.looksee.gcp.GoogleCloudStorage;
 import com.looksee.gcp.GoogleCloudStorageProperties;
-import com.looksee.models.Browser;
+import com.looksee.browser.Browser;
 import com.looksee.models.ColorData;
 import com.looksee.models.Domain;
 import com.looksee.models.ElementState;

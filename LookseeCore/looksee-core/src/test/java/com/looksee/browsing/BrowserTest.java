@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.looksee.browsing.helpers.BrowserConnectionHelper;
-import com.looksee.models.Browser;
+import com.looksee.browser.Browser;
 import com.looksee.browsing.enums.BrowserEnvironment;
 import com.looksee.browsing.enums.BrowserType;
 import com.looksee.services.BrowserService;
