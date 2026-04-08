@@ -6,20 +6,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 
+import com.looksee.browser.config.AppiumProperties;
 import com.looksee.browsing.helpers.BrowserConnectionHelper;
 
 /**
  * Configuration class for Appium mobile WebDriver settings.
- * Only created when appium.urls property is configured.
+ * Only created when {@code appium.urls} property is configured.
+ *
+ * <p>This is the Spring wiring layer for the plain-Java
+ * {@link AppiumProperties} POJO that lives in {@code looksee-browser}.
+ * The POJO has no Spring annotations; this class binds it via a method-level
+ * {@code @ConfigurationProperties} on the {@link #appiumProperties()} bean.
  */
 @Configuration
-@EnableConfigurationProperties({AppiumProperties.class})
 @ConditionalOnProperty(name = "appium.urls")
 public class AppiumConfiguration {
 
@@ -30,6 +35,19 @@ public class AppiumConfiguration {
     public AppiumConfiguration(AppiumProperties appiumProperties) {
         this.appiumProperties = appiumProperties;
         log.info("AppiumConfiguration loaded with URLs: {}", appiumProperties.getUrls());
+    }
+
+    /**
+     * Binds {@code appium.*} properties onto a plain-Java
+     * {@link AppiumProperties} POJO. Declared {@code static} so Spring can
+     * call it before instantiating the enclosing {@code @Configuration}.
+     *
+     * @return a new {@link AppiumProperties} that Spring will populate
+     */
+    @Bean
+    @ConfigurationProperties(prefix = "appium")
+    public static AppiumProperties appiumProperties() {
+        return new AppiumProperties();
     }
 
     @PostConstruct

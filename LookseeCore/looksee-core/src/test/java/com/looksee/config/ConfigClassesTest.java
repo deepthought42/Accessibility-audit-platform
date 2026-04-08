@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
 
+import com.looksee.browser.config.SeleniumProperties;
+
 /**
  * Unit tests for configuration property classes.
  */
@@ -66,10 +68,16 @@ class ConfigClassesTest {
         assertFalse(props.isEncrypted());
     }
 
-    // ===== SeleniumProperties (immutable, constructor-bound) =====
+    // ===== SeleniumProperties (plain POJO, setter-bound) =====
     @Test
-    void seleniumPropertiesAllArgs() {
-        SeleniumProperties props = new SeleniumProperties("http://hub:4444/wd/hub", 30000, 3, true, 10000);
+    void seleniumPropertiesSetters() {
+        SeleniumProperties props = new SeleniumProperties();
+        props.setUrls("http://hub:4444/wd/hub");
+        props.setConnectionTimeout(30000);
+        props.setMaxRetries(3);
+        props.setImplicitWaitEnabled(true);
+        props.setImplicitWaitTimeout(10000);
+
         assertEquals("http://hub:4444/wd/hub", props.getUrls());
         assertEquals(30000, props.getConnectionTimeout());
         assertEquals(3, props.getMaxRetries());
@@ -78,8 +86,10 @@ class ConfigClassesTest {
     }
 
     @Test
-    void seleniumPropertiesNullDefaults() {
-        SeleniumProperties props = new SeleniumProperties("http://hub:4444", null, null, null, null);
+    void seleniumPropertiesDefaults() {
+        SeleniumProperties props = new SeleniumProperties();
+        props.setUrls("http://hub:4444");
+
         assertEquals("http://hub:4444", props.getUrls());
         assertEquals(30000, props.getConnectionTimeout());
         assertEquals(3, props.getMaxRetries());
@@ -89,7 +99,8 @@ class ConfigClassesTest {
 
     @Test
     void seleniumPropertiesGetUrlsArray() {
-        SeleniumProperties props = new SeleniumProperties("http://a,http://b", null, null, null, null);
+        SeleniumProperties props = new SeleniumProperties();
+        props.setUrls("http://a,http://b");
         String[] urls = props.getUrlsArray();
         assertEquals(2, urls.length);
         assertEquals("http://a", urls[0]);
@@ -98,7 +109,7 @@ class ConfigClassesTest {
 
     @Test
     void seleniumPropertiesGetUrlsArrayNull() {
-        SeleniumProperties props = new SeleniumProperties(null, null, null, null, null);
+        SeleniumProperties props = new SeleniumProperties();
         String[] urls = props.getUrlsArray();
         assertEquals(0, urls.length);
     }
