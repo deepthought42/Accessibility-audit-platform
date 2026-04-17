@@ -38,11 +38,11 @@ export class LookseeEmptyStateComponent {
   @Output() primaryActivated = new EventEmitter<void>();
   @Output() secondaryActivated = new EventEmitter<void>();
 
-  /** Illustration paths map to existing assets in src/assets/. */
+  /** Illustration paths map to existing assets in src/assets/illustrations/. */
   get illustrationSrc(): string {
-    const base = 'assets/';
+    const base = 'assets/illustrations/';
     switch (this.illustration) {
-      case 'audits':  return `${base}audit_website.jpg`;
+      case 'audits':  return `${base}Audit_website.jpg`;
       case 'sites':   return `${base}look-see_target_check.png`;
       case 'issues':  return `${base}review_audit.png`;
       case 'search':  return `${base}look-see_target_check.png`;
