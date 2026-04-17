@@ -1,0 +1,27 @@
+<button
+  [type]="type"
+  [class]="rootClasses.join(' ')"
+  [disabled]="disabled || loading"
+  [attr.aria-label]="ariaLabel || null"
+  [attr.aria-busy]="loading ? 'true' : null"
+  (click)="onClick($event)"
+>
+  <span class="looksee-btn__inner" [class.is-hidden]="loading">
+    <fa-icon
+      *ngIf="leadingIcon && !loading"
+      [icon]="leadingIcon"
+      class="looksee-btn__icon looksee-btn__icon--leading"
+      aria-hidden="true"
+    ></fa-icon>
+    <span class="looksee-btn__label"><ng-content></ng-content></span>
+    <fa-icon
+      *ngIf="trailingIcon && !loading"
+      [icon]="trailingIcon"
+      class="looksee-btn__icon looksee-btn__icon--trailing"
+      aria-hidden="true"
+    ></fa-icon>
+  </span>
+  <span class="looksee-btn__spinner" *ngIf="loading" aria-hidden="true">
+    <fa-icon [icon]="faSpinner" [spin]="true"></fa-icon>
+  </span>
+</button>

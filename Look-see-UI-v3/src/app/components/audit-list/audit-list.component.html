@@ -1,43 +1,32 @@
-<!-- Empty state -->
-<div class="flex flex-col items-center justify-center py-16 px-6" *ngIf="!audit_records && !is_loading_audits">
-    <div class="w-16 h-16 rounded-2xl bg-brand-50 flex items-center justify-center mb-4">
-        <fa-icon [icon]="faMagnifyingGlass" class="text-brand-500 text-2xl"></fa-icon>
-    </div>
-    <h1 class="text-xl font-semibold text-gray-900 mb-2">
-        No audits yet
-    </h1>
-    <p class="text-sm text-gray-500 text-center max-w-md">
-        Enter a website URL above to run your first UX audit. We'll analyze accessibility, content quality, and visual design.
-    </p>
-</div>
-
 <!-- Audit form -->
 <app-audit-form (auditRecordData)="addItem($event)"></app-audit-form>
 
 <!-- Audit table -->
 <div class="px-6 pb-6">
+    <!-- Loading state (skeleton rows) -->
+    <div *ngIf="is_loading_audits" class="mt-4">
+        <looksee-skeleton variant="row" [rows]="4"></looksee-skeleton>
+    </div>
+
+    <!-- Empty state (no records, not loading) -->
+    <looksee-empty-state
+        *ngIf="!is_loading_audits && audit_records.length === 0"
+        illustration="audits"
+        title="Run your first audit."
+        body="Paste a URL above — we'll check accessibility, content quality, and visual design, and rank every issue by impact."
+        [compact]="true">
+    </looksee-empty-state>
+
     <!-- Table header -->
-    <div class="grid grid-cols-12 gap-4 px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+    <div *ngIf="!is_loading_audits && audit_records.length > 0"
+         class="grid grid-cols-12 gap-4 px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
         <div class="col-span-4">URL</div>
-        <div class="col-span-2 text-center">Type</div>
+        <div class="col-span-1 text-center">Status</div>
+        <div class="col-span-1 text-center">Type</div>
         <div class="col-span-2 text-center">Content</div>
         <div class="col-span-2 text-center">Info Architecture</div>
         <div class="col-span-1 text-center">Aesthetic</div>
         <div class="col-span-1"></div>
-    </div>
-
-    <!-- Loading state -->
-    <div *ngIf="is_loading_audits" class="space-y-3 mt-2">
-        <div class="card px-5 py-4 animate-pulse" *ngFor="let i of [1,2,3]">
-            <div class="grid grid-cols-12 gap-4 items-center">
-                <div class="col-span-4"><div class="h-4 bg-gray-200 rounded w-3/4"></div></div>
-                <div class="col-span-2"><div class="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div></div>
-                <div class="col-span-2"><div class="h-4 bg-gray-200 rounded w-1/3 mx-auto"></div></div>
-                <div class="col-span-2"><div class="h-4 bg-gray-200 rounded w-1/3 mx-auto"></div></div>
-                <div class="col-span-1"><div class="h-4 bg-gray-200 rounded w-1/3 mx-auto"></div></div>
-                <div class="col-span-1"><div class="h-4 bg-gray-200 rounded-full w-6 h-6 mx-auto"></div></div>
-            </div>
-        </div>
     </div>
 
     <!-- Audit rows -->
@@ -58,8 +47,16 @@
                     </p>
                 </div>
 
+                <!-- Status -->
+                <div class="col-span-1 flex justify-center">
+                    <looksee-status-chip
+                        [kind]="statusFor(audit_record)"
+                        size="sm">
+                    </looksee-status-chip>
+                </div>
+
                 <!-- Type -->
-                <div class="col-span-2 flex justify-center">
+                <div class="col-span-1 flex justify-center">
                     <span class="badge"
                           [ngClass]="{
                               'bg-blue-50 text-blue-700': audit_record.level === 'PAGE',

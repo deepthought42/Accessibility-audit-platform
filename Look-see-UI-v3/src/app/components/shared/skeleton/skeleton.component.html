@@ -1,0 +1,24 @@
+<ng-container [ngSwitch]="variant">
+  <div *ngSwitchCase="'row'" class="looksee-skeleton-rows" role="status" aria-live="polite" aria-label="Loading">
+    <div *ngFor="let i of rowArray" class="looksee-skeleton-row">
+      <span class="looksee-skeleton looksee-skeleton--circle"></span>
+      <span class="looksee-skeleton-row__lines">
+        <span class="looksee-skeleton looksee-skeleton--text" style="width: 40%"></span>
+        <span class="looksee-skeleton looksee-skeleton--text" style="width: 70%"></span>
+      </span>
+    </div>
+  </div>
+
+  <span
+    *ngSwitchDefault
+    class="looksee-skeleton"
+    [class.looksee-skeleton--text]="variant === 'text'"
+    [class.looksee-skeleton--title]="variant === 'title'"
+    [class.looksee-skeleton--circle]="variant === 'circle'"
+    [class.looksee-skeleton--rect]="variant === 'rect'"
+    [ngStyle]="customStyle"
+    role="status"
+    aria-live="polite"
+    aria-label="Loading"
+  ></span>
+</ng-container>

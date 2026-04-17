@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: ['class', '[data-theme="dark"]'],
   content: [
     "./src/**/*.{html,ts}",
     "./node_modules/flowbite/**/*.js"
@@ -18,6 +19,22 @@ module.exports = {
           700: '#c2003e',
           800: '#a10039',
           900: '#870035',
+          950: '#4d0018',
+        },
+        // `ink` is the canonical neutral palette. `charcoal` is kept as an
+        // alias for legacy templates; new code should use `ink`.
+        ink: {
+          50: '#f6f5f5',
+          100: '#e7e6e6',
+          200: '#d1d0d0',
+          300: '#b1afb0',
+          400: '#8a8889',
+          500: '#6f6d6e',
+          600: '#5f5d5e',
+          700: '#504e4f',
+          800: '#464445',
+          900: '#3d3b3c',
+          950: '#231f20',
         },
         charcoal: {
           50: '#f6f5f5',
@@ -38,8 +55,22 @@ module.exports = {
         },
         score: {
           good: '#10b981',
+          'good-bg': '#d1fae5',
+          'good-text': '#065f46',
           warning: '#f59e0b',
+          'warning-bg': '#fef3c7',
+          'warning-text': '#92400e',
           critical: '#ef4444',
+          'critical-bg': '#fee2e2',
+          'critical-text': '#991b1b',
+        },
+        // Semantic aliases reading from CSS custom properties so components
+        // automatically theme (light/dark) when the variable flips.
+        surface: {
+          base: 'var(--surface-base)',
+          raised: 'var(--surface-raised)',
+          sunken: 'var(--surface-sunken)',
+          inverse: 'var(--surface-inverse)',
         },
       },
       fontFamily: {
@@ -55,15 +86,36 @@ module.exports = {
         '128': '32rem',
       },
       borderRadius: {
-        'xl': '0.75rem',
-        '2xl': '1rem',
+        'xs': '2px',
+        'sm': '4px',
+        'md': '6px',
+        'lg': '8px',
+        'xl': '12px',
+        '2xl': '16px',
         '3xl': '1.5rem',
       },
       boxShadow: {
-        'card': '0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06)',
+        // Named tokens matching tokens.scss
+        'token-xs': 'var(--shadow-xs)',
+        'token-sm': 'var(--shadow-sm)',
+        'token-md': 'var(--shadow-md)',
+        'token-lg': 'var(--shadow-lg)',
+        'token-xl': 'var(--shadow-xl)',
+        'focus':    'var(--focus-ring)',
+        // Legacy aliases (kept so existing templates keep working)
+        'card':       '0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06)',
         'card-hover': '0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05)',
-        'panel': '0 1px 2px 0 rgb(0 0 0 / 0.05)',
-        'elevated': '0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04)',
+        'panel':      '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+        'elevated':   '0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04)',
+      },
+      transitionDuration: {
+        fast: '120ms',
+        base: '180ms',
+        slow: '280ms',
+      },
+      transitionTimingFunction: {
+        'out-soft':    'cubic-bezier(0.22, 1, 0.36, 1)',
+        'in-out-soft': 'cubic-bezier(0.65, 0, 0.35, 1)',
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',

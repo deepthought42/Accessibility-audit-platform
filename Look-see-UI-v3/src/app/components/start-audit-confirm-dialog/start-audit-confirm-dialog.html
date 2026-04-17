@@ -1,10 +1,10 @@
-<h1 mat-dialog-title>Are you sure that you want to start a new audit?</h1>
+<h1 mat-dialog-title>Cancel the audit in progress?</h1>
 <div mat-dialog-content>
-  <p>Starting a new audit will cause the currently running audit to be abandoned.</p>
+  <p>Starting a new audit will stop the one currently running. Findings collected so far won't be saved.</p>
 </div>
 <div mat-dialog-actions class="flex items-center justify-end">
     <button (click)="onNoClick()" class="p-4 rounded-lg border-2 mr-6">
-        Cancel
+        Keep auditing
     </button>
     <button class="bg-primary-color text-white rounded-lg p-4"
             (click)="startSinglePageAudit()"
@@ -12,4 +12,3 @@
         Start new audit
     </button>
 </div>
-

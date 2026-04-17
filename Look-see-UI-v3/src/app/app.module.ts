@@ -43,10 +43,16 @@ import { HowItWorksComponent } from './components/how-it-works/how-it-works.comp
 import { LandingComponent } from './components/landing/landing.component';
 import { LoadingComponent } from './components/loading/loading.component';
 import { NavBarComponent } from './components/nav-bar/nav-bar.component';
+import { NotFoundComponent } from './components/not-found/not-found.component';
 import { PageAuditReviewComponent } from './components/page-audit-review/page-audit-review.component';
 
 import { StartSinglePageAuditLoginRequired } from './components/start-audit-login-required-dialog/start-audit-login-required-dialog';
 
+import { LookseeBreadcrumbBarComponent } from './components/shared/breadcrumb-bar/breadcrumb-bar.component';
+import { LookseeButtonComponent } from './components/shared/button/button.component';
+import { LookseeEmptyStateComponent } from './components/shared/empty-state/empty-state.component';
+import { LookseeSkeletonComponent } from './components/shared/skeleton/skeleton.component';
+import { LookseeStatusChipComponent } from './components/shared/status-chip/status-chip.component';
 import { ScoreBadgeComponent } from './components/shared/score-badge/score-badge.component';
 import { ScoreGaugeComponent } from './components/shared/score-gauge/score-gauge.component';
 import { IntegrationsPanelComponent } from './integrations-panel/integrations-panel.component';
@@ -88,7 +94,8 @@ import { UserProfileComponent } from './user-profile/user-profile.component';
     FilterByCategoryPipe,
     FilterSeverityPipe,
     ScoreBadgeComponent,
-    ScoreGaugeComponent
+    ScoreGaugeComponent,
+    NotFoundComponent
   ],
   imports: [
     HttpClientModule,
@@ -101,7 +108,12 @@ import { UserProfileComponent } from './user-profile/user-profile.component';
     CommonModule,
     FormsModule,
     ReactiveFormsModule,
-    MatTooltipModule
+    MatTooltipModule,
+    LookseeButtonComponent,
+    LookseeStatusChipComponent,
+    LookseeSkeletonComponent,
+    LookseeEmptyStateComponent,
+    LookseeBreadcrumbBarComponent
   ],
   providers: [
     AccountService,

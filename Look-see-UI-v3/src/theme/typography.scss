@@ -1,0 +1,113 @@
+/* =============================================================================
+ * Look-see typography
+ *
+ * @font-face loading + named typography utilities. Maps headings (h1–h6) to the
+ * canonical scale. See docs/design/01-design-system.md §2.
+ * ============================================================================= */
+
+/* ----- Fonts ----- */
+@font-face {
+  font-family: 'Cera Pro';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Cera Pro Black'), local('Cera-Pro-Black'),
+       url('/assets/fonts/cera-pro/CeraProBlack.otf') format('opentype'),
+       url('/assets/fonts/cera-pro/CeraProBlack.ttf') format('truetype');
+}
+
+/* Open Sans kept for one release while components migrate to Inter. */
+@font-face {
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Open Sans Regular'), local('Open-Sans-Regular'),
+       url('/assets/fonts/open-sans/OpenSans-Regular.ttf') format('truetype');
+}
+
+/* ----- Named scale ----- */
+.text-display-xl {
+  font-family: 'Cera Pro', 'Inter', system-ui, sans-serif;
+  font-size: 48px;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.text-display {
+  font-family: 'Cera Pro', 'Inter', system-ui, sans-serif;
+  font-size: 36px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.text-heading-lg {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 28px;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.text-heading {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 22px;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.text-subheading {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 18px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.text-body-lg {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.55;
+  font-weight: 400;
+}
+
+.text-body-token {
+  /* Named "-token" to avoid collision with existing .text-body class */
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 400;
+}
+
+.text-body-sm-token {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.text-caption {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.text-overline {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.text-mono {
+  font-family: 'JetBrains Mono', 'SF Mono', 'Menlo', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 400;
+}
