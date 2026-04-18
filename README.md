@@ -8,7 +8,7 @@
 -->
 
 <p align="center">
-  <a href="https://look-see.com">
+  <a href="https://deepthought42.github.io/Accessibility-audit-platform/">
     <img src="Look-see-UI-v3/src/assets/Wordmark_Red.png" alt="Look-see logo" width="220" />
   </a>
 </p>
@@ -42,7 +42,7 @@
   <a href="#architecture">Architecture</a> ·
   <a href="#deploy-to-your-own-cloud">Deploy</a> ·
   <a href="#roadmap">Roadmap</a> ·
-  <a href="https://look-see.com">look-see.com</a>
+  <a href="https://deepthought42.github.io/Accessibility-audit-platform/">Project site</a>
 </p>
 
 ---
@@ -53,7 +53,7 @@
 
 It ships as a monorepo of small services: a crawler API, a page builder, four specialized audit workers (content, visual design, information architecture, journeys), an Angular UI, a Chrome extension, and a VS Code extension for real-time feedback in your editor.
 
-A hosted commercial version is coming to [**look-see.com**](https://look-see.com) — self-host in the meantime with the instructions below.
+A hosted commercial version is coming to [**look-see.com**](https://deepthought42.github.io/Accessibility-audit-platform/) — self-host in the meantime with the instructions below.
 
 ## Why teams choose Look-see
 
@@ -245,7 +245,7 @@ The monorepo CI (`.github/workflows/ci.yml`) uses path-based change detection to
 
 ## Roadmap
 
-- 🌐 **look-see.com** — hosted SaaS launch (coming soon)
+- 🌐 **[look-see.com](https://deepthought42.github.io/Accessibility-audit-platform/)** — hosted SaaS launch (coming soon)
 - 📊 **Trend dashboards** — score deltas over time per page and per journey
 - 🤖 **Auto-fix suggestions** — LLM-generated remediation PRs
 - 🌍 **PDF & Office document audits** — go beyond the browser
