@@ -694,6 +694,7 @@ html[data-theme="night"] .theme-toggle__knob {
   line-height: 1;
 }
 .reasons h3 {
+  grid-column: 2;
   font-family: var(--font-display);
   font-variation-settings: "opsz" 60, "SOFT" 40;
   font-weight: 500;
@@ -704,8 +705,9 @@ html[data-theme="night"] .theme-toggle__knob {
   max-width: 32ch;
 }
 .reasons p {
+  grid-column: 2;
   margin: 0;
-  max-width: 60ch;
+  max-width: 72ch;
   line-height: 1.65;
 }
 @media (max-width: 640px) {
@@ -713,6 +715,8 @@ html[data-theme="night"] .theme-toggle__knob {
     grid-template-columns: 1fr;
     gap: .5rem;
   }
+  .reasons h3,
+  .reasons p { grid-column: auto; }
 }
 
 /* ============================================================
