@@ -21,7 +21,7 @@ const TERMINAL_STATUSES: ReadonlySet<AuditStatus> = new Set([
   AuditStatus.CANCELLED,
 ]);
 
-/** Chip `kind` value for a given status — passed to `<looksee-status-chip>`. */
+/** Chip `kind` value for a given status — passed to `<app-looksee-status-chip>`. */
 export function auditStatusChipKind(status: AuditStatus):
   'queued' | 'running' | 'complete' | 'failed' | 'cancelled' {
   switch (status) {

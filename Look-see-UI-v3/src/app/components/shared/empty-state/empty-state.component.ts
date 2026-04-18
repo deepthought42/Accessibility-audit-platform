@@ -23,7 +23,7 @@ export interface EmptyStateAction {
 @Component({
   standalone: true,
   imports: [CommonModule, LookseeButtonComponent],
-  selector: 'looksee-empty-state',
+  selector: 'app-looksee-empty-state',
   templateUrl: './empty-state.component.html',
   styleUrls: ['./empty-state.component.scss'],
 })

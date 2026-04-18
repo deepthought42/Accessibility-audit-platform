@@ -12,7 +12,7 @@ import { Breadcrumb, BreadcrumbService } from '../../../services/breadcrumb/brea
 @Component({
   standalone: true,
   imports: [CommonModule, RouterModule],
-  selector: 'looksee-breadcrumb-bar',
+  selector: 'app-looksee-breadcrumb-bar',
   templateUrl: './breadcrumb-bar.component.html',
   styleUrls: ['./breadcrumb-bar.component.scss'],
 })

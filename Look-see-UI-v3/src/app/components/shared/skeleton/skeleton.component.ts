@@ -11,7 +11,7 @@ export type SkeletonVariant = 'text' | 'title' | 'circle' | 'rect' | 'row';
 @Component({
   standalone: true,
   imports: [CommonModule],
-  selector: 'looksee-skeleton',
+  selector: 'app-looksee-skeleton',
   templateUrl: './skeleton.component.html',
   styleUrls: ['./skeleton.component.scss'],
 })

@@ -110,7 +110,7 @@ export class AuditListComponent implements OnInit {
 
   /**
    * Derive the canonical AuditStatus for a given record. Used by the template
-   * to pass a typed `kind` into <looksee-status-chip>.
+   * to pass a typed `kind` into <app-looksee-status-chip>.
    *
    * See docs/design/02-audit-status-and-progress.md §1.
    */

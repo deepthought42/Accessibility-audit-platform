@@ -5,17 +5,17 @@
 <div class="px-6 pb-6">
     <!-- Loading state (skeleton rows) -->
     <div *ngIf="is_loading_audits" class="mt-4">
-        <looksee-skeleton variant="row" [rows]="4"></looksee-skeleton>
+        <app-looksee-skeleton variant="row" [rows]="4"></app-looksee-skeleton>
     </div>
 
     <!-- Empty state (no records, not loading) -->
-    <looksee-empty-state
+    <app-looksee-empty-state
         *ngIf="!is_loading_audits && audit_records.length === 0"
         illustration="audits"
         title="Run your first audit."
         body="Paste a URL above — we'll check accessibility, content quality, and visual design, and rank every issue by impact."
         [compact]="true">
-    </looksee-empty-state>
+    </app-looksee-empty-state>
 
     <!-- Table header -->
     <div *ngIf="!is_loading_audits && audit_records.length > 0"
@@ -49,10 +49,10 @@
 
                 <!-- Status -->
                 <div class="col-span-1 flex justify-center">
-                    <looksee-status-chip
+                    <app-looksee-status-chip
                         [kind]="statusFor(audit_record)"
                         size="sm">
-                    </looksee-status-chip>
+                    </app-looksee-status-chip>
                 </div>
 
                 <!-- Type -->

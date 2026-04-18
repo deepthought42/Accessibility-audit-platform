@@ -68,7 +68,7 @@ const CHIP_STYLES: Record<StatusChipKind, ChipStyle> = {
 @Component({
   standalone: true,
   imports: [CommonModule, FontAwesomeModule],
-  selector: 'looksee-status-chip',
+  selector: 'app-looksee-status-chip',
   templateUrl: './status-chip.component.html',
   styleUrls: ['./status-chip.component.scss'],
 })

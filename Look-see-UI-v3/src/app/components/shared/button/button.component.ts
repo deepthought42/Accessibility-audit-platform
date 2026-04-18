@@ -26,7 +26,7 @@ export type LookseeButtonType = 'button' | 'submit' | 'reset';
 @Component({
   standalone: true,
   imports: [CommonModule, FontAwesomeModule],
-  selector: 'looksee-button',
+  selector: 'app-looksee-button',
   templateUrl: './button.component.html',
   styleUrls: ['./button.component.scss'],
 })
