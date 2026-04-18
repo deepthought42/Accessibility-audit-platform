@@ -1,0 +1,17 @@
+<span [class]="rootClasses.join(' ')" role="status">
+  <span class="looksee-chip__sr sr-only">{{ a11yLabel }}</span>
+  <fa-icon
+    *ngIf="showDot"
+    [icon]="faCircle"
+    class="looksee-chip__dot"
+    aria-hidden="true"
+  ></fa-icon>
+  <fa-icon
+    *ngIf="style.icon"
+    [icon]="style.icon"
+    [spin]="!!style.spin"
+    class="looksee-chip__icon"
+    aria-hidden="true"
+  ></fa-icon>
+  <span class="looksee-chip__label" aria-hidden="true">{{ displayLabel }}</span>
+</span>

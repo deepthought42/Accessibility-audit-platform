@@ -1,0 +1,51 @@
+/* =============================================================================
+ * Empty state — docs/design/06-shared-components.md §7
+ * ============================================================================= */
+
+.looksee-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--text-primary);
+
+  &--compact {
+    padding: 24px 16px;
+    gap: 0.75rem;
+  }
+}
+
+.looksee-empty__illustration {
+  width: 160px;
+  height: auto;
+  max-height: 160px;
+  object-fit: contain;
+  margin-bottom: 8px;
+
+  .looksee-empty--compact & {
+    width: 96px;
+    max-height: 96px;
+  }
+}
+
+.looksee-empty__title {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.looksee-empty__body {
+  margin: 0;
+  max-width: 480px;
+  color: var(--text-secondary);
+}
+
+.looksee-empty__actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}

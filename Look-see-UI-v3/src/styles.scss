@@ -3,22 +3,29 @@
 @import 'tailwindcss/utilities';
 @import '@angular/material/prebuilt-themes/deeppurple-amber.css';
 
-/* ===== FONTS ===== */
-@font-face {
-    font-family: 'Cera Pro';
-    font-style: normal;
-    font-weight: 400;
-    src: local('Cera Pro Black'), local('Cera-Pro-Black'),
-         url('/assets/fonts/cera-pro/CeraProBlack.otf') format('opentype'),
-         url('/assets/fonts/cera-pro/CeraProBlack.ttf') format('truetype'),
-}
+/* =============================================================================
+ * Look-see theme imports
+ *
+ * Design tokens and typography utilities. Every new component should reference
+ * tokens (CSS custom properties) instead of raw hex. See docs/design/01-design-system.md.
+ * ============================================================================= */
+@import './theme/tokens.scss';
+@import './theme/typography.scss';
+@import './theme/material-overrides.scss';
 
-@font-face {
-    font-family: 'Open Sans';
-    font-style: normal;
-    font-weight: 400;
-    src: local('Open Sans Regular'), local('Open-Sans-Regular'),
-         url('/assets/fonts/open-sans/OpenSans-Regular.ttf') format('truetype'),
+/* ===== REDUCED MOTION ===== */
+/* Global opt-out: if the user prefers reduced motion, neutralise nearly all
+ * animations and transitions. Components SHOULD also check
+ * prefers-reduced-motion in their own rules for fine-grained behaviour. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
 
 /* ===== BASE RESET ===== */
@@ -228,11 +235,4 @@ select {
     @apply animate-pulse bg-gray-200 rounded;
 }
 
-/* ===== ANGULAR MATERIAL OVERRIDES ===== */
-.mat-mdc-progress-spinner circle {
-    stroke: #FF0050 !important;
-}
-
-.mat-mdc-dialog-container {
-    border-radius: 1rem !important;
-}
+/* Material overrides moved to src/theme/material-overrides.scss */

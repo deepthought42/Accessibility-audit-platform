@@ -1,0 +1,33 @@
+<div class="looksee-empty" [class.looksee-empty--compact]="compact" role="region" [attr.aria-labelledby]="'empty-title'">
+  <img
+    *ngIf="illustrationSrc"
+    [src]="illustrationSrc"
+    class="looksee-empty__illustration"
+    alt=""
+    aria-hidden="true"
+  />
+
+  <h2 id="empty-title" class="looksee-empty__title text-heading-lg">{{ title }}</h2>
+
+  <p *ngIf="body" class="looksee-empty__body text-body-token">{{ body }}</p>
+
+  <div class="looksee-empty__actions" *ngIf="primaryAction || secondaryAction">
+    <app-looksee-button
+      *ngIf="primaryAction"
+      [variant]="primaryAction.variant || 'accent'"
+      size="md"
+      (pressed)="onPrimary()"
+    >
+      {{ primaryAction.label }}
+    </app-looksee-button>
+
+    <app-looksee-button
+      *ngIf="secondaryAction"
+      [variant]="secondaryAction.variant || 'ghost'"
+      size="md"
+      (pressed)="onSecondary()"
+    >
+      {{ secondaryAction.label }}
+    </app-looksee-button>
+  </div>
+</div>

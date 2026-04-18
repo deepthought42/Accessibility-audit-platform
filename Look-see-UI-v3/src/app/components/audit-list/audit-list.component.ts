@@ -7,6 +7,7 @@ import { AuthService } from '@auth0/auth0-angular';
 import { faCircleCheck } from '@fortawesome/free-regular-svg-icons';
 import { faChevronRight, faCircleRadiation, faExclamationCircle, faFrown, faMagnifyingGlass, faMeh, faPencil, faSmileBeam, faSpinner, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons';
 import { AuditRecord } from '../../models/auditRecord';
+import { AuditStatus, auditStatusChipKind, normaliseAuditStatus } from '../../models/audit-status';
 import { Domain } from '../../models/domain/domain';
 import { AuditService } from '../../services/audit.service';
 import { SegmentIOService } from '../../services/segmentio.service';
@@ -107,4 +108,17 @@ export class AuditListComponent implements OnInit {
     alert("It looks like this feature isn't done yet. If you have opinions or ideas on what should be included in domain settings, please email our founder at bkindred@look-see.com.")
   }
 
+  /**
+   * Derive the canonical AuditStatus for a given record. Used by the template
+   * to pass a typed `kind` into <app-looksee-status-chip>.
+   *
+   * See docs/design/02-audit-status-and-progress.md §1.
+   */
+  statusFor(record: AuditRecord): ReturnType<typeof auditStatusChipKind> {
+    const hasScores = (record.contentAuditScore ?? 0) > 0
+      || (record.infoArchScore ?? 0) > 0
+      || (record.aestheticScore ?? 0) > 0;
+    const status: AuditStatus = normaliseAuditStatus(record.status, { hasScores });
+    return auditStatusChipKind(status);
+  }
 }

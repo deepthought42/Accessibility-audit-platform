@@ -1,0 +1,154 @@
+/* =============================================================================
+ * Look-see design tokens
+ *
+ * Semantic CSS custom properties. Components MUST reference these tokens, not
+ * raw palette colors. Raw palette values live in tailwind.config.js and in the
+ * light/dark definitions below — and nowhere else.
+ *
+ * See: docs/design/01-design-system.md
+ * ============================================================================= */
+
+:root,
+[data-theme='light'] {
+  /* ----- Surfaces ----- */
+  --surface-base:      #ffffff;   /* page background */
+  --surface-raised:    #ffffff;   /* cards */
+  --surface-sunken:    #f6f5f5;   /* subtle contained areas (ink.50) */
+  --surface-inverse:   #231f20;   /* dark bars in light mode (ink.950) */
+  --surface-overlay:   rgba(35, 31, 32, 0.55); /* modal backdrop */
+
+  /* ----- Text ----- */
+  --text-primary:      #231f20;   /* ink.950 */
+  --text-secondary:    #5f5d5e;   /* ink.600 */
+  --text-muted:        #8a8889;   /* ink.400 */
+  --text-inverse:      #ffffff;
+  --text-accent:       #c2003e;   /* brand.700 — AA on white (4.78:1) */
+  --text-accent-hover: #a10039;   /* brand.800 */
+  --text-on-accent:    #ffffff;
+  --text-link:         #c2003e;
+  --text-link-hover:   #a10039;
+
+  /* ----- Borders ----- */
+  --border-subtle:     #e7e6e6;   /* ink.100 */
+  --border-default:    #d1d0d0;   /* ink.200 */
+  --border-strong:     #b1afb0;   /* ink.300 */
+  --border-focus:      #FF0050;   /* brand.500 */
+  --border-inverse:    #504e4f;   /* ink.700 */
+
+  /* ----- Score semantic ----- */
+  --score-good:        #10b981;   /* emerald-500 */
+  --score-good-bg:     #d1fae5;
+  --score-good-text:   #065f46;
+  --score-warning:     #f59e0b;
+  --score-warning-bg:  #fef3c7;
+  --score-warning-text:#92400e;
+  --score-critical:    #ef4444;
+  --score-critical-bg: #fee2e2;
+  --score-critical-text:#991b1b;
+
+  /* ----- Brand chip (used for in-progress, beta, etc.) ----- */
+  --chip-brand-bg:     #fee2e8;   /* brand.100 */
+  --chip-brand-text:   #870035;   /* brand.900 */
+  --chip-neutral-bg:   #e7e6e6;   /* ink.100 */
+  --chip-neutral-text: #464445;   /* ink.800 */
+
+  /* ----- Focus ring ----- */
+  --focus-ring:        0 0 0 3px rgba(255, 0, 80, 0.35);
+  --focus-ring-inset:  inset 0 0 0 2px #FF0050;
+
+  /* ----- Elevation ----- */
+  --shadow-xs:   0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-sm:   0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  --shadow-md:   0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+  --shadow-lg:   0 10px 15px -3px rgb(0 0 0 / 0.10), 0 4px 6px -4px rgb(0 0 0 / 0.06);
+  --shadow-xl:   0 20px 25px -5px rgb(0 0 0 / 0.10), 0 8px 10px -6px rgb(0 0 0 / 0.04);
+
+  /* ----- Radius ----- */
+  --radius-xs:   2px;
+  --radius-sm:   4px;
+  --radius-md:   6px;
+  --radius-lg:   8px;
+  --radius-xl:   12px;
+  --radius-2xl:  16px;
+  --radius-full: 9999px;
+
+  /* ----- Motion ----- */
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 280ms;
+  --ease-out-soft:     cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-soft:  cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+[data-theme='dark'] {
+  --surface-base:      #151313;   /* ink.950 */
+  --surface-raised:    #231f20;   /* ink.900 */
+  --surface-sunken:    #151313;
+  --surface-inverse:   #ffffff;
+  --surface-overlay:   rgba(0, 0, 0, 0.72);
+
+  --text-primary:      #f6f5f5;   /* ink.50 */
+  --text-secondary:    #b1afb0;   /* ink.300 */
+  --text-muted:        #8a8889;
+  --text-inverse:      #231f20;
+  --text-accent:       #ff6690;   /* brand.400 — brighter for dark surfaces */
+  --text-accent-hover: #ff9db5;
+  --text-on-accent:    #ffffff;
+  --text-link:         #ff6690;
+  --text-link-hover:   #ff9db5;
+
+  --border-subtle:     #3d3b3c;   /* ink.900 */
+  --border-default:    #504e4f;   /* ink.700 */
+  --border-strong:     #6f6d6e;   /* ink.500 */
+  --border-focus:      #ff6690;
+  --border-inverse:    #d1d0d0;
+
+  --score-good:        #34d399;
+  --score-good-bg:     rgba(16, 185, 129, 0.18);
+  --score-good-text:   #6ee7b7;
+  --score-warning:     #fbbf24;
+  --score-warning-bg:  rgba(245, 158, 11, 0.18);
+  --score-warning-text:#fcd34d;
+  --score-critical:    #f87171;
+  --score-critical-bg: rgba(239, 68, 68, 0.18);
+  --score-critical-text:#fca5a5;
+
+  --chip-brand-bg:     rgba(255, 0, 80, 0.18);
+  --chip-brand-text:   #ff9db5;
+  --chip-neutral-bg:   #3d3b3c;
+  --chip-neutral-text: #d1d0d0;
+
+  --focus-ring:        0 0 0 3px rgba(255, 102, 144, 0.45);
+  --focus-ring-inset:  inset 0 0 0 2px #ff6690;
+
+  /* Shadows darker / softer on dark surfaces */
+  --shadow-xs:   0 1px 2px 0 rgb(0 0 0 / 0.35);
+  --shadow-sm:   0 1px 3px 0 rgb(0 0 0 / 0.45), 0 1px 2px -1px rgb(0 0 0 / 0.30);
+  --shadow-md:   0 4px 6px -1px rgb(0 0 0 / 0.50), 0 2px 4px -2px rgb(0 0 0 / 0.35);
+  --shadow-lg:   0 10px 15px -3px rgb(0 0 0 / 0.55), 0 4px 6px -4px rgb(0 0 0 / 0.40);
+  --shadow-xl:   0 20px 25px -5px rgb(0 0 0 / 0.60), 0 8px 10px -6px rgb(0 0 0 / 0.45);
+}
+
+/* ---- Aliased Tailwind helpers (opt-in; classes can be used in templates) ---- */
+
+.bg-surface-base   { background-color: var(--surface-base); }
+.bg-surface-raised { background-color: var(--surface-raised); }
+.bg-surface-sunken { background-color: var(--surface-sunken); }
+
+.text-token-primary   { color: var(--text-primary); }
+.text-token-secondary { color: var(--text-secondary); }
+.text-token-muted     { color: var(--text-muted); }
+.text-token-accent    { color: var(--text-accent); }
+
+.border-token-subtle  { border-color: var(--border-subtle); }
+.border-token-default { border-color: var(--border-default); }
+.border-token-strong  { border-color: var(--border-strong); }
+
+.shadow-token-sm { box-shadow: var(--shadow-sm); }
+.shadow-token-md { box-shadow: var(--shadow-md); }
+.shadow-token-lg { box-shadow: var(--shadow-lg); }
+
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

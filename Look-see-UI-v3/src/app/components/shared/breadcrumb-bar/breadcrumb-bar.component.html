@@ -1,0 +1,30 @@
+<nav
+  *ngIf="(crumbs$ | async) as crumbs"
+  class="looksee-breadcrumbs"
+  aria-label="Breadcrumb"
+  [attr.hidden]="crumbs.length === 0 ? true : null"
+>
+  <ol class="looksee-breadcrumbs__list" *ngIf="crumbs.length > 0">
+    <li
+      *ngFor="let crumb of crumbs; let last = last"
+      class="looksee-breadcrumbs__item"
+    >
+      <a
+        *ngIf="crumb.href && !last; else plain"
+        [routerLink]="crumb.href"
+        class="looksee-breadcrumbs__link"
+      >{{ crumb.label }}</a>
+      <ng-template #plain>
+        <span
+          class="looksee-breadcrumbs__current"
+          [attr.aria-current]="last ? 'page' : null"
+        >{{ crumb.label }}</span>
+      </ng-template>
+      <span
+        *ngIf="!last"
+        class="looksee-breadcrumbs__separator"
+        aria-hidden="true"
+      >/</span>
+    </li>
+  </ol>
+</nav>

@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '@auth0/auth0-angular';
 import { AuditorService } from '../../services/auditor.service';
 import { SegmentIOService } from '../../services/segmentio.service';
+import { normaliseUrl } from '../../utils/url';
 
 @Component({
   selector: 'app-landing',
@@ -24,18 +25,15 @@ export class LandingComponent {
   segmentio = inject(SegmentIOService);
 
   startAudit(): void {
-    const url = this.form.value.url?.trim() || '';
+    const rawUrl = this.form.value.url || '';
+    const normalised = normaliseUrl(rawUrl);
 
-    if (!url.length) {
-      this.error = 'Please enter a URL to audit.';
+    if (!normalised.ok) {
+      this.error = normalised.error;
       return;
     }
 
-    if (!this.isValidURL(url)) {
-      this.error = 'Please enter a valid URL (e.g. https://www.example.com)';
-      return;
-    }
-
+    const url = normalised.url;
     this.error = '';
     this.isLoading = true;
     this.segmentio.sendUxAuditStartedMessage(url);
@@ -46,19 +44,22 @@ export class LandingComponent {
         if (data && data.id) {
           sessionStorage.setItem('audit_record_id', data.id.toString());
           sessionStorage.setItem('is_audit_started', 'true');
-          sessionStorage.setItem('url', url.replace('https://', '').replace('http://', ''));
+          sessionStorage.setItem('url', url.replace(/^https?:\/\//, ''));
           this.router.navigate(['/audit', data.id, 'review']);
         }
       },
       () => {
-        this.error = 'Something went wrong starting the audit. Please try again.';
+        this.error = "We couldn't reach that URL. Check the address and try again.";
         this.isLoading = false;
       }
     );
   }
 
+  /**
+   * @deprecated kept as a compatibility shim; call `normaliseUrl()` directly.
+   * Remove once no callers remain (no production callers remain in this file).
+   */
   isValidURL(domain_url: string): boolean {
-    const urlregex = /^((https?|ftp):\/\/)?([a-zA-Z0-9.-]+(:[a-zA-Z0-9.&%$-]+)*@)*((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}|([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.(com|app|edu|gov|int|mil|net|org|biz|arpa|info|name|pro|aero|coop|museum|website|space|[a-zA-Z]{2}))(:[0-9]+)*(\/($|[a-zA-Z0-9.,?'\\+&%$#=~_-]+))*$/;
-    return urlregex.test(domain_url);
+    return normaliseUrl(domain_url).ok;
   }
 }

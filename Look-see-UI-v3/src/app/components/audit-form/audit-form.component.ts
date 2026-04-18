@@ -9,6 +9,7 @@ import { AuditRecord } from '../../models/auditRecord';
 import { DomainService } from '../../models/domain/domain.service';
 import { AuditorService } from '../../services/auditor.service';
 import { SegmentIOService } from '../../services/segmentio.service';
+import { normaliseUrl } from '../../utils/url';
 
 @Component({
   selector: 'app-audit-form',
@@ -74,41 +75,35 @@ export class AuditFormComponent {
    * @param domain 
    */
   initiateAudit(url: string, type: string): void {
-    // sessionStorage.setItem("host", domain.replace("https://", "").replace("http://", ""));
-    if(!url || !url.length) {
-      this.domain_error = true
-      this.isLoading = false
-      this.error = "URL cannot be blank"
+    const normalised = normaliseUrl(url);
+    if (!normalised.ok) {
+      this.domain_error = true;
+      this.isLoading = false;
+      this.error = normalised.error;
+      return;
     }
-    else if(!this.isValidURL(url)) {
-      this.domain_error = true
-      this.isLoading = false
-      this.error = "URL must be valid. Please be sure to follow the format https://www.example.com"
-    }
-    else {
-      this.isLoading = true
-      sessionStorage.setItem("url", url.replace("https://", "").replace("http://", ""));
-      this.auditorService.startAudit(url, type).subscribe(
-        (data) => {
-          this.segmentio.sendUxAuditStartedMessage(url)
-          console.log("starting " + type + " audit for url "+url)
-          this.isLoading = false
-          //this.audit_records.push(data)
-          this.auditRecordData.emit(data)
 
-          //send data to audit list
-        },
-        () => {
-          this.error = "uh oh...it looks like our servers decided to take a coffee break. Please wait a minute then try again.";
-          this.isLoading = false
-        }
-      );
-    }
+    const cleanUrl = normalised.url;
+    this.isLoading = true;
+    sessionStorage.setItem('url', cleanUrl.replace(/^https?:\/\//, ''));
+    this.auditorService.startAudit(cleanUrl, type).subscribe(
+      (data) => {
+        this.segmentio.sendUxAuditStartedMessage(cleanUrl);
+        this.isLoading = false;
+        this.auditRecordData.emit(data);
+      },
+      () => {
+        this.error = "Something went wrong. Try again in a moment.";
+        this.isLoading = false;
+      }
+    );
   }
 
+  /**
+   * @deprecated use `normaliseUrl()` from utils/url.
+   */
   isValidURL(domain_url: string): boolean {
-    const urlregex = /^((https?|ftp):\/\/)?([a-zA-Z0-9.-]+(:[a-zA-Z0-9.&%$-]+)*@)*((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}|([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.(com|app|edu|gov|int|mil|net|org|biz|arpa|info|name|pro|aero|coop|museum|website|space|[a-zA-Z]{2}))(:[0-9]+)*(\/($|[a-zA-Z0-9.,?'\\+&%$#=~_-]+))*$/;
-    return urlregex.test(domain_url);
+    return normaliseUrl(domain_url).ok;
   }
 
   /* ERROR HANDLING METHODS */
