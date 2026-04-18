@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+
+# Social-share image (allow dedicated crawlers)
+Allow: /og-card.png
+
+# AI search crawlers — let them index the docs so citations link back.
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+Sitemap: https://deepthought42.github.io/Accessibility-audit-platform/sitemap.xml

@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="en" data-theme="paper">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Look-see — Open-source Accessibility Audit Platform (WCAG 2.1 / 2.2)</title>
+<meta name="description" content="Look-see is an open-source accessibility audit platform for real websites. Automated WCAG 2.1 and 2.2 testing across rendered pixels, user journeys, content, and information architecture.">
+<meta name="keywords" content="accessibility audit, WCAG audit, WCAG 2.1, WCAG 2.2, open source accessibility, a11y, automated accessibility testing, web accessibility scanner, visual design audit, user journey testing, information architecture audit, Look-see">
+<meta name="author" content="Brandon Kindred and contributors">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f4eee2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14130f" media="(prefers-color-scheme: dark)">
+
+<link rel="canonical" href="https://deepthought42.github.io/Accessibility-audit-platform/">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Look-see">
+<meta property="og:title" content="Look-see — Open-source Accessibility Audit Platform">
+<meta property="og:description" content="Automated WCAG 2.1 / 2.2 auditing for real websites. Checks rendered pixels, walks user journeys, and reports on the information architecture behind them.">
+<meta property="og:url" content="https://deepthought42.github.io/Accessibility-audit-platform/">
+<meta property="og:image" content="https://deepthought42.github.io/Accessibility-audit-platform/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Look-see — Open-source accessibility audit platform. WCAG 2.1 / 2.2.">
+<meta property="og:locale" content="en_US">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Look-see — Open-source Accessibility Audit Platform">
+<meta name="twitter:description" content="Automated WCAG 2.1 / 2.2 auditing for real websites. Rendered pixels, user journeys, content, IA.">
+<meta name="twitter:image" content="https://deepthought42.github.io/Accessibility-audit-platform/og-card.png">
+<meta name="twitter:image:alt" content="Look-see — Open-source accessibility audit platform.">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23f4eee2' stroke='%23111418' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23c16a2c'/%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap">
+<link rel="stylesheet" href="styles.css">
+
+<!-- JSON-LD: SoftwareApplication -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Look-see",
+  "alternateName": "Look-see Accessibility Audit Platform",
+  "applicationCategory": "DeveloperApplication",
+  "applicationSubCategory": "Accessibility Testing",
+  "operatingSystem": "Web, Linux, Cloud",
+  "description": "Open-source accessibility audit platform that crawls real websites, executes user journeys in a headless browser, and evaluates rendered pixels, content, and information architecture against WCAG 2.1 and 2.2.",
+  "url": "https://deepthought42.github.io/Accessibility-audit-platform/",
+  "codeRepository": "https://github.com/deepthought42/Accessibility-audit-platform",
+  "programmingLanguage": ["Java", "TypeScript", "HTML", "CSS"],
+  "license": "https://opensource.org/licenses/MIT",
+  "isAccessibleForFree": true,
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "Visual design auditing from rendered pixels (color contrast, typography, whitespace, imagery)",
+    "Content auditing (alt text, readability, paragraph structure)",
+    "Information architecture auditing (headings, forms, tables, links, language)",
+    "Journey-based auditing with headless Chrome via Selenium",
+    "WCAG 2.1 AA and AAA and WCAG 2.2 coverage",
+    "Real-time audit progress via Pusher WebSockets",
+    "Chrome extension and Visual Studio Code plugin",
+    "AI-assisted diagnostics via Anthropic Claude",
+    "Distributed microservice architecture on Google Cloud Run",
+    "Neo4j graph database modeling"
+  ],
+  "author": {
+    "@type": "Person",
+    "name": "Brandon Kindred",
+    "url": "https://github.com/deepthought42"
+  }
+}
+</script>
+
+<!-- JSON-LD: FAQPage -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Does Look-see audit rendered pixels or only HTML?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Look-see audits both. Most accessibility tools parse the DOM; Look-see also renders the page in a headless browser and measures color contrast, font sizing, whitespace, and image policy against the rendered output. CSS can lie; a screenshot cannot. A page can pass every rule-based checker and still be unreadable for a human."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can Look-see audit user journeys, not just static URLs?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Look-see discovers journeys by scraping interactive elements, executes them in a real headless Chrome session via Selenium, and audits the states that result. Discarded paths are recorded; verified ones are re-expanded until the map is complete. Static analysis misses everything that changes on interaction."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is Look-see a rule list or a framework?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Look-see is built on LookseeCore — a library of models, persistence, browser automation, messaging, cloud, and now LLM primitives. New audits compose from these without re-plumbing infrastructure. The looksee-llm module adds Anthropic Claude as a provider-agnostic backend, wired with redaction, caching, budgeting, and retries before any feature ships on it."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Which WCAG versions does Look-see support?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The platform covers WCAG 2.1 Level AA and AAA; the Visual Studio Code plugin adds WCAG 2.2 rule coverage. Compliance level is configurable per domain."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What developer surfaces does Look-see offer?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Three: an Angular web interface that shows live audit progress, a Chrome extension for in-page auditing of live pages without uploading them anywhere, and a Visual Studio Code plugin that lints React, Vue, Angular, and plain HTML for WCAG 2.2 issues as you type."
+      }
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a href="#main" class="skip">Skip to contents</a>
+
+<button class="theme-toggle" type="button" aria-pressed="false" aria-label="Toggle dark mode">
+  <span class="theme-toggle__knob" aria-hidden="true"></span>
+  <span class="theme-toggle__label">Dim the lights</span>
+</button>
+
+<header class="masthead" role="banner">
+  <div class="masthead__rule" aria-hidden="true"></div>
+  <div class="masthead__meta">
+    <span>Issue №01</span>
+    <span class="dot" aria-hidden="true">&bull;</span>
+    <span>Field Notes</span>
+    <span class="dot" aria-hidden="true">&bull;</span>
+    <span>Open Source</span>
+    <span class="dot" aria-hidden="true">&bull;</span>
+    <span>Spring 2026</span>
+  </div>
+
+  <h1 class="masthead__title" aria-label="Look-see — Open-source Accessibility Audit Platform">
+    <span class="masthead__wordmark" aria-hidden="true">
+      <span class="masthead__word">Look</span><span class="masthead__dash">&#8209;</span><span class="masthead__word">see</span>
+    </span>
+    <span class="masthead__subtitle">Open-source Accessibility Audit Platform</span>
+  </h1>
+
+  <p class="masthead__deck">
+    <em>An auditing platform that reads the Web<br>the way people actually read it &mdash;<br>in HTML, in rendered pixels, and across user journeys.</em>
+  </p>
+
+  <div class="masthead__foot">
+    <p class="masthead__byline">
+      Visual design audits. Journey-based testing. A graph of every page.
+      <br>Open source, engineered in public, built to be looked at.
+    </p>
+    <a class="masthead__cta" href="https://github.com/deepthought42/Accessibility-audit-platform" rel="noopener">
+      <span>Read the source</span>
+      <span aria-hidden="true" class="arrow">&rarr;</span>
+    </a>
+  </div>
+
+  <nav class="toc" aria-label="Primary">
+    <ol>
+      <li><a href="#what">01 &middot; What this is</a></li>
+      <li><a href="#audits">02 &middot; Four audits</a></li>
+      <li><a href="#why">03 &middot; Why it's unusual</a></li>
+      <li><a href="#architecture">04 &middot; Inside the machine</a></li>
+      <li><a href="#now">05 &middot; In progress</a></li>
+      <li><a href="#links">06 &middot; Where to look next</a></li>
+    </ol>
+  </nav>
+</header>
+
+<main id="main">
+
+<!-- 01 ................................................................ -->
+<section id="what" class="chapter" aria-labelledby="what-h">
+  <div class="chapter__head">
+    <span class="chapter__num" aria-hidden="true">01</span>
+    <h2 id="what-h" class="chapter__title">What this is</h2>
+    <p class="chapter__kicker">A short description, for strangers.</p>
+  </div>
+
+  <div class="prose prose--intro">
+    <p class="dropcap">
+      <strong>Look-see</strong> is an open-source platform for finding, explaining, and fixing accessibility issues on real websites.
+      It crawls the pages you ship, walks the journeys your users actually take, and reports on what it sees &mdash;
+      in <em>HTML</em>, in <em>rendered pixels</em>, and in the way pages fit together.
+    </p>
+
+    <p>
+      Under the hood it is a distributed system: a Neo4j graph representing your site, a fleet of Spring Boot
+      services trading work over Google Cloud Pub/Sub, an Angular interface that watches it in real time, and a
+      growing set of AI-assisted diagnostics that explain <em>why</em> a violation matters, not just that one exists.
+    </p>
+
+    <p class="lede">
+      It is still being built. That is the fun part.
+    </p>
+  </div>
+
+  <aside class="stats" aria-label="At a glance">
+    <dl>
+      <div><dt>Audit services</dt><dd><span class="big">3</span><small>content &middot; visual &middot; IA</small></dd></div>
+      <div><dt>Microservices</dt><dd><span class="big">10+</span><small>in the monorepo</small></dd></div>
+      <div><dt>WCAG coverage</dt><dd><span class="big">2.1<span class="faint">/</span>2.2</span><small>AA &amp; AAA</small></dd></div>
+      <div><dt>Client surfaces</dt><dd><span class="big">3</span><small>Web &middot; Chrome &middot; VS Code</small></dd></div>
+    </dl>
+  </aside>
+</section>
+
+<!-- 02 ................................................................ -->
+<section id="audits" class="chapter" aria-labelledby="audits-h">
+  <div class="chapter__head">
+    <span class="chapter__num" aria-hidden="true">02</span>
+    <h2 id="audits-h" class="chapter__title">Four accessibility audits, running in parallel</h2>
+    <p class="chapter__kicker">Each one cares about something different. Together they describe a page the way a person would.</p>
+  </div>
+
+  <div class="cards">
+    <article class="card">
+      <header>
+        <span class="card__tag">Movement I</span>
+        <h3>Content</h3>
+      </header>
+      <p>
+        Alt text that actually describes something. Readability scored with Flesch&#8211;Kincaid. Paragraph structure
+        that survives a screen reader's rhythm. The words, checked.
+      </p>
+      <ul class="card__list">
+        <li><code>img</code>, <code>svg</code>, <code>canvas</code>, <code>iframe</code>, <code>object</code> alt coverage</li>
+        <li>Flesch&#8211;Kincaid readability</li>
+        <li>Paragraph density &amp; structure</li>
+      </ul>
+    </article>
+
+    <article class="card">
+      <header>
+        <span class="card__tag">Movement II</span>
+        <h3>Visual design</h3>
+      </header>
+      <p>
+        Contrast measured from <em>rendered pixels</em>, not from stylesheet rules that may be overridden. Typography
+        above a legibility floor. Whitespace on an 8px grid. Imagery that isn&apos;t stolen.
+      </p>
+      <ul class="card__list">
+        <li>WCAG 1.4.3 / 1.4.6 contrast against actual paint</li>
+        <li>12px minimum, max two typefaces</li>
+        <li>Margin &amp; padding grid validation</li>
+        <li>Image copyright &amp; policy screening</li>
+      </ul>
+    </article>
+
+    <article class="card">
+      <header>
+        <span class="card__tag">Movement III</span>
+        <h3>Information architecture</h3>
+      </header>
+      <p>
+        Headings in order. Forms with labels. Tables with <code>scope</code> attributes. Links that go somewhere.
+        Languages declared. Reflow that doesn&apos;t break. The structural plumbing.
+      </p>
+      <ul class="card__list">
+        <li>Heading hierarchy &amp; H1 discipline</li>
+        <li>Form labelling, fieldsets, required attrs</li>
+        <li>Link validity &amp; colour-only signalling</li>
+        <li>Reflow &amp; text-spacing (1.4.10 / 1.4.12)</li>
+      </ul>
+    </article>
+
+    <article class="card card--accent">
+      <header>
+        <span class="card__tag">Movement IV</span>
+        <h3>Journeys</h3>
+      </header>
+      <p>
+        Not only pages, but the paths through them. A <em>journey-expander</em> discovers interactive elements on the
+        page. A <em>journey-executor</em> drives a real headless browser through them, checking state you only reach
+        by clicking something.
+      </p>
+      <ul class="card__list">
+        <li>Headless Chrome via Selenium WebDriver</li>
+        <li>Dynamic state audited post-interaction</li>
+        <li>Candidate &rarr; verified &rarr; discarded lifecycle</li>
+        <li>Dead-letter handling for broken flows</li>
+      </ul>
+    </article>
+  </div>
+</section>
+
+<!-- 03 ................................................................ -->
+<section id="why" class="chapter" aria-labelledby="why-h">
+  <div class="chapter__head">
+    <span class="chapter__num" aria-hidden="true">03</span>
+    <h2 id="why-h" class="chapter__title">Why it&apos;s unusual</h2>
+    <p class="chapter__kicker">Three choices that put Look-see somewhere other tools aren&apos;t.</p>
+  </div>
+
+  <figure class="pullquote">
+    <blockquote>
+      <p>Most accessibility tools parse the DOM. Look-see also renders the page.</p>
+    </blockquote>
+    <figcaption>&mdash; The design principle behind the visual audit.</figcaption>
+  </figure>
+
+  <ol class="reasons">
+    <li>
+      <span class="reasons__num" aria-hidden="true">i.</span>
+      <h3>It looks at pixels, not only at HTML.</h3>
+      <p>
+        Colour contrast, font sizing, whitespace and image policy are evaluated against the rendered output of the
+        page. CSS can lie; a screenshot cannot. A page can pass every rule-based checker and still be unreadable for a
+        human &mdash; light gray on white, a font that computed to 10px, a button that vanishes below a banner. The
+        visual design service sees what a user sees.
+      </p>
+    </li>
+    <li>
+      <span class="reasons__num" aria-hidden="true">ii.</span>
+      <h3>It audits journeys, not just URLs.</h3>
+      <p>
+        Modern applications are state machines. Auditing the landing page is like inspecting a theatre by its lobby.
+        Look-see discovers journeys by scraping interactive elements, executes them in a real browser, and audits the
+        states produced along the way. Discarded paths are recorded; verified ones are re-expanded until the map is
+        complete.
+      </p>
+    </li>
+    <li>
+      <span class="reasons__num" aria-hidden="true">iii.</span>
+      <h3>It&apos;s an engine, not a rule list.</h3>
+      <p>
+        Beneath the audit services is <code>LookseeCore</code> &mdash; models, persistence, browser automation,
+        messaging, cloud, and now LLM. New audits compose from these primitives without re-plumbing infrastructure.
+        The <code>looksee-llm</code> module is the newest: a provider-agnostic layer with Anthropic Claude as the
+        first backend, wired with redaction, caching, budgeting, and retries before any feature ships on it.
+      </p>
+    </li>
+  </ol>
+</section>
+
+<!-- 04 ................................................................ -->
+<section id="architecture" class="chapter" aria-labelledby="arch-h">
+  <div class="chapter__head">
+    <span class="chapter__num" aria-hidden="true">04</span>
+    <h2 id="arch-h" class="chapter__title">Inside the machine</h2>
+    <p class="chapter__kicker">The system as it actually runs. No arrows pointing into clouds.</p>
+  </div>
+
+  <figure class="diagram" role="group" aria-labelledby="diagram-caption">
+    <svg viewBox="0 0 960 560" xmlns="http://www.w3.org/2000/svg" class="diagram__svg" role="img" aria-label="Pub/Sub service graph. The Crawler API publishes a URL. Page Builder builds a page model. The Audit Manager fans out page-audit work to three parallel audit services: content, visual design, and information architecture. Each publishes progress to the audit-update topic, consumed by the audit-service, which broadcasts back to the UI over Pusher.">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" class="diagram__arrow"/>
+        </marker>
+        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+          <path d="M 20 0 L 0 0 0 20" class="diagram__grid-line"/>
+        </pattern>
+      </defs>
+      <rect width="960" height="560" fill="url(#grid)" opacity="0.45"/>
+
+      <!-- row 1 -->
+      <g class="node" data-role="api">
+        <rect x="40" y="60" width="170" height="72" rx="4"/>
+        <text x="125" y="90" text-anchor="middle" class="node__title">CrawlerAPI</text>
+        <text x="125" y="112" text-anchor="middle" class="node__sub">REST &middot; Java 21</text>
+      </g>
+      <g class="node" data-role="builder">
+        <rect x="395" y="60" width="170" height="72" rx="4"/>
+        <text x="480" y="90" text-anchor="middle" class="node__title">PageBuilder</text>
+        <text x="480" y="112" text-anchor="middle" class="node__sub">headless browser</text>
+      </g>
+      <g class="node" data-role="manager">
+        <rect x="750" y="60" width="170" height="72" rx="4"/>
+        <text x="835" y="90" text-anchor="middle" class="node__title">AuditManager</text>
+        <text x="835" y="112" text-anchor="middle" class="node__sub">fan-out orchestrator</text>
+      </g>
+
+      <!-- row 2: topics -->
+      <g class="topic">
+        <line x1="210" y1="96" x2="395" y2="96" class="diagram__edge" marker-end="url(#ah)"/>
+        <rect x="242" y="80" width="120" height="34" rx="17"/>
+        <text x="302" y="102" text-anchor="middle" class="topic__label">url topic</text>
+      </g>
+      <g class="topic">
+        <line x1="565" y1="96" x2="750" y2="96" class="diagram__edge" marker-end="url(#ah)"/>
+        <rect x="580" y="80" width="155" height="34" rx="17"/>
+        <text x="657" y="102" text-anchor="middle" class="topic__label">page_created topic</text>
+      </g>
+
+      <!-- fan out -->
+      <line x1="835" y1="132" x2="835" y2="180" class="diagram__edge"/>
+      <line x1="200" y1="180" x2="835" y2="180" class="diagram__edge"/>
+      <line x1="200" y1="180" x2="200" y2="240" class="diagram__edge" marker-end="url(#ah)"/>
+      <line x1="510" y1="180" x2="510" y2="240" class="diagram__edge" marker-end="url(#ah)"/>
+      <line x1="820" y1="180" x2="820" y2="240" class="diagram__edge" marker-end="url(#ah)"/>
+      <g class="topic">
+        <rect x="410" y="166" width="200" height="28" rx="14"/>
+        <text x="510" y="185" text-anchor="middle" class="topic__label">page_audit topic</text>
+      </g>
+
+      <!-- row 3: audit services -->
+      <g class="node node--audit" data-role="content">
+        <rect x="115" y="240" width="170" height="80" rx="4"/>
+        <text x="200" y="272" text-anchor="middle" class="node__title">contentAudit</text>
+        <text x="200" y="292" text-anchor="middle" class="node__sub">alt text, readability</text>
+      </g>
+      <g class="node node--audit" data-role="visual">
+        <rect x="425" y="240" width="170" height="80" rx="4"/>
+        <text x="510" y="272" text-anchor="middle" class="node__title">visualDesignAudit</text>
+        <text x="510" y="292" text-anchor="middle" class="node__sub">contrast, type, grid</text>
+      </g>
+      <g class="node node--audit" data-role="ia">
+        <rect x="735" y="240" width="170" height="80" rx="4"/>
+        <text x="820" y="268" text-anchor="middle" class="node__title">informationArch-</text>
+        <text x="820" y="284" text-anchor="middle" class="node__title">itectureAudit</text>
+        <text x="820" y="304" text-anchor="middle" class="node__sub">headings, forms, tables</text>
+      </g>
+
+      <!-- merge back -->
+      <line x1="200" y1="320" x2="200" y2="360" class="diagram__edge"/>
+      <line x1="510" y1="320" x2="510" y2="360" class="diagram__edge"/>
+      <line x1="820" y1="320" x2="820" y2="360" class="diagram__edge"/>
+      <line x1="200" y1="360" x2="820" y2="360" class="diagram__edge"/>
+      <line x1="510" y1="360" x2="510" y2="400" class="diagram__edge" marker-end="url(#ah)"/>
+      <g class="topic">
+        <rect x="400" y="346" width="220" height="28" rx="14"/>
+        <text x="510" y="365" text-anchor="middle" class="topic__label">audit_update topic</text>
+      </g>
+
+      <!-- row 4: audit service -->
+      <g class="node" data-role="broadcaster">
+        <rect x="395" y="400" width="230" height="72" rx="4"/>
+        <text x="510" y="430" text-anchor="middle" class="node__title">audit-service</text>
+        <text x="510" y="452" text-anchor="middle" class="node__sub">broadcasts via Pusher</text>
+      </g>
+
+      <!-- row 5: UI -->
+      <line x1="510" y1="472" x2="510" y2="510" class="diagram__edge" marker-end="url(#ah)"/>
+      <g class="node node--ui" data-role="ui">
+        <rect x="380" y="510" width="260" height="36" rx="4"/>
+        <text x="510" y="533" text-anchor="middle" class="node__title">Look-see UI · Angular</text>
+      </g>
+
+      <!-- annotation -->
+      <text x="44" y="420" class="annotation">&#x2199; Journey pipeline (expander &amp; executor)</text>
+      <text x="44" y="438" class="annotation">runs a parallel loop on verified journeys,</text>
+      <text x="44" y="456" class="annotation">feeding back into <tspan class="mono">page_created</tspan>.</text>
+    </svg>
+    <figcaption id="diagram-caption" class="diagram__caption">
+      Fig. 1 &mdash; The core page-audit pipeline. Each arrow is a Google Cloud Pub/Sub topic with a push subscription; each box is a Spring Boot service deployed as a Cloud Run container. The journey pipeline (not shown) runs an analogous loop over verified journeys, feeding discovered pages back to <span class="mono">page_created</span>.
+    </figcaption>
+  </figure>
+
+  <div class="decisions">
+    <h3 class="decisions__head">Architectural decisions, with the reasoning intact.</h3>
+
+    <div class="decision">
+      <div class="decision__meta">
+        <span class="decision__label">ADR-01</span>
+        <span class="decision__tag">Data model</span>
+      </div>
+      <div class="decision__body">
+        <h4>Use a graph database for a graph-shaped domain.</h4>
+        <p>
+          Accounts own Domains, which own Pages, which contain Elements, which participate in Journeys. Those aren't
+          rows &mdash; they are edges. Neo4j lets Look-see query <em>every page where an element appears on a verified
+          journey</em> in a single traversal, instead of five joins. Spring Data Neo4j wires 37 repositories into the
+          core and every service inherits them.
+        </p>
+      </div>
+    </div>
+
+    <div class="decision">
+      <div class="decision__meta">
+        <span class="decision__label">ADR-02</span>
+        <span class="decision__tag">Concurrency</span>
+      </div>
+      <div class="decision__body">
+        <h4>Decouple audit services with Pub/Sub push subscriptions.</h4>
+        <p>
+          The three audit services don't know about each other; they each subscribe to <span class="mono">page_audit</span>
+          and run independently. Failures retry. Work scales horizontally by adding Cloud Run instances. The
+          orchestration logic that would otherwise live in an application lives in the broker.
+        </p>
+      </div>
+    </div>
+
+    <div class="decision">
+      <div class="decision__meta">
+        <span class="decision__label">ADR-03</span>
+        <span class="decision__tag">Correctness</span>
+      </div>
+      <div class="decision__body">
+        <h4>Design by Contract, enforced at runtime.</h4>
+        <p>
+          Every service is started with <span class="mono">-ea</span>. Preconditions use
+          <span class="mono">Objects.requireNonNull</span> and always run; postconditions and invariants use
+          <span class="mono">assert</span> and run in test and staging. The contracts are documented, not implied.
+          See <span class="mono">LookseeCore/docs/DESIGN_BY_CONTRACT.md</span>.
+        </p>
+      </div>
+    </div>
+
+    <div class="decision">
+      <div class="decision__meta">
+        <span class="decision__label">ADR-04</span>
+        <span class="decision__tag">Platform</span>
+      </div>
+      <div class="decision__body">
+        <h4>Ship on Cloud Run; deploy with Terraform.</h4>
+        <p>
+          Each service is a Docker image. Infrastructure &mdash; Pub/Sub topics, Secret Manager entries, Cloud Run
+          services, the Neo4j VM, VPC access &mdash; is declared in <span class="mono">LookseeIaC/GCP</span>. A fresh
+          environment is one <span class="mono">terraform apply</span>.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 ................................................................ -->
+<section id="now" class="chapter" aria-labelledby="now-h">
+  <div class="chapter__head">
+    <span class="chapter__num" aria-hidden="true">05</span>
+    <h2 id="now-h" class="chapter__title">In progress, Spring 2026</h2>
+    <p class="chapter__kicker">Drawn from the commit log, not from a roadmap deck.</p>
+  </div>
+
+  <ol class="timeline">
+    <li class="timeline__item">
+      <time class="timeline__date" datetime="2026-04">April 2026</time>
+      <h3 class="timeline__title">Browser module extraction</h3>
+      <p>
+        <span class="mono">com.looksee.browsing</span> became <span class="mono">com.looksee.browser</span>. Spring
+        compile-time dependencies were removed. The browser module can now be reused outside the platform &mdash;
+        useful for any tool that needs honest, headless page rendering.
+      </p>
+    </li>
+
+    <li class="timeline__item">
+      <time class="timeline__date" datetime="2026-03">March&ndash;April 2026</time>
+      <h3 class="timeline__title">The Waves refactor</h3>
+      <p>
+        A five-wave campaign landing in sequenced release branches: observability, a shared base controller, a base
+        Docker image, Spring Boot 3 preparation, an end-to-end pipeline, and a secrets reshuffle. Each wave merges
+        clean.
+      </p>
+    </li>
+
+    <li class="timeline__item timeline__item--accent">
+      <time class="timeline__date" datetime="2026-03">March 2026</time>
+      <h3 class="timeline__title"><span class="mono">looksee-llm</span> foundation module</h3>
+      <p>
+        A provider-agnostic LLM layer joined LookseeCore. Anthropic Claude is the first backend &mdash; Opus for full
+        analysis, Haiku for cost-sensitive jobs, Sonnet in the middle. Redaction, Caffeine caching, budgeting,
+        Resilience4j retries and Micrometer metrics are wired before the first feature ships on it. Vision input
+        is supported so audits can reason about screenshots, not only markup.
+      </p>
+    </li>
+
+    <li class="timeline__item">
+      <time class="timeline__date" datetime="2026-03">March 2026</time>
+      <h3 class="timeline__title">Trace propagation across Pub/Sub</h3>
+      <p>
+        Wave&nbsp;2.2 restored producer-side trace propagation; Wave&nbsp;5.1 added a smoke driver that walks a single
+        message all the way through the graph. A broken audit is now a distributed trace, not a guess.
+      </p>
+    </li>
+  </ol>
+</section>
+
+<!-- 06 ................................................................ -->
+<section id="links" class="chapter" aria-labelledby="links-h">
+  <div class="chapter__head">
+    <span class="chapter__num" aria-hidden="true">06</span>
+    <h2 id="links-h" class="chapter__title">Where to look next</h2>
+    <p class="chapter__kicker">The repository is the primary source. Everything else points back into it.</p>
+  </div>
+
+  <div class="links">
+    <a class="linkcard linkcard--primary" href="https://github.com/deepthought42/Accessibility-audit-platform" rel="noopener">
+      <span class="linkcard__label">Repository</span>
+      <span class="linkcard__title">Accessibility-audit-platform</span>
+      <span class="linkcard__desc">The monorepo. Services, UI, extensions, infrastructure.</span>
+    </a>
+
+    <a class="linkcard" href="https://github.com/deepthought42/Accessibility-audit-platform/tree/main/LookseeCore" rel="noopener">
+      <span class="linkcard__label">Library</span>
+      <span class="linkcard__title">LookseeCore</span>
+      <span class="linkcard__desc">Shared models, persistence, browser, messaging, cloud, LLM.</span>
+    </a>
+
+    <a class="linkcard" href="https://github.com/deepthought42/Accessibility-audit-platform/tree/main/Look-see-UI-v3" rel="noopener">
+      <span class="linkcard__label">Frontend</span>
+      <span class="linkcard__title">Look-see-UI-v3</span>
+      <span class="linkcard__desc">Angular 17 interface. Real-time audit progress over Pusher.</span>
+    </a>
+
+    <a class="linkcard" href="https://github.com/deepthought42/Accessibility-audit-platform/tree/main/look-see-VSCode-plugin" rel="noopener">
+      <span class="linkcard__label">Developer tool</span>
+      <span class="linkcard__title">VS Code plugin</span>
+      <span class="linkcard__desc">WCAG 2.2 linting for React, Vue, Angular and plain HTML &mdash; as you type.</span>
+    </a>
+
+    <a class="linkcard" href="https://github.com/deepthought42/Accessibility-audit-platform/tree/main/LookseeChromeExtension" rel="noopener">
+      <span class="linkcard__label">Browser</span>
+      <span class="linkcard__title">Chrome extension</span>
+      <span class="linkcard__desc">Audit the page you are on, without uploading it anywhere.</span>
+    </a>
+
+    <a class="linkcard" href="https://github.com/deepthought42/Accessibility-audit-platform/tree/main/LookseeIaC" rel="noopener">
+      <span class="linkcard__label">Infrastructure</span>
+      <span class="linkcard__title">LookseeIaC</span>
+      <span class="linkcard__desc">Terraform for GCP. Cloud Run, Pub/Sub, Secret Manager, VPC, Neo4j VM.</span>
+    </a>
+  </div>
+</section>
+
+</main>
+
+<footer class="colophon" role="contentinfo">
+  <div class="colophon__rule" aria-hidden="true"></div>
+  <div class="colophon__grid">
+    <div>
+      <h2>Colophon</h2>
+      <p>
+        This page is hand-written in HTML and CSS and served as static files from the <code>/docs</code> directory of
+        the repository. There are no trackers, no analytics, no cookies, no third-party scripts. The eye in the
+        masthead was drawn in SVG.
+      </p>
+    </div>
+    <div>
+      <h2>Typography</h2>
+      <p>
+        Display: <span class="face face--display">Fraunces</span>, with the optical-size axis tuned per heading.<br>
+        Text: <span class="face face--sans">Instrument Sans</span>.<br>
+        Code: <span class="face face--mono">JetBrains Mono</span>.
+      </p>
+    </div>
+    <div>
+      <h2>Accessibility</h2>
+      <p>
+        Contrast meets WCAG AAA for body text and AA for large type. The page is keyboard-navigable, respects
+        <span class="mono">prefers-reduced-motion</span>, and exposes every non-decorative image through alt text or
+        SVG <span class="mono">aria-label</span>. If something here fails an audit, please open an issue.
+      </p>
+    </div>
+  </div>
+  <p class="colophon__sig">
+    &mdash; An open-source project by <a href="https://github.com/deepthought42" rel="noopener">@deepthought42</a>
+    and contributors. MIT-licensed where applicable.
+  </p>
+</footer>
+
+<script src="script.js" defer></script>
+</body>
+</html>
