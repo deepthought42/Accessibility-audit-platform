@@ -16,7 +16,7 @@
 <h1 align="center">Look-see — Automated WCAG 2.2 Accessibility Audit Platform</h1>
 
 <p align="center">
-  <strong>Find, fix, and prove every accessibility issue on your website — from color contrast to keyboard journeys — with one open-source platform.</strong>
+  <strong>Look-see reads your website the way a user does — in HTML, in rendered pixels, and across the journeys between pages. Then it tells you where it falls apart.</strong>
 </p>
 
 <p align="center">
@@ -32,7 +32,7 @@
 </p>
 
 <p align="center">
-  <img src="Look-see-UI-v3/src/assets/Banner_1.png" alt="Look-see — stay on trend, stay on brand, stay ahead. Accessibility score dashboard screenshot." />
+  <img src="Look-see-UI-v3/src/assets/Banner_1.png" alt="Look-see dashboard showing content, visual design, information architecture, and journey scores from a live audit." />
   <!-- TODO(design): replace with a bespoke a11y-superhero hero image pairing the Look-see logo with WCAG category icons. -->
 </p>
 
@@ -49,23 +49,29 @@
 
 ## What is Look-see?
 
-**Look-see is an open-source accessibility audit platform** that continuously crawls your website, drives it in a real headless browser, and grades every page against **WCAG 2.2 / 2.1 AA**, **ADA**, **Section 508**, and **EN 301 549**. Unlike one-page scanners, Look-see follows real user journeys — clicking, navigating, and validating end-to-end flows — so the issues it reports are the ones your users actually hit.
+**Look-see is an open-source accessibility audit platform.** It crawls your site, drives it in a real headless browser, and grades every page against **WCAG 2.2 / 2.1 AA**, **ADA**, **Section 508**, and **EN 301 549**. Unlike one-page scanners, it follows the journeys users actually take — clicking, navigating, and validating end-to-end flows — so the issues it reports are the ones a real visitor would hit.
 
-It ships as a monorepo of small services: a crawler API, a page builder, four specialized audit workers (content, visual design, information architecture, journeys), an Angular UI, a Chrome extension, and a VS Code extension for real-time feedback in your editor.
+Under the hood it's a monorepo of small services: a crawler API, a page builder, four specialized audit workers (content, visual design, information architecture, journeys), an Angular UI, a Chrome extension, and a VS Code extension for real-time feedback in your editor. They trade work over Google Cloud Pub/Sub and describe the site in a Neo4j graph.
 
-A hosted commercial version is coming to [**look-see.com**](https://deepthought42.github.io/Accessibility-audit-platform/) — self-host in the meantime with the instructions below.
+## Where we are
 
-## Why teams choose Look-see
+Look-see is **engineered in public** and isn't 1.0 yet. The services below are real and runnable, but the project is still being stitched together — not a polished hosted product. Expect rough edges, roadmap items that are sketched before they're wired up, and docs that occasionally describe intent before they describe reality.
 
-- 🎯 **Comprehensive WCAG 2.2 coverage** — not just a quick scan. Covers perceivable, operable, understandable, and robust success criteria across every page and journey.
-- 🧭 **Journey-aware, not page-aware** — drives multi-step flows (login, checkout, search) in a real browser and catches issues only visible mid-flow.
-- 🎨 **Dedicated visual-design audits** — color contrast (AA/AAA), typography scale, imagery quality, whitespace, and brand consistency.
-- ✍️ **Content audits** — alt text quality, readability grade, paragraph structure, and plain-language checks powered by Google Cloud NLP.
-- 🏗️ **Information architecture audits** — heading hierarchy, landmarks, table semantics, form labels, link text, and metadata.
-- ⚡ **Live audit progress** — see scores update in real time via WebSocket as workers finish.
-- 🧩 **Meet developers where they work** — Chrome extension, VS Code extension, and an Angular dashboard.
-- 🔓 **MIT-licensed and self-hostable** — your data never leaves your cloud. One `terraform apply` on GCP.
-- 🧠 **Graph-native** — built on Neo4j so relationships between pages, elements, journeys, and issues are first-class.
+For the current cadence, skim the [commits](https://github.com/deepthought42/Accessibility-audit-platform/commits/main) and [open issues](https://github.com/deepthought42/Accessibility-audit-platform/issues). A hosted version at [look-see.com](https://deepthought42.github.io/Accessibility-audit-platform/) is planned but not live; self-hosting is the supported path today.
+
+If that sounds more interesting than it sounds like a warning, you're in the right place. PRs welcome. Bug reports from real websites especially welcome.
+
+## Why it's unusual
+
+**It looks at pixels, not only at HTML.** Most accessibility tools parse the DOM and stop there. Look-see also renders the page and audits the output a user actually sees — contrast measured from the paint on screen, not from stylesheet rules that may be overridden. A page can pass every rule-based checker and still be unreadable: light grey on white, a font that computed to 10px, a button that vanishes below a sticky banner. The visual-design service sees what a user sees.
+
+**It audits journeys, not just URLs.** Modern applications are state machines. Auditing the landing page is like inspecting a theatre by its lobby. Look-see discovers interactive elements, drives a real headless browser through them, and audits the states you only reach by clicking — mid-login, mid-checkout, mid-search.
+
+**It's a graph, not a list.** The site is stored in Neo4j, so pages, elements, journeys, and issues relate the way they actually do in a product. Ask it "which heading hierarchy violations affect which user journeys?" and it has an answer, not a spreadsheet.
+
+**It meets developers where they work.** Chrome extension, VS Code extension, Angular dashboard — the same audit data, three surfaces. Live scores arrive over WebSocket as workers finish, so you watch the audit happen instead of waiting for a PDF.
+
+**It's MIT-licensed and self-hostable.** One `terraform apply` on GCP and your data never leaves your cloud. That matters for compliance teams and for anyone who's been burned by a vendor rug-pull.
 
 ## What Look-see audits
 

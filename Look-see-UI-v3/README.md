@@ -1,25 +1,21 @@
 # Look-see UI
 
-Look-see is an AI-powered UX audit platform that helps businesses improve their website accessibility and user experience. The platform automatically analyzes websites for visual design, information architecture, and content quality issues while ensuring WCAG 2.1 compliance.
+The Angular web interface for [Look-see](../README.md) — an open-source accessibility audit platform that reads your website the way a user does: in HTML, in rendered pixels, and across the journeys between pages.
 
-## What is Look-see?
+## What this is
 
-LookSee is a comprehensive UX audit tool that:
+This is the user-facing web app. It's what you open in your browser to start an audit, watch it run in real time over WebSocket, and read the results. The audits themselves are run by a fleet of Spring Boot services in sibling directories; this app just talks to them and surfaces what they find.
 
-- **Automatically audits websites** for UX issues using advanced AI
-- **Ensures WCAG 2.1 compliance** for accessibility standards
-- **Provides detailed reports** with actionable recommendations
-- **Tracks usability scores** over time to measure improvements
-- **Supports both single-page and full-site audits**
+For the full platform — services, deployment, architecture — see the [top-level README](../README.md).
 
-### Key Features
+### What it shows
 
-- **Visual Design Analysis**: Color palette, typography, whitespace, and branding evaluation
-- **Information Architecture**: SEO optimization, menu analysis, and performance assessment
-- **Content Quality**: Written content readability, imagery relevance, and media accessibility
-- **Real-time Updates**: Live progress tracking via WebSocket connections
-- **Export Capabilities**: Generate detailed reports in Excel format
-- **Team Collaboration**: Share results with stakeholders and team members
+- **Visual design** — contrast, typography, whitespace, and imagery, measured from rendered pixels
+- **Information architecture** — headings, forms, tables, links, landmarks, and metadata
+- **Content** — alt text quality, readability grade, and paragraph structure
+- **Journeys** — multi-step flows driven in a real headless browser
+- **Live progress** — scores update as each audit worker finishes, pushed over WebSocket
+- **Report export** — detailed issue lists in Excel
 
 ## Third-Party Services Configuration
 
