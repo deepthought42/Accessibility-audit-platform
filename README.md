@@ -137,20 +137,42 @@ docker run -p 8080:8080 looksee/<service-name>
 
 Look-see is a pub/sub-driven monorepo. A single **CrawlerAPI** fronts the platform; work flows asynchronously through Google Cloud Pub/Sub topics to specialized workers, then back to the UI over a Pusher WebSocket.
 
-```
-  Browser ──HTTP──▶ CrawlerAPI ──▶ (url) ──▶ PageBuilder ──▶ (page_created)
-                                                                  │
-                                                                  ▼
-                                                            AuditManager
-                                                                  │
-                                            ┌─────────────────────┼─────────────────────┐
-                                            ▼                     ▼                     ▼
-                                      contentAudit         visualDesignAudit   informationArchitectureAudit
-                                            │                     │                     │
-                                            └───────────▶ (audit_update) ◀──────────────┘
-                                                                  │
-                                                                  ▼
-                                              audit-service ──Pusher──▶ Look-see UI
+```mermaid
+flowchart LR
+    Browser([User Browser])
+
+    subgraph Ingestion
+        API[CrawlerAPI]
+        PB[PageBuilder]
+    end
+
+    subgraph Orchestration
+        AM[AuditManager]
+    end
+
+    subgraph Workers["Audit Workers"]
+        CA["contentAudit<br/>alt text · readability"]
+        VD["visualDesignAudit<br/>contrast · typography"]
+        IA["informationArchitectureAudit<br/>headings · forms · landmarks"]
+    end
+
+    AS[audit-service]
+
+    Browser -->|HTTP / REST| API
+    API -->|url| PB
+    PB -->|page_created| AM
+    AM -->|page_audit| CA
+    AM -->|page_audit| VD
+    AM -->|page_audit| IA
+    CA -->|audit_update| AS
+    VD -->|audit_update| AS
+    IA -->|audit_update| AS
+    AS -. Pusher WebSocket .-> Browser
+
+    classDef svc fill:#fff,stroke:#ff1a4b,stroke-width:2px,color:#111
+    classDef client fill:#e8f3ff,stroke:#1e7cff,stroke-width:2px,color:#111
+    class API,PB,AM,CA,VD,IA,AS svc
+    class Browser client
 ```
 
 **Shared across every Java service: [LookseeCore](LookseeCore/)** (`A11yCore` Maven artifact) — Neo4j models, Spring Data repositories, Selenium WebDriver automation, GCP integrations (Storage, Vision, NLP, Pub/Sub), and Pusher broadcasting.
@@ -252,81 +274,75 @@ Individual subdirectories may retain their original Apache 2.0 license files fro
 
 ### Pub/Sub message flow
 
-```
-                                    Look-see Platform Architecture
-                                    ==============================
+Full system view — the page-audit pipeline, the journey pipeline, dead-letter handling, and real-time broadcasting to the UI.
 
-  User Browser
-       |
-       v
-  [Look-see-UI-v3]  <-----(Pusher WebSocket)-----  [front-end-broadcaster]
-       |                                                     ^
-       | HTTP/REST                                           |
-       v                                                     |
-  [CrawlerAPI]                                               |
-       |                                                     |
-       | publishes AuditStartMessage                         |
-       v                                                     |
-  (url topic)                                     (page_created topic)
-       |                                                     |
-       v                                                     |
-  [PageBuilder] -----publishes PageBuiltMessage------>-------+
-       |                                                     |
-       | publishes PageBuiltMessage         publishes PageBuiltMessage
-       v                                                     v
-  (page_created topic)                          [element-enrichment]
-       |
-       v
-  [AuditManager]
-       |
-       | publishes PageAuditMessage
-       v
-  (page_audit topic)
-       |
-       +-------------------+-------------------+
-       |                   |                   |
-       v                   v                   v
-  [contentAudit]   [visualDesign    [informationArchitecture
-                    Audit]           Audit]
-       |                   |                   |
-       +-------------------+-------------------+
-       |
-       | publishes AuditProgressUpdate
-       v
-  (audit_update topic)
-       |
-       v
-  [audit-service] -----(Pusher WebSocket)-----> [Look-see-UI-v3]
+```mermaid
+flowchart TD
+    UI([Look-see UI])
 
+    subgraph Ingestion["Ingestion"]
+        API[CrawlerAPI]
+        PB[PageBuilder]
+        EE[element-enrichment]
+    end
 
-  Journey Pipeline (domain-level audits)
-  ======================================
+    subgraph Orchestration["Orchestration"]
+        AM[AuditManager]
+    end
 
-  [PageBuilder]
-       |
-       | publishes VerifiedJourneyMessage
-       v
-  (journey_verified topic)
-       |
-       v
-  [journeyExpander]
-       |
-       | publishes JourneyCandidateMessage
-       v
-  (journey_candidate topic)
-       |
-       v
-  [journeyExecutor]
-       |
-       +---> (journey_verified topic)    [re-enter expansion loop]
-       +---> (discarded_journey topic)   [journey rejected]
-       +---> (audit_error topic)         [processing failed]
+    subgraph PageAudits["Per-page audit workers"]
+        CA[contentAudit]
+        VD[visualDesignAudit]
+        IA[informationArchitectureAudit]
+    end
 
-  Dead-letter & Cleanup
-  =====================
+    subgraph JourneyPipeline["Journey pipeline (domain-level audits)"]
+        JX[journeyExpander]
+        JE[journeyExecutor]
+        JCL[journey-map-cleanup]
+        JER[journeyErrors]
+    end
 
-  (journey_candidate dead-letter) ---> [journeyErrors]     marks failed journeys as ERROR
-  (scheduled trigger)             ---> [journey-map-cleanup] cleans stale CANDIDATE journeys
+    subgraph Broadcast["Real-time broadcast"]
+        FB[front-end-broadcaster]
+        AS[audit-service]
+    end
+
+    UI -->|HTTP / REST| API
+    API -->|url · AuditStartMessage| PB
+
+    PB -->|page_created · PageBuiltMessage| AM
+    PB -->|page_created| FB
+    PB -->|page_created| EE
+    PB -->|journey_verified · VerifiedJourneyMessage| JX
+
+    AM -->|page_audit · PageAuditMessage| CA
+    AM -->|page_audit| VD
+    AM -->|page_audit| IA
+
+    CA -->|audit_update · AuditProgressUpdate| AS
+    VD -->|audit_update| AS
+    IA -->|audit_update| AS
+
+    JX -->|journey_candidate · JourneyCandidateMessage| JE
+    JE -->|journey_verified · re-enter loop| JX
+    JE -->|journey_discarded| API
+    JE -->|audit_error| AS
+
+    JCL -. scheduled trigger<br/>cleans stale CANDIDATEs .-> JX
+    JER -. dead-letter<br/>marks failed as ERROR .-> JX
+
+    FB -. Pusher WebSocket .-> UI
+    AS -. Pusher WebSocket .-> UI
+
+    classDef svc fill:#fff,stroke:#ff1a4b,stroke-width:2px,color:#111
+    classDef client fill:#e8f3ff,stroke:#1e7cff,stroke-width:2px,color:#111
+    classDef journey fill:#fff7e8,stroke:#e39800,stroke-width:2px,color:#111
+    classDef ops fill:#f3e8ff,stroke:#7a3cff,stroke-width:2px,color:#111
+    class API,PB,EE,AM,CA,VD,IA,FB,AS svc
+    class UI client
+    class JX,JE journey
+    class JCL,JER ops
 ```
 
 ### Key Pub/Sub topics
