@@ -1,66 +1,256 @@
-# Accessibility-audit-platform
+<!--
+  Meta keywords for search engines & GitHub topics:
+  WCAG 2.2, WCAG 2.1, accessibility audit, a11y, ADA compliance, Section 508,
+  automated accessibility testing, color contrast checker, alt text audit,
+  screen reader testing, keyboard navigation, axe alternative, Pa11y alternative,
+  Lighthouse accessibility, Angular, Spring Boot, Neo4j, headless browser,
+  Selenium, WCAG scanner, inclusive design, EN 301 549
+-->
 
-Monorepo for Look-see / accessibility audit services: APIs, workers, UI, extensions, and infrastructure.
+<p align="center">
+  <a href="https://look-see.com">
+    <img src="Look-see-UI-v3/src/assets/Wordmark_Red.png" alt="Look-see logo" width="220" />
+  </a>
+</p>
 
-Each top-level directory is a former standalone repository. Former `origin` URLs are listed in `LEGACY_REMOTES.txt` for reference.
+<h1 align="center">Look-see — Automated WCAG 2.2 Accessibility Audit Platform</h1>
 
-This migration uses a **single new history** at the root (previous per-repo commit histories are not included). To keep old SHAs, clone the URLs in `LEGACY_REMOTES.txt` into separate folders or use `git filter-repo` to replay histories under subdirectories.
+<p align="center">
+  <strong>Find, fix, and prove every accessibility issue on your website — from color contrast to keyboard journeys — with one open-source platform.</strong>
+</p>
 
-## Packages (top-level folders)
+<p align="center">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg" /></a>
+  <img alt="WCAG 2.2 AA" src="https://img.shields.io/badge/WCAG-2.2%20AA-success" />
+  <img alt="ADA & Section 508" src="https://img.shields.io/badge/compliance-ADA%20%7C%20Section%20508%20%7C%20EN%20301%20549-informational" />
+  <img alt="Java" src="https://img.shields.io/badge/Java-17%20%7C%2021-orange?logo=openjdk&logoColor=white" />
+  <img alt="Spring Boot" src="https://img.shields.io/badge/Spring%20Boot-2.6-6DB33F?logo=springboot&logoColor=white" />
+  <img alt="Angular" src="https://img.shields.io/badge/Angular-17-DD0031?logo=angular&logoColor=white" />
+  <img alt="Neo4j" src="https://img.shields.io/badge/Neo4j-graph-008CC1?logo=neo4j&logoColor=white" />
+  <img alt="GCP" src="https://img.shields.io/badge/Cloud-GCP%20Cloud%20Run-4285F4?logo=googlecloud&logoColor=white" />
+  <img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen" />
+</p>
 
-| Directory | Role | Java | Core Dep |
-|-----------|------|------|----------|
-| `AuditManager` | Orchestrates page audit lifecycle; routes Pub/Sub audit events to downstream services | 17 | A11yCore |
-| `audit-service` | Processes audit progress events and broadcasts live updates via Pusher | 17 | A11yCore |
-| `contentAudit` | Runs content accessibility audits (alt text, readability, paragraph structure) | 17 | A11yCore |
-| `CrawlerAPI` | REST API for web crawling, domain management, and user-facing operations | 21 | A11yCore |
-| `element-enrichment` | Enriches page element states with visual and semantic metadata | 17 | A11yCore |
-| `informationArchitectureAudit` | Audits information architecture (headers, tables, forms, links, metadata) | 17 | A11yCore |
-| `journey-map-cleanup` | Cleans up stale journey candidates in domain maps | 17 | A11yCore |
-| `journeyErrors` | Dead-letter handler for failed journey candidate messages | 17 | A11yCore |
-| `journeyExecutor` | Executes user journey workflows and validates journey paths | 17 | A11yCore |
-| `journeyExpander` | Expands verified journeys by discovering interactive elements | 17 | A11yCore |
-| `look-see-front-end-broadcaster` | Broadcasts page-found and audit-update events to the frontend via Pusher | 17 | A11yCore |
-| `Look-see-UI-v3` | Angular web UI for the accessibility audit platform | -- | -- |
-| `look-see-VSCode-plugin` | VS Code extension for real-time WCAG 2.2 accessibility analysis | -- | -- |
-| `LookseeChromeExtension` | Chrome extension for in-page accessibility issue detection | -- | -- |
-| `LookseeCore` | Shared core library: models, persistence, browser automation, GCP, messaging | 17 | -- |
-| `LookseeIaC` | Terraform infrastructure-as-code for GCP deployment | -- | -- |
-| `page-audit-enrichment` | Page audit data enrichment utilities | -- | -- |
-| `PageBuilder` | Builds page state models from crawled URLs using headless browsers | 17 | A11yCore |
-| `qa-testbed` | QA test fixture pages for accessibility testing | -- | -- |
-| `visualDesignAudit` | Audits visual design (color contrast, typography, imagery, whitespace) | 17 | A11yCore |
+<p align="center">
+  <img src="Look-see-UI-v3/src/assets/Banner_1.png" alt="Look-see — stay on trend, stay on brand, stay ahead. Accessibility score dashboard screenshot." />
+  <!-- TODO(design): replace with a bespoke a11y-superhero hero image pairing the Look-see logo with WCAG category icons. -->
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#what-look-see-audits">What it audits</a> ·
+  <a href="#architecture">Architecture</a> ·
+  <a href="#deploy-to-your-own-cloud">Deploy</a> ·
+  <a href="#roadmap">Roadmap</a> ·
+  <a href="https://look-see.com">look-see.com</a>
+</p>
+
+---
+
+## What is Look-see?
+
+**Look-see is an open-source accessibility audit platform** that continuously crawls your website, drives it in a real headless browser, and grades every page against **WCAG 2.2 / 2.1 AA**, **ADA**, **Section 508**, and **EN 301 549**. Unlike one-page scanners, Look-see follows real user journeys — clicking, navigating, and validating end-to-end flows — so the issues it reports are the ones your users actually hit.
+
+It ships as a monorepo of small services: a crawler API, a page builder, four specialized audit workers (content, visual design, information architecture, journeys), an Angular UI, a Chrome extension, and a VS Code extension for real-time feedback in your editor.
+
+A hosted commercial version is coming to [**look-see.com**](https://look-see.com) — self-host in the meantime with the instructions below.
+
+## Why teams choose Look-see
+
+- 🎯 **Comprehensive WCAG 2.2 coverage** — not just a quick scan. Covers perceivable, operable, understandable, and robust success criteria across every page and journey.
+- 🧭 **Journey-aware, not page-aware** — drives multi-step flows (login, checkout, search) in a real browser and catches issues only visible mid-flow.
+- 🎨 **Dedicated visual-design audits** — color contrast (AA/AAA), typography scale, imagery quality, whitespace, and brand consistency.
+- ✍️ **Content audits** — alt text quality, readability grade, paragraph structure, and plain-language checks powered by Google Cloud NLP.
+- 🏗️ **Information architecture audits** — heading hierarchy, landmarks, table semantics, form labels, link text, and metadata.
+- ⚡ **Live audit progress** — see scores update in real time via WebSocket as workers finish.
+- 🧩 **Meet developers where they work** — Chrome extension, VS Code extension, and an Angular dashboard.
+- 🔓 **MIT-licensed and self-hostable** — your data never leaves your cloud. One `terraform apply` on GCP.
+- 🧠 **Graph-native** — built on Neo4j so relationships between pages, elements, journeys, and issues are first-class.
+
+## What Look-see audits
+
+Every page is scored across four WCAG-aligned categories:
+
+| Category | WCAG success criteria covered | Example checks |
+|---|---|---|
+| **Visual Design** | 1.4.1 Use of Color · 1.4.3 Contrast (Minimum) · 1.4.6 Contrast (Enhanced) · 1.4.11 Non-text Contrast · 1.4.12 Text Spacing | Color contrast (AA & AAA), typography scale, image quality, whitespace, imagery contrast |
+| **Content** | 1.1.1 Non-text Content · 3.1.5 Reading Level · 1.3.1 Info & Relationships | Alt text presence & quality, readability grade, paragraph structure, plain-language |
+| **Information Architecture** | 1.3.1 Info & Relationships · 2.4.6 Headings & Labels · 3.3.2 Labels or Instructions · 4.1.2 Name/Role/Value | Heading hierarchy, table semantics, form labels, link text, landmarks, page metadata |
+| **Journeys** | 2.1.1 Keyboard · 2.4.3 Focus Order · 2.4.7 Focus Visible · 3.2.2 On Input | Keyboard reachability, focus order, interactive element discovery, multi-step flow validation |
+
+## Who it's for
+
+- **Accessibility leads & a11y consultants** who need repeatable, auditable WCAG reports across large sites.
+- **Product & engineering teams** shipping under ADA, Section 508, or European Accessibility Act deadlines.
+- **Agencies** running periodic audits for clients, with white-labelable reports.
+- **Open-source maintainers** who want a Pa11y / axe-core alternative that handles full user journeys, not just static pages.
+
+## Quick Start
+
+### Prerequisites
+
+- **Java 17+** (Eclipse Temurin recommended; `CrawlerAPI` requires Java 21)
+- **Maven 3.9+**
+- **Node.js 18.19+** and **npm 10+** (for the Angular UI)
+- **Neo4j** 5.x (local Docker is fine)
+- **Docker** (optional, for containerized runs)
+- **Google Cloud SDK** (optional, only for GCP integrations like Vision/NLP)
+
+### 1. Clone and build the shared core
+
+All Java services depend on the `LookseeCore` library — build it once, locally.
+
+```bash
+git clone https://github.com/deepthought42/Accessibility-audit-platform.git
+cd Accessibility-audit-platform
+(cd LookseeCore && mvn clean install -DskipTests)
+```
+
+### 2. Run a service
+
+```bash
+cd AuditManager                       # or any other service directory
+mvn clean package -DskipTests
+java -ea -jar target/*.jar            # -ea enables Design-by-Contract assertions
+```
+
+### 3. Run the web UI
+
+```bash
+cd Look-see-UI-v3
+npm install
+ng serve
+# open http://localhost:4200
+```
+
+### 4. Run anything in Docker
+
+Every backend service ships a `Dockerfile`:
+
+```bash
+cd <service-directory>
+docker build -t looksee/<service-name> .
+docker run -p 8080:8080 looksee/<service-name>
+```
+
+## Architecture
+
+Look-see is a pub/sub-driven monorepo. A single **CrawlerAPI** fronts the platform; work flows asynchronously through Google Cloud Pub/Sub topics to specialized workers, then back to the UI over a Pusher WebSocket.
+
+```
+  Browser ──HTTP──▶ CrawlerAPI ──▶ (url) ──▶ PageBuilder ──▶ (page_created)
+                                                                  │
+                                                                  ▼
+                                                            AuditManager
+                                                                  │
+                                            ┌─────────────────────┼─────────────────────┐
+                                            ▼                     ▼                     ▼
+                                      contentAudit         visualDesignAudit   informationArchitectureAudit
+                                            │                     │                     │
+                                            └───────────▶ (audit_update) ◀──────────────┘
+                                                                  │
+                                                                  ▼
+                                              audit-service ──Pusher──▶ Look-see UI
+```
+
+**Shared across every Java service: [LookseeCore](LookseeCore/)** (`A11yCore` Maven artifact) — Neo4j models, Spring Data repositories, Selenium WebDriver automation, GCP integrations (Storage, Vision, NLP, Pub/Sub), and Pusher broadcasting.
+
+> For the full pub/sub topic list, message payloads, and journey-pipeline diagram, see the expanded [Architecture details](#architecture-details) below.
+
+## Packages
+
+Each top-level directory is a service or library. Click through for service-specific docs.
+
+### Backend services (Spring Boot)
+
+| Service | Role | Java |
+|---|---|---|
+| [`CrawlerAPI`](CrawlerAPI/) | Public REST API — web crawling, domains, users, billing | 21 |
+| [`PageBuilder`](PageBuilder/) | Builds page state models from crawled URLs with headless Chrome | 17 |
+| [`AuditManager`](AuditManager/) | Orchestrates page audit lifecycle; routes pub/sub events | 17 |
+| [`contentAudit`](contentAudit/) | Alt text, readability, paragraph structure | 17 |
+| [`visualDesignAudit`](visualDesignAudit/) | Color contrast, typography, imagery, whitespace | 17 |
+| [`informationArchitectureAudit`](informationArchitectureAudit/) | Headings, tables, forms, links, metadata | 17 |
+| [`audit-service`](audit-service/) | Processes audit progress and broadcasts live updates | 17 |
+| [`look-see-front-end-broadcaster`](look-see-front-end-broadcaster/) | Pushes `page_created` and `audit_update` events to the UI | 17 |
+| [`element-enrichment`](element-enrichment/) | Enriches elements with visual and semantic metadata | 17 |
+| [`journeyExecutor`](journeyExecutor/) | Executes and validates user journey paths | 17 |
+| [`journeyExpander`](journeyExpander/) | Expands verified journeys by discovering interactive elements | 17 |
+| [`journey-map-cleanup`](journey-map-cleanup/) | Cleans stale journey candidates in domain maps | 17 |
+| [`journeyErrors`](journeyErrors/) | Dead-letter handler for failed journey candidates | 17 |
+
+### Libraries, UIs, and extensions
+
+| Package | Role |
+|---|---|
+| [`LookseeCore`](LookseeCore/) | Shared core library — models, persistence, browser, GCP, messaging |
+| [`Look-see-UI-v3`](Look-see-UI-v3/) | Angular 17 web dashboard |
+| [`LookseeChromeExtension`](LookseeChromeExtension/) | Chrome extension for in-page accessibility issue detection |
+| [`look-see-VSCode-plugin`](look-see-VSCode-plugin/) | VS Code extension for real-time WCAG 2.2 analysis in the editor |
+| [`LookseeIaC`](LookseeIaC/) | Terraform IaC for GCP deployment |
+| [`page-audit-enrichment`](page-audit-enrichment/) | Page audit data enrichment utilities |
+| [`qa-testbed`](qa-testbed/) | QA test fixture pages for accessibility testing |
 
 ## Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
-| Backend Services | Java 17/21, Spring Boot 2.6.13, Maven |
-| Shared Library | LookseeCore (A11yCore Maven artifact) |
-| Database | Neo4j (graph database) via Spring Data Neo4j |
-| Messaging | Google Cloud Pub/Sub (async), Pusher (real-time WebSocket) |
-| Browser Automation | Selenium WebDriver 3.141.59 |
-| Cloud Platform | Google Cloud (Cloud Run, Storage, Vision, NLP, Secret Manager) |
+|---|---|
+| Backend services | Java 17 / 21, Spring Boot 2.6, Maven |
+| Shared library | `LookseeCore` (`A11yCore` Maven artifact) |
+| Database | Neo4j (graph) via Spring Data Neo4j |
+| Messaging | Google Cloud Pub/Sub (async) · Pusher (real-time WebSocket) |
+| Browser automation | Selenium WebDriver 3.141.59 |
+| Cloud platform | Google Cloud — Cloud Run, Storage, Vision, NLP, Secret Manager |
 | Frontend | Angular 17, TypeScript 5.5, Tailwind CSS, Angular Material |
 | Authentication | Auth0 (OAuth2 / JWT) |
 | Payments | Stripe (subscription billing) |
-| Analytics | Segment (customer data platform) |
+| Analytics | Segment |
 | Infrastructure | Terraform (GCP), GitHub Actions (CI/CD) |
-| Container Runtime | Docker, Google Cloud Run (serverless) |
+| Container runtime | Docker, Google Cloud Run |
 
-## Architecture
+## Deploy to your own cloud
 
-All Java backend services share the **LookseeCore** library (`A11yCore` Maven artifact) which provides:
+Look-see deploys to **Google Cloud Run** via a single Terraform package. See the full deployment guide — required variables, Secret Manager wiring, Pub/Sub topics, and a sample GitHub Actions workflow — in:
 
-- **Models** -- Neo4j domain entities (Page, Element, Audit, Journey, etc.)
-- **Persistence** -- Spring Data Neo4j repositories and service layer
-- **Browser** -- Selenium WebDriver automation and HTML utilities
-- **GCP** -- Google Cloud Storage, Vision, NLP, and Pub/Sub integrations
-- **Messaging** -- Pusher real-time event broadcasting
+→ **[LookseeIaC/GCP/README.md](LookseeIaC/GCP/README.md)**
 
-Services communicate asynchronously via **Google Cloud Pub/Sub** push subscriptions. Each service is a standalone Spring Boot application deployed as a Docker container on **Google Cloud Run**.
+## CI/CD
 
-### Service Communication (Pub/Sub Message Flow)
+The monorepo CI (`.github/workflows/ci.yml`) uses path-based change detection to build and test only affected modules. Each service also ships its own workflows:
+
+- **`docker-ci-test.yml`** — on PR: build, test, Docker build verification
+- **`docker-ci-release.yml`** — on merge to `main`: test, semantic version bump, Docker image push to Docker Hub
+
+## Roadmap
+
+- 🌐 **look-see.com** — hosted SaaS launch (coming soon)
+- 📊 **Trend dashboards** — score deltas over time per page and per journey
+- 🤖 **Auto-fix suggestions** — LLM-generated remediation PRs
+- 🌍 **PDF & Office document audits** — go beyond the browser
+- 🏷️ **White-label reports** — for agencies and consultants
+
+Follow the [Issues](https://github.com/deepthought42/Accessibility-audit-platform/issues) tab to track progress.
+
+## Contributing
+
+PRs are very welcome. Good first issues are tagged in each service's repo. Please:
+
+1. Fork and branch from `main`.
+2. Run `mvn install -DskipTests` in `LookseeCore` before building any dependent service.
+3. Keep changes scoped to one service where possible — CI will only rebuild what you touched.
+4. Enable Java assertions (`-ea`) when running locally; Look-see uses Design-by-Contract checks.
+
+## License
+
+Look-see is released under the [MIT License](LICENSE). © 2024–2026 Look-see contributors.
+
+Individual subdirectories may retain their original Apache 2.0 license files from before the monorepo migration; the MIT license at the repository root governs the project as a whole going forward.
+
+---
+
+## Architecture details
+
+### Pub/Sub message flow
 
 ```
                                     Look-see Platform Architecture
@@ -139,10 +329,10 @@ Services communicate asynchronously via **Google Cloud Pub/Sub** push subscripti
   (scheduled trigger)             ---> [journey-map-cleanup] cleans stale CANDIDATE journeys
 ```
 
-### Key Pub/Sub Topics
+### Key Pub/Sub topics
 
 | Topic | Publishers | Subscribers | Payload |
-|-------|-----------|-------------|---------|
+|---|---|---|---|
 | `url` | CrawlerAPI | PageBuilder | `AuditStartMessage` (URL, audit level, account) |
 | `page_created` | PageBuilder | AuditManager, front-end-broadcaster | `PageBuiltMessage` (account, page, audit record IDs) |
 | `page_audit` | AuditManager | contentAudit, visualDesignAudit, informationArchitectureAudit | `PageAuditMessage` (page audit, page, account IDs) |
@@ -153,410 +343,6 @@ Services communicate asynchronously via **Google Cloud Pub/Sub** push subscripti
 | `journey_discarded` | journeyExecutor | CrawlerAPI | `DiscardedJourneyMessage` |
 | `journey_completion_cleanup` | (scheduled) | journey-map-cleanup | Trigger payload |
 
-### CI/CD
+### Monorepo history
 
-The monorepo CI (`.github/workflows/ci.yml`) uses path-based change detection to only build/test affected modules. All Java 17 services first build and install `LookseeCore` locally before compiling.
-
-Each service also has its own CI workflows:
-- **`docker-ci-test.yml`** -- Runs on pull requests: builds, tests, and Docker build verification
-- **`docker-ci-release.yml`** -- Runs on merge to main: tests, semantic version bump, Docker image push to Docker Hub
-
-## Quick Start (Local Development)
-
-### Prerequisites
-
-- Java 17+ (Eclipse Temurin recommended; CrawlerAPI requires Java 21)
-- Maven 3.9+
-- Node.js 18.19+ and npm 10+ (for the Angular UI)
-- Neo4j database instance
-- Docker (optional, for containerized runs)
-- Google Cloud SDK (optional, for GCP integrations)
-
-### 1. Build the Shared Library
-
-All Java services depend on LookseeCore. Build it first:
-
-```bash
-cd LookseeCore
-mvn clean install -DskipTests
-cd ..
-```
-
-### 2. Build and Run Any Service
-
-```bash
-cd <service-directory>    # e.g., cd AuditManager
-mvn clean package -DskipTests
-java -ea -jar target/*.jar
-```
-
-The `-ea` flag enables Java assertions used for Design by Contract checks across all services.
-
-### 3. Build and Run the UI
-
-```bash
-cd Look-see-UI-v3
-npm install
-ng serve
-```
-
-Navigate to `http://localhost:4200/`.
-
-### 4. Run with Docker
-
-Each service includes a Dockerfile:
-
-```bash
-cd <service-directory>
-docker build -t <service-name> .
-docker run -p 8080:8080 <service-name>
-```
-
-## GitHub
-
-Create a repository named `Accessibility-audit-platform`, then:
-
-```bash
-git remote add origin https://github.com/<org-or-user>/Accessibility-audit-platform.git
-git push -u origin main
-```
-
-Individual project remotes in `LEGACY_REMOTES.txt` can be archived or left as read-only once this monorepo is canonical.
-
----
-
-## LookseeIaC GCP Deployment Configuration
-
-This section documents every variable, secret, and property required to deploy the platform using the `LookseeIaC/GCP` Terraform package. All values are designed to be provided via `TF_VAR_` environment variables (e.g. GitHub Actions Secrets) so that no credentials file is ever committed to the repository.
-
-### Table of Contents (Deployment)
-
-1. [Required Terraform Variables](#required-terraform-variables)
-2. [Optional Terraform Variables](#optional-terraform-variables)
-3. [Container Images](#container-images)
-4. [GCP APIs to Enable](#gcp-apis-to-enable)
-5. [GCP Authentication](#gcp-authentication)
-6. [GCP Secret Manager (auto-created)](#gcp-secret-manager-auto-created)
-7. [PubSub Topics (auto-created)](#pubsub-topics-auto-created)
-8. [Application-Level Properties (Spring Boot)](#application-level-properties-spring-boot)
-9. [GitHub Actions Secrets Reference](#github-actions-secrets-reference)
-
----
-
-### Required Terraform Variables
-
-These have no defaults and **must** be provided. In GitHub Actions, set each as a repository secret named `TF_VAR_<variable>`.
-
-#### GCP Project
-
-| Variable | Type | Description |
-|---|---|---|
-| `project_id` | string | Your GCP project ID |
-| `vpc_name` | string | Name for the VPC network |
-| `subnet_cidr` | string | Subnet CIDR range (e.g. `10.0.0.0/24`) |
-| `labels` | map(string) | Resource labels as JSON (e.g. `{"team":"eng","app":"looksee"}`) |
-
-#### Neo4j Database
-
-| Variable | Type | Description |
-|---|---|---|
-| `neo4j_password` | string (sensitive) | Neo4j admin password |
-| `neo4j_username` | string | Neo4j username (e.g. `neo4j`) |
-| `neo4j_db_name` | string | Neo4j database name (e.g. `neo4j`) |
-| `neo4j_bolt_uri` | string | Neo4j bolt connection URI (e.g. `bolt://host:7687`) |
-
-#### Auth0
-
-| Variable | Type | Description |
-|---|---|---|
-| `auth0_client_id` | string (sensitive) | Auth0 application client ID |
-| `auth0_client_secret` | string (sensitive) | Auth0 application client secret |
-| `auth0_domain` | string (sensitive) | Auth0 tenant domain (e.g. `look-see.us.auth0.com`) |
-| `auth0_audience` | string (sensitive) | Auth0 API audience identifier |
-
-#### Pusher (real-time WebSocket messaging)
-
-| Variable | Type | Description |
-|---|---|---|
-| `pusher_key` | string (sensitive) | Pusher API key |
-| `pusher_app_id` | string | Pusher application ID |
-| `pusher_cluster` | string | Pusher cluster region (e.g. `us2`) |
-| `pusher_secret` | string (sensitive) | Pusher secret key |
-
-#### SMTP (email)
-
-| Variable | Type | Description |
-|---|---|---|
-| `smtp_username` | string (sensitive) | SMTP username |
-| `smtp_password` | string (sensitive) | SMTP password |
-
----
-
-### Optional Terraform Variables
-
-These have sensible defaults. Override only if needed.
-
-| Variable | Default | Description |
-|---|---|---|
-| `region` | `us-central1` | GCP region for all resources |
-| `environment` | `dev` | Environment name (dev, prod, etc.) |
-| `credentials_file` | `null` | Path to GCP SA JSON key file. Leave null to use ADC or Workload Identity Federation |
-| `selenium_instance_count` | `1` | Number of Selenium Chrome browser instances to deploy |
-
----
-
-### Container Images
-
-All container image variables have defaults pointing to Docker Hub. Override to use a private registry or pin specific versions.
-
-| Variable | Default Image |
-|---|---|
-| `page_builder_image` | `docker.io/deepthought42/page-builder:latest` |
-| `api_image` | `docker.io/deepthought42/crawler-api:latest` |
-| `audit_manager_image` | `docker.io/deepthought42/audit-manager:latest` |
-| `audit_service_image` | `docker.io/deepthought42/audit-update-service:latest` |
-| `journey_executor_image` | `docker.io/deepthought42/journey-executor:latest` |
-| `journey_expander_image` | `docker.io/deepthought42/journey-expander:latest` |
-| `content_audit_image` | `docker.io/deepthought42/content-audit:latest` |
-| `visual_design_audit_image` | `docker.io/deepthought42/visual-design-audit:latest` |
-| `information_architecture_audit_image` | `docker.io/deepthought42/information-architecture-audit:latest` |
-| `selenium_image` | `docker.io/selenium/standalone-chrome:3.141.59` |
-
----
-
-### GCP APIs to Enable
-
-These APIs must be enabled on your GCP project before running `terraform apply`:
-
-```bash
-gcloud services enable \
-  run.googleapis.com \
-  pubsub.googleapis.com \
-  secretmanager.googleapis.com \
-  compute.googleapis.com \
-  vpcaccess.googleapis.com \
-  iam.googleapis.com \
-  --project=${PROJECT_ID}
-```
-
-| API | Purpose |
-|---|---|
-| `run.googleapis.com` | Cloud Run services |
-| `pubsub.googleapis.com` | Pub/Sub topics and subscriptions |
-| `secretmanager.googleapis.com` | Secret Manager for credentials |
-| `compute.googleapis.com` | VPC network and Neo4j VM |
-| `vpcaccess.googleapis.com` | Serverless VPC Access connector |
-| `iam.googleapis.com` | Service account creation and IAM bindings |
-
----
-
-### GCP Authentication
-
-Two options for authenticating Terraform with GCP:
-
-1. **Workload Identity Federation (recommended for CI/CD)** -- Configure OIDC federation between GitHub Actions and GCP. No key files needed. Use the `google-github-actions/auth` action in your workflow.
-2. **Service account key file** -- Set `TF_VAR_credentials_file` to the path of a JSON key file. Store the key contents as a GitHub Actions secret and write it to a file during the workflow.
-
-The authenticated identity requires at minimum: **Project Editor**, **Secret Manager Admin**, **Pub/Sub Admin**, and **Service Account Admin** roles.
-
----
-
-### GCP Secret Manager (auto-created)
-
-Terraform automatically creates these secrets in GCP Secret Manager and wires them as environment variables into the Cloud Run services:
-
-| Secret ID | Source Variable | Used By |
-|---|---|---|
-| `neo4j-password` | `neo4j_password` | All Cloud Run services |
-| `neo4j-username` | `neo4j_username` | All Cloud Run services |
-| `neo4j-db-name` | `neo4j_db_name` | All Cloud Run services |
-| `neo4j-bolt-uri` | (output from neo4j-db module) | All Cloud Run services |
-| `pusher-key` | `pusher_key` | audit-service |
-| `pusher-app-id` | `pusher_app_id` | audit-service |
-| `pusher-cluster` | `pusher_cluster` | audit-service |
-| `pusher-secret` | `pusher_secret` | audit-service |
-| `smtp-username` | `smtp_username` | (secrets module) |
-| `smtp-password` | `smtp_password` | (secrets module) |
-
----
-
-### PubSub Topics (auto-created)
-
-Terraform creates these Pub/Sub topics and wires them to Cloud Run services via push subscriptions:
-
-| Topic Name | Spring Property | Services |
-|---|---|---|
-| `url` | `pubsub.url_topic` | API (publisher), Page Builder (subscriber) |
-| `page_created` | `pubsub.page_built` | Page Builder (publisher), Audit Manager (subscriber) |
-| `page_audit` | `pubsub.page_audit_topic` | Audit Manager (publisher), Audit Service / Content Audit / Visual Design Audit / Info Architecture Audit (subscribers) |
-| `journey_verified` | `pubsub.journey_verified` | Page Builder (publisher), Journey Expander (subscriber) |
-| `journey_discarded` | `pubsub.discarded_journey_topic` | API, Journey Executor |
-| `audit_error` | `pubsub.error_topic` | All services (publisher) |
-| `audit_update` | `pubsub.audit_update` | Audit Manager, Audit Service, Content Audit, Visual Design Audit, Info Architecture Audit |
-| `journey_candidate` | `pubsub.journey_candidate` | Journey Expander (publisher), Journey Executor (subscriber) |
-| `journey_completion_cleanup` | — | (topic created, not yet wired) |
-
----
-
-### Application-Level Properties (Spring Boot)
-
-These properties are set in each service's `application.properties` / `application.yml` files. Most are wired automatically by Terraform, but the following are **not currently managed by Terraform** and may need manual configuration or additional secrets if used in production:
-
-| Property | Service(s) | Notes |
-|---|---|---|
-| `stripe.secretKey` | CrawlerAPI | Stripe payment API key |
-| `stripe.agency_basic_price_id` | CrawlerAPI | Stripe price ID |
-| `stripe.agency_pro_price_id` | CrawlerAPI | Stripe price ID |
-| `stripe.company_basic_price_id` | CrawlerAPI | Stripe price ID |
-| `stripe.company_pro_price_id` | CrawlerAPI | Stripe price ID |
-| `stripe.checkout_success_url` | CrawlerAPI | Checkout redirect URL |
-| `stripe.checkout_cancel_url` | CrawlerAPI | Checkout redirect URL |
-| `segment.analytics.writeKey` | CrawlerAPI | Segment analytics write key |
-| `gcp.api.key` | PageBuilder | Google Cloud Vision API key |
-| `integrations.encryption.key` | CrawlerAPI | AES-GCM encryption key for integration configs |
-| `spring.mail.host` | CrawlerAPI | SMTP host (only user/pass are in Terraform) |
-| `spring.sendgrid.api-key` | CrawlerAPI | SendGrid API key (if used instead of SMTP) |
-
-#### Properties Wired Automatically by Terraform
-
-These are injected into Cloud Run containers as environment variables or Secret Manager references:
-
-| Property | How It's Set |
-|---|---|
-| `spring.data.neo4j.uri` | Secret Manager reference |
-| `spring.data.neo4j.username` | Secret Manager reference |
-| `spring.data.neo4j.password` | Secret Manager reference |
-| `spring.data.neo4j.database` | Secret Manager reference |
-| `spring.cloud.gcp.project-id` | Environment variable from `project_id` |
-| `spring.cloud.gcp.region` | Environment variable from `region` |
-| `pusher.key` | Secret Manager reference (audit-service only) |
-| `pusher.appId` | Secret Manager reference (audit-service only) |
-| `pusher.cluster` | Secret Manager reference (audit-service only) |
-| `pusher.secret` | Secret Manager reference (audit-service only) |
-| `pubsub.*` topics | Environment variables from Pub/Sub module outputs |
-| `SELENIUM_URLS` | Environment variable from Selenium module outputs |
-
----
-
-### GitHub Actions Secrets Reference
-
-Below is the complete list of GitHub Actions secrets to configure. Each secret maps to a `TF_VAR_` environment variable in your Terraform workflow.
-
-#### Required Secrets
-
-| GitHub Secret Name | Maps To | Example Value |
-|---|---|---|
-| `TF_VAR_PROJECT_ID` | `TF_VAR_project_id` | `my-gcp-project-123` |
-| `TF_VAR_VPC_NAME` | `TF_VAR_vpc_name` | `looksee-vpc` |
-| `TF_VAR_SUBNET_CIDR` | `TF_VAR_subnet_cidr` | `10.0.0.0/24` |
-| `TF_VAR_LABELS` | `TF_VAR_labels` | `{"team":"platform","app":"looksee"}` |
-| `TF_VAR_NEO4J_PASSWORD` | `TF_VAR_neo4j_password` | (sensitive) |
-| `TF_VAR_NEO4J_USERNAME` | `TF_VAR_neo4j_username` | `neo4j` |
-| `TF_VAR_NEO4J_DB_NAME` | `TF_VAR_neo4j_db_name` | `neo4j` |
-| `TF_VAR_NEO4J_BOLT_URI` | `TF_VAR_neo4j_bolt_uri` | `bolt://10.0.0.5:7687` |
-| `TF_VAR_AUTH0_CLIENT_ID` | `TF_VAR_auth0_client_id` | (sensitive) |
-| `TF_VAR_AUTH0_CLIENT_SECRET` | `TF_VAR_auth0_client_secret` | (sensitive) |
-| `TF_VAR_AUTH0_DOMAIN` | `TF_VAR_auth0_domain` | `look-see.us.auth0.com` |
-| `TF_VAR_AUTH0_AUDIENCE` | `TF_VAR_auth0_audience` | `https://api.look-see.com` |
-| `TF_VAR_PUSHER_KEY` | `TF_VAR_pusher_key` | (sensitive) |
-| `TF_VAR_PUSHER_APP_ID` | `TF_VAR_pusher_app_id` | `1149968` |
-| `TF_VAR_PUSHER_CLUSTER` | `TF_VAR_pusher_cluster` | `us2` |
-| `TF_VAR_PUSHER_SECRET` | `TF_VAR_pusher_secret` | (sensitive) |
-| `TF_VAR_SMTP_USERNAME` | `TF_VAR_smtp_username` | (sensitive) |
-| `TF_VAR_SMTP_PASSWORD` | `TF_VAR_smtp_password` | (sensitive) |
-
-#### GCP Authentication Secrets (pick one approach)
-
-| GitHub Secret Name | Purpose |
-|---|---|
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Workload Identity Federation provider (recommended) |
-| `GCP_SERVICE_ACCOUNT_EMAIL` | Service account email for WIF |
-| *or* `GCP_SA_KEY` | Base64-encoded service account JSON key (alternative) |
-
-#### Docker Hub Secrets (for CI image push)
-
-| GitHub Secret Name | Purpose |
-|---|---|
-| `DOCKER_USERNAME` | Docker Hub username (already configured in existing workflows) |
-| `DOCKER_PASSWORD` | Docker Hub password/token (already configured in existing workflows) |
-
-#### Example GitHub Actions Workflow Snippet
-
-```yaml
-jobs:
-  terraform:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: LookseeIaC/GCP
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
-
-      - uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Plan
-        run: terraform plan -out=tf.plan
-        env:
-          TF_VAR_project_id: ${{ secrets.TF_VAR_PROJECT_ID }}
-          TF_VAR_region: "us-central1"
-          TF_VAR_environment: "dev"
-          TF_VAR_vpc_name: ${{ secrets.TF_VAR_VPC_NAME }}
-          TF_VAR_subnet_cidr: ${{ secrets.TF_VAR_SUBNET_CIDR }}
-          TF_VAR_labels: ${{ secrets.TF_VAR_LABELS }}
-          TF_VAR_neo4j_password: ${{ secrets.TF_VAR_NEO4J_PASSWORD }}
-          TF_VAR_neo4j_username: ${{ secrets.TF_VAR_NEO4J_USERNAME }}
-          TF_VAR_neo4j_db_name: ${{ secrets.TF_VAR_NEO4J_DB_NAME }}
-          TF_VAR_neo4j_bolt_uri: ${{ secrets.TF_VAR_NEO4J_BOLT_URI }}
-          TF_VAR_auth0_client_id: ${{ secrets.TF_VAR_AUTH0_CLIENT_ID }}
-          TF_VAR_auth0_client_secret: ${{ secrets.TF_VAR_AUTH0_CLIENT_SECRET }}
-          TF_VAR_auth0_domain: ${{ secrets.TF_VAR_AUTH0_DOMAIN }}
-          TF_VAR_auth0_audience: ${{ secrets.TF_VAR_AUTH0_AUDIENCE }}
-          TF_VAR_pusher_key: ${{ secrets.TF_VAR_PUSHER_KEY }}
-          TF_VAR_pusher_app_id: ${{ secrets.TF_VAR_PUSHER_APP_ID }}
-          TF_VAR_pusher_cluster: ${{ secrets.TF_VAR_PUSHER_CLUSTER }}
-          TF_VAR_pusher_secret: ${{ secrets.TF_VAR_PUSHER_SECRET }}
-          TF_VAR_smtp_username: ${{ secrets.TF_VAR_SMTP_USERNAME }}
-          TF_VAR_smtp_password: ${{ secrets.TF_VAR_SMTP_PASSWORD }}
-
-      - name: Terraform Apply
-        if: github.ref == 'refs/heads/main'
-        run: terraform apply tf.plan
-```
-
----
-
-### Terraform Backend (Remote State)
-
-The GCS backend is configured in `LookseeIaC/GCP/versions.tf` but requires backend config values at init time (no bucket names are committed to the repo). Provide them via `-backend-config` flags or a backend config file:
-
-```bash
-terraform init \
-  -backend-config="bucket=my-tf-state-bucket" \
-  -backend-config="prefix=looksee/dev"
-```
-
-In GitHub Actions, set the `TF_STATE_BUCKET` secret and pass it during init:
-
-```yaml
-env:
-  TF_CLI_ARGS_init: "-backend-config=bucket=${{ secrets.TF_STATE_BUCKET }} -backend-config=prefix=looksee/${{ github.ref_name }}"
-```
-
-### Optional Secrets (Gap 3 Variables)
-
-The following variables are optional (default to empty string). When provided, Terraform creates the corresponding Secret Manager entries and wires them into the API and/or Page Builder Cloud Run services:
-
-| GitHub Secret Name | Terraform Variable | Wired To |
-|---|---|---|
-| `TF_VAR_GCP_API_KEY` | `gcp_api_key` | API, Page Builder (`gcp.api.key`) |
-| `TF_VAR_INTEGRATIONS_ENCRYPTION_KEY` | `integrations_encryption_key` | API (`integrations.encryption.key`) |
-| `TF_VAR_SMTP_HOST` | `smtp_host` | API (`spring.mail.host`) |
+Each top-level directory is a former standalone repository. Former `origin` URLs are listed in [`LEGACY_REMOTES.txt`](LEGACY_REMOTES.txt) for reference. The monorepo uses a **single new history** at the root (per-repo commit histories are not included). To preserve old SHAs, clone the URLs in `LEGACY_REMOTES.txt` into separate folders or use `git filter-repo` to replay histories under subdirectories.
