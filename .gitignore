@@ -3,6 +3,10 @@
 Thumbs.db
 desktop.ini
 
+# LLM
+.claude/
+.kiro/
+
 # IDEs
 .idea/
 *.iml
