@@ -75,8 +75,8 @@ export class AuditOnboardingComponent implements OnInit, OnDestroy, OnChanges {
       icon: 'code'
     },
     {
-      title: 'AI-Powered Fix Suggestions',
-      description: 'For each issue, get intelligent recommendations and code snippets to resolve it quickly.',
+      title: 'Fix Suggestions',
+      description: 'Every issue comes with the WCAG success criterion it fails and a code-level recommendation — not just a red flag.',
       icon: 'sparkle'
     },
     {
