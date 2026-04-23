@@ -17,6 +17,7 @@
 		<module>looksee-nlp</module>
 		<module>looksee-utils</module>
 		<module>looksee-llm</module>
+		<module>looksee-browsing-client</module>
 		<module>looksee-core</module>
 	</modules>
 
@@ -84,6 +85,11 @@
 			<dependency>
 				<groupId>com.looksee</groupId>
 				<artifactId>A11yBrowser</artifactId>
+				<version>${looksee.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.looksee</groupId>
+				<artifactId>A11yBrowsingClient</artifactId>
 				<version>${looksee.version}</version>
 			</dependency>
 			<dependency>
