@@ -1,8 +1,10 @@
 # Phase 1a — Engine Upgrade
 
-> **Goal:** `brandonkindred/browser-service`'s `engine/` module builds and all tests pass as a **standalone Maven project** on **Java 21** with **Selenium 4** and **Appium Java Client 9**. No new features. No `api/` layer yet — that's phase 1b.
+> **Goal:** `brandonkindred/browser-service` builds and all tests pass as a **standalone Maven project** on **Java 21** with **Selenium 4** and **Appium Java Client 9**. No new features. No REST API layer yet — that's phase 1b.
 >
 > **Where to work:** locally in your `browser-service` clone. Suggest a feature branch: `git checkout -b phase-1a/engine-upgrade`.
+>
+> **Repo layout note:** this doc was originally written assuming the engine lived under `engine/` in the new repo. After phase 0 the `engine/` directory was flattened — everything lives at the repo root now. All path references below (e.g. `src/main/java/...`, `pom.xml`, `target/site/jacoco/`) are relative to the repo root. Ignore any stray `engine/` prefix that may still appear in quoted shell snippets.
 >
 > **Reference (read-only):** the old engine in Look-see's `LookseeCore/looksee-browser/` still exists on `claude/extract-browsing-service-MgOw3` if you need to diff anything.
 
@@ -14,7 +16,7 @@ When the subtree split moved `looksee-browser/` into the new repo, the module ca
 
 | In scope | Out of scope |
 |---|---|
-| Replace `engine/pom.xml` with a standalone POM | Any changes under `api/` — doesn't exist yet |
+| Replace `pom.xml` with a standalone POM | New REST controllers / DTOs / session management |
 | Upgrade Selenium 3.141.59 → 4.x | Adding new endpoints, DTOs, controllers |
 | Upgrade Appium Java Client 7.6.0 → 9.x | Dockerfile, GitHub Actions |
 | Upgrade screenshot libs (Shutterbug, AShot) | Refactors beyond what the version bumps force |
@@ -43,13 +45,11 @@ git checkout -b phase-1a/engine-upgrade
 Confirm the engine is currently broken the expected way:
 
 ```powershell
-cd engine
 mvn -q compile
 # Expected: failure resolving parent com.looksee:A11yParent:0.5.0
-cd ..
 ```
 
-## Step 1 — Replace `engine/pom.xml`
+## Step 1 — Replace `pom.xml`
 
 Replace the file wholesale with the version below. Summary of changes:
 
@@ -61,7 +61,7 @@ Replace the file wholesale with the version below. Summary of changes:
 - Drop `selenium-server` dependency entirely — unneeded for client code in Selenium 4.
 - Wire up compiler, surefire, jacoco, source plugins directly (since there's no parent `pluginManagement` now).
 
-**New `engine/pom.xml`:**
+**New `pom.xml`:**
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -95,7 +95,7 @@ Replace the file wholesale with the version below. Summary of changes:
         <!-- Dependencies -->
         <selenium.version>4.27.0</selenium.version>
         <appium.version>9.3.0</appium.version>
-        <shutterbug.version>1.9</shutterbug.version>
+        <shutterbug.version>1.6</shutterbug.version>
         <ashot.version>1.5.4</ashot.version>
         <jackson.version>2.18.2</jackson.version>
         <commons-codec.version>1.17.1</commons-codec.version>
@@ -308,11 +308,13 @@ Replace the file wholesale with the version below. Summary of changes:
 Commit this alone so the next commit is scoped to code changes:
 
 ```powershell
-git add engine/pom.xml
-git commit -m "chore(engine): convert pom to standalone project, bump to Java 21 / Selenium 4 / Appium 9"
+git add pom.xml
+git commit -m "chore: convert pom to standalone project, bump to Java 21 / Selenium 4 / Appium 9"
 ```
 
-Running `mvn -q compile` from `engine/` now should fail with **source-code** errors (the good kind — Selenium 4 API changes), not dependency-resolution errors. That's expected; fix them in step 2.
+Running `mvn -q -U compile` now should fail with **source-code** errors (the good kind — Selenium 4 API changes), not dependency-resolution errors. That's expected; fix them in step 2.
+
+> Use `-U` the first time to force Maven to refresh its cache; dependency-resolution failures are cached and won't be retried without it.
 
 ## Step 2 — Code changes for Selenium 4
 
@@ -322,7 +324,7 @@ Selenium 4 is largely source-compatible but has three known breaks that affect t
 
 Selenium 4 removed the `(WebDriver, long)` constructor in favor of `(WebDriver, Duration)`.
 
-**File:** `engine/src/main/java/com/looksee/browser/Browser.java`
+**File:** `src/main/java/com/looksee/browser/Browser.java`
 
 ```diff
 +import java.time.Duration;
@@ -336,13 +338,13 @@ Selenium 4 removed the `(WebDriver, long)` constructor in favor of `(WebDriver, 
  }
 ```
 
-Also check `engine/src/main/java/com/looksee/browser/MobileDevice.java` for the same pattern — the `waitForPageToLoad()` method needs identical treatment.
+Also check `src/main/java/com/looksee/browser/MobileDevice.java` for the same pattern — the `waitForPageToLoad()` method needs identical treatment.
 
 ### 2.2 BrowserStack — legacy capability keys no longer accepted
 
 `BrowserFactory.createBrowserStackDriver()` passes flat `browserstack.*` capability keys. Selenium 4 enforces W3C, and BrowserStack expects all vendor prefs nested under `bstack:options`.
 
-**File:** `engine/src/main/java/com/looksee/browser/BrowserFactory.java`
+**File:** `src/main/java/com/looksee/browser/BrowserFactory.java`
 
 Replace the body of `createBrowserStackDriver()` (lines ~151–198 in the current file) with:
 
@@ -426,7 +428,7 @@ Not required, but cheap and matches Chrome's pattern. Skip if it tempts further 
 ### 2.4 Commit
 
 ```powershell
-git add engine/src/main/java/com/looksee/browser/Browser.java engine/src/main/java/com/looksee/browser/MobileDevice.java engine/src/main/java/com/looksee/browser/BrowserFactory.java
+git add src/main/java/com/looksee/browser/Browser.java src/main/java/com/looksee/browser/MobileDevice.java src/main/java/com/looksee/browser/BrowserFactory.java
 git commit -m "refactor(engine): adapt Browser, MobileDevice, BrowserFactory to Selenium 4 APIs"
 ```
 
@@ -434,7 +436,7 @@ git commit -m "refactor(engine): adapt Browser, MobileDevice, BrowserFactory to 
 
 Appium Java Client 8+ deprecated the `DesiredCapabilities`-based constructors in favor of typed `*Options` classes (`UiAutomator2Options`, `XCUITestOptions`). Version 9 removed the old constructors outright.
 
-**File:** `engine/src/main/java/com/looksee/browser/MobileFactory.java`
+**File:** `src/main/java/com/looksee/browser/MobileFactory.java`
 
 Rewrite `openWithAndroid()`:
 
@@ -507,7 +509,7 @@ private static WebDriver createBrowserStackMobileDriver(String platformType, URL
 Commit:
 
 ```powershell
-git add engine/src/main/java/com/looksee/browser/MobileFactory.java
+git add src/main/java/com/looksee/browser/MobileFactory.java
 git commit -m "refactor(engine): adapt MobileFactory to Appium 9 typed Options"
 ```
 
@@ -539,7 +541,7 @@ Keep each fix minimal. If a test is so coupled to the old API that it needs rewr
 Commit test fixes in one batch:
 
 ```powershell
-git add engine/src/test/
+git add src/test/
 git commit -m "test(engine): update mocks for Selenium 4 / Appium 9 / Mockito 5"
 ```
 
@@ -549,14 +551,13 @@ All of these must pass before opening the PR:
 
 1. **Clean build:**
    ```powershell
-   cd engine
    mvn -q clean verify
    ```
-   Expect: `BUILD SUCCESS`, non-empty `engine/target/browser-service-engine-0.1.0-SNAPSHOT.jar`.
+   Expect: `BUILD SUCCESS`, non-empty `target/browser-service-engine-0.1.0-SNAPSHOT.jar`.
 
 2. **Test count sanity check:** note the number of tests run in surefire output. Should be close to the pre-upgrade 37. If it drops significantly, some tests are being skipped silently — investigate.
 
-3. **Coverage:** open `engine/target/site/jacoco/index.html`. Should still be in the 90%+ range for main package classes. A small drop is OK if a test had to be disabled with a documented reason; a large drop isn't.
+3. **Coverage:** open `target/site/jacoco/index.html`. Should still be in the 90%+ range for main package classes. A small drop is OK if a test had to be disabled with a documented reason; a large drop isn't.
 
 4. **No warnings from the compiler about removed/deprecated Selenium APIs:** a few deprecation warnings from Selenium 4 itself are fine; Look for warnings that say "removed in a future version" and address them only if trivial.
 
@@ -575,7 +576,7 @@ Then open a PR against `main` with title **"Phase 1a: engine upgrade to Java 21 
 
 ## Definition of done
 
-- [ ] `engine/pom.xml` is a standalone Maven project (no parent).
+- [ ] `pom.xml` is a standalone Maven project (no parent).
 - [ ] Java 21 is the source/target.
 - [ ] `mvn -q clean verify` passes from a cold `~/.m2` cache.
 - [ ] Test count is at or near the pre-upgrade total.
@@ -586,7 +587,7 @@ Then open a PR against `main` with title **"Phase 1a: engine upgrade to Java 21 
 
 Once 1a is merged, phase 1b plan will:
 
-- Add an `api/` module alongside `engine/` (and introduce a root parent pom to bind them).
+- Add Spring Boot REST controllers, DTOs, and a session registry to the existing single Maven module (no new sub-modules — the repo is flattened).
 - Scaffold Spring Boot 3 service generated from `openapi.yaml`.
 - Implement the session registry + TTL sweeper.
 - Wire REST controllers to engine methods, per the engine-to-endpoint map in `README.md`.
@@ -596,7 +597,7 @@ Phases 1c (Docker/local-dev) and 1d (GitHub Actions CI) follow.
 
 ## Things I noticed while planning — flag if any matter to you
 
-1. **Package names.** Everything under `engine/` is still `com.looksee.browser.*`. It's tied to Look-see's historical namespace but the service is now a standalone product. Renaming to `io.browserservice.engine.*` would be more honest — but a rename ripples through every file and every test. **Recommendation: leave it for now.** Revisit post-1b if it bothers you. The `groupId` in the pom is `io.browserservice` already, so the public Maven coordinates are clean even if the Java packages lag.
+1. **Package names.** Everything is still under `com.looksee.browser.*`. It's tied to Look-see's historical namespace but the service is now a standalone product. Renaming to `io.browserservice.*` would be more honest — but a rename ripples through every file and every test. **Recommendation: leave it for now.** Revisit post-1b if it bothers you. The `groupId` in the pom is `io.browserservice` already, so the public Maven coordinates are clean even if the Java packages lag.
 
 2. **`io.browserservice` groupId.** I picked that as a placeholder. If you want a different coordinate (e.g. `com.brandonkindred.browserservice`, or something tied to a domain you own), change the `<groupId>` in step 1 before committing.
 
