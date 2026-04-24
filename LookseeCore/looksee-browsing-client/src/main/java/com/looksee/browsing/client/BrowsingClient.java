@@ -18,10 +18,15 @@ import com.looksee.browsing.generated.model.ScreenshotStrategy;
 import com.looksee.browsing.generated.model.Session;
 import com.looksee.browsing.generated.model.SessionState;
 import com.looksee.browsing.generated.model.ViewportState;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Hand-written facade over the generated browser-service client. This is the
@@ -30,16 +35,36 @@ import java.util.Objects;
  *
  * <p>Exposes the generated model types directly for now. Wrapping them in
  * hand-written POJOs is a later simplification if the OpenAPI surface churns.
+ *
+ * <p><b>Instrumentation.</b> When a {@link MeterRegistry} is supplied, every
+ * public facade method emits a Micrometer {@link Timer} named
+ * {@code browser_service_calls} with tags {@code operation=<method-name>}
+ * and {@code outcome=success|failure}. Consumers add a {@code consumer}
+ * common tag in their own config so dashboards can filter per-caller without
+ * the facade needing to know who's calling. See
+ * {@code browser-service/phase-4-consumer-cutover.md} §Observability prereqs
+ * for the full metric contract and PromQL examples.
+ *
+ * <p>Every failure path also logs a structured warn line before rethrowing as
+ * {@link BrowsingClientException} so Sentry / Cloud Logging pick it up.
  */
 public class BrowsingClient {
+
+    private static final Logger log = LoggerFactory.getLogger(BrowsingClient.class);
+    private static final String METRIC_NAME = "browser_service_calls";
 
     private final SessionsApi sessionsApi;
     private final NavigationApi navigationApi;
     private final ScreenshotsApi screenshotsApi;
     private final ScrollingApi scrollingApi;
     private final CaptureApi captureApi;
+    private final MeterRegistry meterRegistry; // may be null — treated as no-op
 
     public BrowsingClient(BrowsingClientConfig config) {
+        this(config, null);
+    }
+
+    public BrowsingClient(BrowsingClientConfig config, MeterRegistry meterRegistry) {
         Objects.requireNonNull(config, "config");
         ApiClient apiClient = new ApiClient();
         apiClient.updateBaseUri(config.getServiceUrl());
@@ -50,119 +75,139 @@ public class BrowsingClient {
         this.screenshotsApi = new ScreenshotsApi(apiClient);
         this.scrollingApi = new ScrollingApi(apiClient);
         this.captureApi = new CaptureApi(apiClient);
+        this.meterRegistry = meterRegistry;
     }
 
-    /** Package-private test constructor: accepts mocked {@code *Api} instances. */
+    /** Package-private test constructor — no meter registry. */
     BrowsingClient(SessionsApi sessionsApi,
                    NavigationApi navigationApi,
                    ScreenshotsApi screenshotsApi,
                    ScrollingApi scrollingApi,
                    CaptureApi captureApi) {
+        this(sessionsApi, navigationApi, screenshotsApi, scrollingApi, captureApi, null);
+    }
+
+    /** Package-private test constructor — with meter registry for instrumentation tests. */
+    BrowsingClient(SessionsApi sessionsApi,
+                   NavigationApi navigationApi,
+                   ScreenshotsApi screenshotsApi,
+                   ScrollingApi scrollingApi,
+                   CaptureApi captureApi,
+                   MeterRegistry meterRegistry) {
         this.sessionsApi = sessionsApi;
         this.navigationApi = navigationApi;
         this.screenshotsApi = screenshotsApi;
         this.scrollingApi = scrollingApi;
         this.captureApi = captureApi;
+        this.meterRegistry = meterRegistry;
     }
 
     // --- Session lifecycle -------------------------------------------------
 
     public Session createSession(com.looksee.browser.enums.BrowserType type,
                                  com.looksee.browser.enums.BrowserEnvironment env) {
-        CreateSessionRequest req = new CreateSessionRequest()
-            .browser(toGenerated(type))
-            .environment(toGenerated(env));
-        try {
+        return recordCall("createSession", "", () -> {
+            CreateSessionRequest req = new CreateSessionRequest()
+                .browser(toGenerated(type))
+                .environment(toGenerated(env));
             return sessionsApi.createSession(req);
-        } catch (ApiException e) {
-            throw new BrowsingClientException("createSession failed", e);
-        }
+        });
     }
 
     public SessionState getSession(String id) {
-        try {
-            return sessionsApi.getSession(id);
-        } catch (ApiException e) {
-            throw new BrowsingClientException("getSession failed: " + id, e);
-        }
+        return recordCall("getSession", id, () -> sessionsApi.getSession(id));
     }
 
     public void deleteSession(String id) {
-        try {
-            sessionsApi.deleteSession(id);
-        } catch (ApiException e) {
-            throw new BrowsingClientException("deleteSession failed: " + id, e);
-        }
+        recordCall("deleteSession", id, () -> { sessionsApi.deleteSession(id); return null; });
     }
 
     // --- Navigation + state ------------------------------------------------
 
     public void navigate(String id, String url) {
-        try {
+        recordCall("navigate", id + " -> " + url, () -> {
             navigationApi.navigate(id, new NavigateRequest().url(java.net.URI.create(url)));
-        } catch (ApiException e) {
-            throw new BrowsingClientException("navigate failed: " + id + " -> " + url, e);
-        }
+            return null;
+        });
     }
 
     public PageStatus getStatus(String id) {
-        try {
-            return navigationApi.getPageStatus(id);
-        } catch (ApiException e) {
-            throw new BrowsingClientException("getPageStatus failed: " + id, e);
-        }
+        return recordCall("getStatus", id, () -> navigationApi.getPageStatus(id));
     }
 
     public ViewportState getViewport(String id) {
-        try {
-            return scrollingApi.getViewport(id);
-        } catch (ApiException e) {
-            throw new BrowsingClientException("getViewport failed: " + id, e);
-        }
+        return recordCall("getViewport", id, () -> scrollingApi.getViewport(id));
     }
 
     public String getSource(String id) {
-        try {
-            return navigationApi.getSource(id);
-        } catch (ApiException e) {
-            throw new BrowsingClientException("getSource failed: " + id, e);
-        }
+        return recordCall("getSource", id, () -> navigationApi.getSource(id));
     }
 
     // --- Screenshots -------------------------------------------------------
 
     public byte[] screenshot(String id, ScreenshotStrategy strategy) {
-        ScreenshotRequest req = new ScreenshotRequest()
-            .strategy(strategy)
-            .encoding(ScreenshotEncoding.BINARY);
-        try {
+        return recordCall("screenshot", id, () -> {
+            ScreenshotRequest req = new ScreenshotRequest()
+                .strategy(strategy)
+                .encoding(ScreenshotEncoding.BINARY);
             File f = screenshotsApi.captureScreenshot(id, req);
-            return Files.readAllBytes(f.toPath());
-        } catch (ApiException e) {
-            throw new BrowsingClientException("captureScreenshot failed: " + id, e);
-        } catch (IOException e) {
-            throw new BrowsingClientException("read screenshot bytes failed: " + id, e);
-        }
+            try {
+                return Files.readAllBytes(f.toPath());
+            } catch (IOException e) {
+                throw new BrowsingClientException("read screenshot bytes failed: " + id, e);
+            }
+        });
     }
 
     // --- Capture (one-shot) ------------------------------------------------
 
     public CaptureResponse capture(CaptureRequest req) {
-        try {
-            return captureApi.capture(req);
-        } catch (ApiException e) {
-            throw new BrowsingClientException("capture failed", e);
-        }
+        return recordCall("capture", "", () -> captureApi.capture(req));
     }
 
     public byte[] getCaptureScreenshotBytes(String captureId) {
-        try {
+        return recordCall("getCaptureScreenshotBytes", captureId, () -> {
             File f = captureApi.getCaptureScreenshot(captureId);
-            return Files.readAllBytes(f.toPath());
+            try {
+                return Files.readAllBytes(f.toPath());
+            } catch (IOException e) {
+                throw new BrowsingClientException("read capture bytes failed: " + captureId, e);
+            }
+        });
+    }
+
+    // --- Instrumentation helper -------------------------------------------
+
+    @FunctionalInterface
+    private interface ApiCall<T> {
+        T invoke() throws ApiException;
+    }
+
+    private <T> T recordCall(String operation, String contextForErrorMessage, ApiCall<T> call) {
+        long start = System.nanoTime();
+        String outcome = "success";
+        try {
+            return call.invoke();
         } catch (ApiException e) {
-            throw new BrowsingClientException("getCaptureScreenshot failed: " + captureId, e);
-        } catch (IOException e) {
-            throw new BrowsingClientException("read capture bytes failed: " + captureId, e);
+            outcome = "failure";
+            String ctx = contextForErrorMessage.isEmpty() ? "" : (": " + contextForErrorMessage);
+            log.warn("BrowsingClient.{}{} failed (status={}): {}",
+                operation, ctx, e.getCode(), e.getMessage());
+            throw new BrowsingClientException(operation + " failed" + ctx, e);
+        } catch (BrowsingClientException e) {
+            // IO failure inside a nested screenshot read — already has context.
+            outcome = "failure";
+            log.warn("BrowsingClient.{} failed: {}", operation, e.getMessage());
+            throw e;
+        } finally {
+            if (meterRegistry != null) {
+                Timer.builder(METRIC_NAME)
+                    .tag("operation", operation)
+                    .tag("outcome", outcome)
+                    .publishPercentileHistogram()
+                    .register(meterRegistry)
+                    .record(System.nanoTime() - start, TimeUnit.NANOSECONDS);
+            }
         }
     }
 
