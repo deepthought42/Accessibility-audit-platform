@@ -3,6 +3,8 @@ package com.looksee.services.browser;
 import com.looksee.browser.Browser;
 import com.looksee.browsing.client.BrowsingClient;
 import com.looksee.browsing.client.BrowsingClientException;
+import com.looksee.browsing.generated.model.AlertState;
+import com.looksee.browsing.generated.model.DomRemovePreset;
 import com.looksee.browsing.generated.model.ElementState;
 import com.looksee.browsing.generated.model.PageStatus;
 import com.looksee.browsing.generated.model.ScreenshotStrategy;
@@ -246,39 +248,59 @@ public class RemoteBrowser extends Browser {
         client.scrollDownFull(sessionId);
     }
 
+    // --- DOM removal (DomRemovePreset enum) -------------------------------
+
     @Override
     public void removeElement(String className) {
-        throw new UnsupportedOperationException(PHASE_3B + " (removeElement)");
+        client.removeDomElement(sessionId, DomRemovePreset.BY_CLASS, className);
     }
 
     @Override
     public void removeDriftChat() {
-        throw new UnsupportedOperationException(PHASE_3B + " (removeDriftChat)");
+        client.removeDomElement(sessionId, DomRemovePreset.DRIFT_CHAT, null);
     }
 
     @Override
     public void removeGDPRmodals() {
-        throw new UnsupportedOperationException(PHASE_3B + " (removeGDPRmodals)");
+        client.removeDomElement(sessionId, DomRemovePreset.GDPR_MODAL, null);
     }
 
     @Override
     public void removeGDPR() {
-        throw new UnsupportedOperationException(PHASE_3B + " (removeGDPR)");
+        client.removeDomElement(sessionId, DomRemovePreset.GDPR, null);
     }
+
+    // --- Mouse (MouseMoveMode enum) ---------------------------------------
 
     @Override
     public void moveMouseOutOfFrame() {
-        throw new UnsupportedOperationException(PHASE_3B + " (moveMouseOutOfFrame)");
+        // Local Browser.moveMouseOutOfFrame swallows exceptions; mirror that.
+        try {
+            client.moveMouseOutOfFrame(sessionId);
+        } catch (BrowsingClientException e) {
+            log.debug("RemoteBrowser.moveMouseOutOfFrame: swallowed {}", e.getMessage());
+        }
     }
 
     @Override
     public void moveMouseToNonInteractive(Point point) {
-        throw new UnsupportedOperationException(PHASE_3B + " (moveMouseToNonInteractive)");
+        // Local Browser.moveMouseToNonInteractive swallows exceptions; mirror that.
+        try {
+            client.moveMouseToNonInteractive(sessionId, point.getX(), point.getY());
+        } catch (BrowsingClientException e) {
+            log.debug("RemoteBrowser.moveMouseToNonInteractive: swallowed {}", e.getMessage());
+        }
     }
+
+    // --- Alert ------------------------------------------------------------
 
     @Override
     public Alert isAlertPresent() {
-        throw new UnsupportedOperationException(PHASE_3B + " (isAlertPresent)");
+        AlertState state = client.getAlert(sessionId);
+        if (!Boolean.TRUE.equals(state.getPresent())) {
+            return null;
+        }
+        return new RemoteAlert(client, sessionId, state.getText());
     }
 
     // --- helpers ----------------------------------------------------------
