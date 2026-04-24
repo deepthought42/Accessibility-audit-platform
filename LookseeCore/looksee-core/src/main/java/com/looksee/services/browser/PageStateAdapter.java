@@ -10,6 +10,7 @@ import com.looksee.utils.BrowserUtils;
 import com.looksee.browser.utils.HtmlUtils;
 import com.looksee.utils.ImageUtils;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Set;
@@ -235,5 +236,81 @@ public class PageStateAdapter {
 							stylesheets,
 							script_urls,
 							fav_icon_links);
+	}
+
+	/**
+	 * Builds a {@link PageState} from a pre-captured screenshot and page source,
+	 * without a live {@link Browser}. Used by the remote-mode one-shot capture
+	 * flow in {@link BrowserService#capturePage(URL, BrowserType, long)}, where
+	 * browser-service's {@code POST /v1/capture} returns both in a single
+	 * round-trip.
+	 *
+	 * <p>Known simplification: only one screenshot is stored; it's uploaded as
+	 * both the viewport and full-page screenshot of the resulting
+	 * {@link PageState}. Splitting viewport from full-page in remote mode is a
+	 * phase-3b enhancement.
+	 */
+	public PageState toPageState(byte[] screenshot,
+								 String source,
+								 long audit_record_id,
+								 String browser_url,
+								 BrowserType browser_type) throws IOException {
+		assert screenshot != null && screenshot.length > 0;
+		assert source != null;
+		assert browser_url != null && !browser_url.isEmpty();
+		assert browser_type != null;
+
+		URL current_url = new URL(browser_url);
+		int status_code = BrowserUtils.getHttpStatus(current_url);
+		String url_without_protocol = BrowserUtils.getPageUrl(current_url.toString());
+		boolean is_secure = BrowserUtils.checkIfSecure(current_url);
+
+		String clean_source = HtmlUtils.cleanSrc(source);
+		if (HtmlUtils.is503Error(clean_source)) {
+			throw new ServiceUnavailableException("503(Service Unavailable) Error encountered.");
+		}
+
+		Document html_doc = Jsoup.parse(clean_source);
+		Set<String> metadata = BrowserService.extractMetadata(html_doc);
+		Set<String> stylesheets = BrowserService.extractStylesheets(html_doc);
+		Set<String> script_urls = BrowserService.extractScriptUrls(html_doc);
+		Set<String> fav_icon_links = BrowserService.extractIconLinks(html_doc);
+		String title = html_doc.title();
+
+		BufferedImage image;
+		try (ByteArrayInputStream in = new ByteArrayInputStream(screenshot)) {
+			image = javax.imageio.ImageIO.read(in);
+		}
+		if (image == null) {
+			throw new IOException("remote capture returned bytes that are not a decodable image");
+		}
+		String checksum = ImageUtils.getChecksum(image);
+		String screenshot_url = googleCloudStorage.saveImage(image,
+				current_url.getHost(), checksum, browser_type);
+		int width = image.getWidth();
+		int height = image.getHeight();
+		image.flush();
+
+		return new PageState(
+				screenshot_url,
+				clean_source,
+				0L,
+				0L,
+				width,
+				height,
+				browser_type,
+				screenshot_url,
+				width,
+				height,
+				url_without_protocol,
+				title,
+				is_secure,
+				status_code,
+				current_url.toString(),
+				audit_record_id,
+				metadata,
+				stylesheets,
+				script_urls,
+				fav_icon_links);
 	}
 }

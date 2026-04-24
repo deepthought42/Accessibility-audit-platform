@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.6.0] - 2026-04-24
+
+### Added
+- New `looksee-browsing-client` (`A11yBrowsingClient`) module: generated DTOs + `BrowsingClient` facade for `brandonkindred/browser-service`. OpenAPI spec is consumed from `looksee-browsing-client/src/main/resources/openapi.yaml`; `openapi-generator-maven-plugin` with `<library>native</library>` (JDK 11+ `HttpClient`) keeps Spring/OkHttp/Jersey out of consumer classpaths.
+- `looksee.browsing.mode` config flag (`local` | `remote`) bound via `LookseeBrowsingProperties`, with `service-url`, `connect-timeout`, `read-timeout` properties under the same prefix.
+- `RemoteBrowser` (in `looksee-core`) — `Browser` subclass that forwards page-level operations (navigate, source, screenshots, viewport, status, close) to browser-service over HTTP via `BrowsingClient`.
+- `BrowserService.capturePage(URL, BrowserType, long)` — one-shot page capture. Local mode runs the existing open→navigate→adapt→close sequence; remote mode uses a single `POST /v1/capture` round-trip plus a `GET /v1/capture/{id}/screenshot` fetch.
+- `PageStateAdapter.toPageState(byte[], String, long, String)` overload — builds a `PageState` from pre-captured screenshot bytes + source, no live `Browser` required.
+
+### Changed
+- `BrowserService.getConnection()` and `TestService.runTest()` now fork on `looksee.browsing.mode`. Default (`local`) behavior is byte-identical to 0.5.0 — existing consumers upgrade with no code change.
+
+### Deferred (phase 3b)
+- Element-handle ops in `RemoteBrowser` (findElement, extractAttributes, scroll helpers, removeDriftChat, removeGDPR, isAlertPresent, mouse moves, getElementScreenshot) throw `UnsupportedOperationException`. Consumers that exercise those paths must stay on `looksee.browsing.mode=local` until phase 3b ships.
+- Remote-mode `capturePage` stores the same screenshot bytes for both viewport and full-page fields of the resulting `PageState`. Splitting them out is phase-3b work.
+
+### Migration
+- Default mode is `local`. Existing consumers pick up 0.6.0 with no behavior change.
+- To opt a consumer into remote mode, set in its `application.yml`:
+
+  ```yaml
+  looksee:
+    browsing:
+      mode: remote
+      service-url: http://browser-service.internal/v1
+  ```
+
 ## [0.3.24] - 2026-03-27
 
 ### Added
