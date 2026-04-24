@@ -244,11 +244,25 @@ class RemoteBrowserElementOpsTest {
     }
 
     @Test
-    void getCurrentUrl_readsFromSessionState() {
-        when(client.getSession("session-1"))
-            .thenReturn(new com.looksee.browsing.generated.model.SessionState()
-                .sessionId("session-1").currentUrl("https://example.com/page"));
+    void getCurrentUrl_readsFromPageStatus() {
+        // PageStatus.current_url is required in the OpenAPI contract (unlike
+        // SessionState.current_url which is optional) — protects journey-loop
+        // .equals chains from NPE when the session has just been created.
+        when(client.getStatus("session-1"))
+            .thenReturn(new com.looksee.browsing.generated.model.PageStatus()
+                .currentUrl("https://example.com/page").is503(false));
         assertEquals("https://example.com/page", remote.getCurrentUrl());
+    }
+
+    @Test
+    void crossSessionElement_rejectedByRequireRemote() {
+        RemoteWebElement fromOtherSession = new RemoteWebElement("other-session",
+            state("h1"));
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+            () -> remote.performClick(fromOtherSession));
+        assertTrue(ex.getMessage().contains("session"),
+            "error should mention the session mismatch: " + ex.getMessage());
+        verify(client, never()).performElementAction(any(), any(), any(), any());
     }
 
     // --- helper ------------------------------------------------------------

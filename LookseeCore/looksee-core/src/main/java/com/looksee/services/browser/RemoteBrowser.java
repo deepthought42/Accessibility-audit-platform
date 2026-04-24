@@ -151,8 +151,11 @@ public class RemoteBrowser extends Browser {
 
     @Override
     public String getCurrentUrl() {
-        // SessionState.current_url is the authoritative post-navigate URL.
-        return client.getSession(sessionId).getCurrentUrl();
+        // PageStatus.current_url is required in the OpenAPI contract (unlike
+        // SessionState.current_url which is optional), so callers that chain
+        // .equals / null-compare the result won't NPE. See
+        // browser-service/phase-3b-element-handle-ops.md review on PR #38.
+        return client.getStatus(sessionId).getCurrentUrl();
     }
 
     private static com.looksee.browsing.generated.model.ElementAction toGeneratedAction(
@@ -232,16 +235,25 @@ public class RemoteBrowser extends Browser {
 
     /**
      * Guards the contract that element-taking methods on {@link RemoteBrowser}
-     * must be called with {@link RemoteWebElement} instances obtained from this
-     * browser. Passing a locally-bound {@link WebElement} (e.g. from a
-     * concurrent local driver) is a programming error.
+     * must be called with {@link RemoteWebElement} instances obtained from
+     * **this** session. Passing a locally-bound {@link WebElement} or a
+     * {@link RemoteWebElement} bound to a different session is a programming
+     * error — in the cross-session case the handle would be forwarded to this
+     * session's endpoints and either 404 or (worse) collide with a handle from
+     * this session's namespace.
      */
     private RemoteWebElement requireRemote(WebElement element, String methodName) {
         if (!(element instanceof RemoteWebElement)) {
             throw new IllegalStateException(
-                "RemoteBrowser." + methodName + ": element was not obtained from this RemoteBrowser session");
+                "RemoteBrowser." + methodName + ": element was not obtained from a RemoteBrowser session");
         }
-        return (RemoteWebElement) element;
+        RemoteWebElement remote = (RemoteWebElement) element;
+        if (!sessionId.equals(remote.getSessionId())) {
+            throw new IllegalStateException(
+                "RemoteBrowser." + methodName + ": element is bound to session "
+                + remote.getSessionId() + " but this browser is session " + sessionId);
+        }
+        return remote;
     }
 
     // --- Scroll ops (ScrollMode enum maps 1:1 to Browser.java scroll methods) -
