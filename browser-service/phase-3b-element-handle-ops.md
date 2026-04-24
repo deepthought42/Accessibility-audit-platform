@@ -80,25 +80,52 @@ mvn -q -pl looksee-core -am verify
 
 Expect: `BUILD SUCCESS`, 119 tests run, 0 failures (the 0.6.0 baseline).
 
-Then run the grep-sanity Step 0 asks for — any hit outside the expected sites means the phase-3b surface area has expanded since planning:
+Then run the grep-sanity sweep. Two sweeps, separately, both from the **repo root** so emitted paths carry the `LookseeCore/` prefix and filters work:
+
+### Sweep A — external consumers
+
+The goal here is to catch any code **outside LookseeCore** that reaches through `Browser` into a live driver. Remote mode must not break these paths.
 
 ```bash
-# Any consumer reaching through to build its own Actions chain?
-grep -rn "new Actions(" --include="*.java" | grep -v LookseeCore/looksee-browser
+cd /path/to/Look-see   # repo root
 
-# Any consumer calling findElements (plural)?
-grep -rn "\.findElements(" --include="*.java" | grep -v LookseeCore/looksee-browser
+# Any consumer building its own Actions chain?
+grep -rn "new Actions(" --include="*.java" | grep -v '^LookseeCore/'
 
-# Any raw getDriver() use outside StepExecutor / element-enrichment test?
-grep -rn "\.getDriver()\." --include="*.java" | grep -v LookseeCore/looksee-browser | grep -v "test"
+# Any consumer calling findElements (plural) on a driver or element?
+grep -rn "\.findElements(" --include="*.java" | grep -v '^LookseeCore/'
+
+# Any consumer using browser.getDriver()?
+grep -rn "\.getDriver()\." --include="*.java" | grep -v '^LookseeCore/'
 ```
 
-Expected hits:
-- `new Actions(` — only `StepExecutor.java` (indirectly via `ActionFactory`). If anything else shows up, extend the `Browser.performAction` enum or add to §14.
-- `.findElements(` — nothing in consumer code today.
-- `.getDriver()` — `StepExecutor.java` (4 call sites documented below) and `journeyExecutor/.../AuditController.java:562` (1 site). Anything else is a new finding.
+Expected output for Sweep A:
 
-If a new hit appears, resolve it by either (a) adding it to the §6 `Browser` extension surface, or (b) documenting the consumer as a phase-3c follow-up. Do not start implementing until this grep sweep is clean.
+- `new Actions(` — empty.
+- `.findElements(` — empty.
+- `.getDriver().` — exactly one hit: `journeyExecutor/src/main/java/com/looksee/journeyExecutor/AuditController.java:562`. That's the call Step 7.4 rewrites.
+
+If Sweep A returns any unexpected hit, resolve it by either (a) adding the missing operation to the §6 `Browser` extension surface, or (b) documenting the consumer as a phase-3c follow-up. **Do not start implementing until Sweep A matches the expected output above.**
+
+### Sweep B — LookseeCore-internal reach-throughs
+
+LookseeCore has a pre-existing set of `browser.getDriver()` and `driver.findElements()` reach-throughs inside `BrowserService`, `PageStateAdapter.toPageState(Browser, long, String)`, `BrowserUtils`, and `com.looksee.browsing.table.Table`. These **were already remote-incompatible in 0.6.0** — the Browser-taking overloads simply aren't called from the phase-3 remote path (which uses the byte[] overload of `PageStateAdapter.toPageState`). They'll become remote-incompatible surface as soon as any consumer tries to call those methods with a `RemoteBrowser`.
+
+Phase 3b does **not** fix them — that's phase 3c. Sweep B just enumerates them so phase 3c inherits the list:
+
+```bash
+cd /path/to/Look-see   # repo root
+
+# LookseeCore-internal reach-throughs (expected non-empty; see §14.9)
+grep -rn "\.getDriver()\." --include="*.java" LookseeCore/ \
+  | grep -v "LookseeCore/looksee-core/src/main/java/com/looksee/services/StepExecutor.java" \
+  | grep -v "LookseeCore/looksee-core/src/test/"
+
+grep -rn "\.findElements(" --include="*.java" LookseeCore/ \
+  | grep -v "LookseeCore/looksee-core/src/test/"
+```
+
+Expected: non-empty. Compare against the enumeration in §14.9 — if the list has grown since planning, update §14.9 in the same commit that addresses the divergence. Do **not** block phase 3b merge on this sweep.
 
 ## Step 1 — Extend `BrowsingClient` facade
 
@@ -697,3 +724,22 @@ PR body (same template as phase 3): summary of commit clusters, `mvn verify` sni
 6. **Retries / backoff on the facade.** Phase 3 deferred retries; 3b's higher chattiness (every scroll-to-element is a round trip) raises the blast radius of a transient failure. Not a blocker for merging 0.7.0, but the first consumer that sees flakes in production should get this as the immediate next change, centralized in `BrowsingClient` rather than per-caller.
 7. **`StepExecutor` remote verification.** Live-service end-to-end verification for a journey with LoginStep requires a running browser-service + a real login target. Document the manual steps in the PR description; don't make them a CI gate for 3b merge (too fragile).
 8. **`Browser.performAction` default implementation reaches into `ActionFactory`.** `ActionFactory` is in `com.looksee.browser` and currently only instantiable via `new ActionFactory(driver)`. The local-mode body does exactly what StepExecutor used to inline — no behavior change — but it does centralize a small amount of logic. If this becomes the "one place ActionFactory is called from" and StepExecutor grows new actions, consider folding `ActionFactory` into `Browser.performAction` as a later cleanup. Out of scope now.
+
+9. **LookseeCore-internal `browser.getDriver()` reach-throughs — phase-3c inherit list.** Sweep B in Step 0 surfaces a large set of `getDriver()` / `driver.findElements()` call sites **inside LookseeCore** that were remote-incompatible in 0.6.0 too. They don't break phase 3 because the remote path never reaches them (capturePage uses the byte[] `PageStateAdapter` overload; every other consumer method with a `Browser` parameter is only called in local mode today). Phase 3b leaves them alone; phase 3c owns making them remote-safe. Enumerated verbatim so the 3c plan inherits this list:
+
+   - `LookseeCore/looksee-core/src/main/java/com/looksee/services/browser/PageStateAdapter.java`
+     - `toPageState(URL, Browser, boolean, int, long)` — lines 86, 94, 106, 126 (`browser.getDriver().{getCurrentUrl,getPageSource,getTitle,manage().window().getSize}`)
+     - `toPageState(Browser, long, String)` — lines 177, 194, 216 (same surface as above)
+   - `LookseeCore/looksee-core/src/main/java/com/looksee/services/BrowserService.java`
+     - Line 441 — `browser.getDriver().getCurrentUrl()` (URL host extraction)
+     - Lines 935, 949 — `elem.findElements(By.xpath(...))` (DOM tree walks on passed-in `WebElement`)
+     - Lines 1028, 1311, 1703 — `driver.findElements(By.xpath(...))` (internal, inside methods that take a `WebDriver` directly — these callers need auditing)
+     - Line 1940 — `browser.getDriver().findElement(By.xpath(...))`
+     - Lines 3278–3279, 3388 — `browser.getDriver().{getCurrentUrl,findElements}` for form extraction + screenshot upload
+     - Line 3316 — `form_elem.findElements(By.tagName("input"))`
+   - `LookseeCore/looksee-core/src/main/java/com/looksee/utils/BrowserUtils.java`
+     - Lines 1377, 1465 — `browser.getDriver().getCurrentUrl()` in URL sanitization paths
+   - `LookseeCore/looksee-core/src/main/java/com/looksee/browsing/table/Table.java`
+     - Lines 44, 51, 52 — `element.findElements(...)` nested DOM traversal inside the Table helper
+
+   Phase 3c's high-level job against this list: (a) expand `RemoteWebElement` to support `findElements` by exposing a `BrowsingClient.findChildElements(sessionId, elementHandle, xpath)` facade wrapper; (b) add `Browser.getPageSource()`, `Browser.getTitle()`, `Browser.getWindowSize()` as first-class methods so `PageStateAdapter`'s `Browser`-taking overloads stop needing `getDriver()`; (c) audit the three `driver.findElements` call sites in `BrowserService` lines 1028/1311/1703 to see whether they take a `WebDriver` from a caller that's always local (no consumer does this today) or whether they need an alternate remote path. Update this enumeration whenever `Browser.java` gains a new driver-reaching method in a subsequent release.
