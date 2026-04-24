@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.6.1] - 2026-04-24
+
+### Added
+- **`BrowsingClient` facade instrumentation.** Every public method on `com.looksee.browsing.client.BrowsingClient` now emits a Micrometer `Timer` named `browser_service_calls` with tags `operation=<method-name>` and `outcome=success|failure`. Failure paths also log a structured warn line (operation + status code + error message) before rethrowing `BrowsingClientException`. See `browser-service/phase-4-consumer-cutover.md` §Observability prereqs for the full metric contract.
+- New `BrowsingClient(BrowsingClientConfig, MeterRegistry)` constructor. `BrowsingClientConfiguration` injects the `MeterRegistry` via `ObjectProvider` so consumers without a registry still work — instrumentation becomes a no-op, no NPE.
+
+### Changed
+- No behavior change for consumers. Default `looksee.browsing.mode` remains `local`. Consumers without a Micrometer `MeterRegistry` bean see no new metric series.
+
+### Notes
+- Phase 3b (element-handle ops) is planned but not yet implemented. This release contains the facade instrumentation from phase 4a.1 only — originally planned as LookseeCore 0.7.1, delivered as 0.6.1 because 0.7.0 (phase 3b code) is still outstanding. When phase 3b lands, the version will bump to 0.7.0 with the instrumentation carried forward.
+- Consumer-side `MeterFilter.commonTags("consumer", "<name>")` is each consumer's responsibility. PageBuilder adds this in `com.looksee.pageBuilder.config.BrowsingClientMetricsConfig` (guarded by `@ConditionalOnBean(MeterRegistry.class)`) — same pattern when cutting over additional consumers.
+
 ## [0.6.0] - 2026-04-24
 
 ### Added

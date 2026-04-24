@@ -57,3 +57,14 @@ resilience4j.retry:
             baseConfig: gcp
         default:
             baseConfig: default
+
+# LookseeCore browsing configuration. Default mode is `local` — every instance
+# opens a local Selenium driver. Flip to `remote` to route browser ops through
+# brandonkindred/browser-service; requires LOOKSEE_BROWSING_SERVICE_URL set.
+# See browser-service/phase-4-consumer-cutover.md §4a.5 for the cutover plan.
+looksee:
+    browsing:
+        mode: ${LOOKSEE_BROWSING_MODE:local}
+        service-url: ${LOOKSEE_BROWSING_SERVICE_URL:}
+        connect-timeout: ${LOOKSEE_BROWSING_CONNECT_TIMEOUT:5s}
+        read-timeout: ${LOOKSEE_BROWSING_READ_TIMEOUT:120s}

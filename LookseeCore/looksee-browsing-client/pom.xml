@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>com.looksee</groupId>
 		<artifactId>A11yParent</artifactId>
-		<version>0.6.0</version>
+		<version>0.6.1</version>
 	</parent>
 
 	<artifactId>A11yBrowsingClient</artifactId>
@@ -36,6 +36,19 @@
 			<groupId>javax.annotation</groupId>
 			<artifactId>javax.annotation-api</artifactId>
 			<version>1.3.2</version>
+		</dependency>
+
+		<!-- Micrometer for BrowsingClient facade instrumentation (optional at
+		     runtime — consumers without a MeterRegistry get no-op instrumentation). -->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-core</artifactId>
+		</dependency>
+
+		<!-- SLF4J for warn-log on failure paths -->
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
 		</dependency>
 
 		<!-- Reused Look-see enums (BrowserType, BrowserEnvironment, ...) -->
