@@ -451,7 +451,7 @@ public class BrowserService {
 		BufferedImage full_page_screenshot = ImageIO.read(new URL(page_state.getFullPageScreenshotUrl()));
 
 		Document html_doc = Jsoup.parse(body_src);
-		String host = (new URL(browser.getDriver().getCurrentUrl())).getHost();
+		String host = (new URL(browser.getCurrentUrl())).getHost();
 		
 		List<String> errored_xpaths = new ArrayList<>();
 		//iterate over xpaths to build ElementStates without screenshots
