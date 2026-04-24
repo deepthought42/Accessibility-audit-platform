@@ -1,6 +1,5 @@
 package com.looksee.services;
 
-import com.looksee.browser.ActionFactory;
 import com.looksee.browser.Browser;
 import com.looksee.models.ElementState;
 import com.looksee.models.PageState;
@@ -10,8 +9,6 @@ import com.looksee.models.journeys.LoginStep;
 import com.looksee.models.journeys.SimpleStep;
 import com.looksee.models.journeys.Step;
 import com.looksee.utils.BrowserUtils;
-import org.openqa.selenium.By;
-import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.MoveTargetOutOfBoundsException;
 import org.slf4j.Logger;
@@ -44,24 +41,18 @@ public class StepExecutor {
 				ElementState element = simple_step.getElementState();
 				WebElement web_element = browser.findElement(element.getXpath());
 				browser.scrollToElementCentered(web_element);
-				//web_element.click();
-				//ActionFactory action_factory = new ActionFactory(browser.getDriver());
-				//action_factory.execAction(web_element, "", simple_step.getAction());
-				((JavascriptExecutor)browser.getDriver()).executeScript("arguments[0].click();", web_element);
+				browser.performClick(web_element);
 			}
 			else if(step instanceof LoginStep) {
 				LoginStep login_step = (LoginStep)step;
-				WebElement username_element = browser.getDriver().findElement(By.xpath(login_step.getUsernameElement().getXpath()));
-				ActionFactory action_factory = new ActionFactory(browser.getDriver());
-				action_factory.execAction(username_element, login_step.getTestUser().getUsername(), com.looksee.browser.enums.Action.SEND_KEYS);
+				WebElement username_element = browser.findElement(login_step.getUsernameElement().getXpath());
+				browser.performAction(username_element, com.looksee.browser.enums.Action.SEND_KEYS, login_step.getTestUser().getUsername());
 
-				WebElement password_element = browser.getDriver().findElement(By.xpath(login_step.getPasswordElement().getXpath()));
-				action_factory.execAction(password_element, login_step.getTestUser().getPassword(), com.looksee.browser.enums.Action.SEND_KEYS);
+				WebElement password_element = browser.findElement(login_step.getPasswordElement().getXpath());
+				browser.performAction(password_element, com.looksee.browser.enums.Action.SEND_KEYS, login_step.getTestUser().getPassword());
 
-				WebElement submit_element = browser.getDriver().findElement(By.xpath(login_step.getSubmitElement().getXpath()));
-				action_factory.execAction(submit_element, "", com.looksee.browser.enums.Action.CLICK);
-
-				//TimingUtils.pauseThread(5000L);
+				WebElement submit_element = browser.findElement(login_step.getSubmitElement().getXpath());
+				browser.performAction(submit_element, com.looksee.browser.enums.Action.CLICK, "");
 			}
 			else if(step instanceof LandingStep) {
 				PageState initial_page = step.getStartPage();
@@ -76,7 +67,7 @@ public class StepExecutor {
 			browser.getViewportScrollOffset();
 			log.warn("MOVE TO TARGET EXCEPTION FOR ELEMENT = "+e.getMessage());
 			log.warn("============================================================");;
-			log.warn("URL = "+browser.getDriver().getCurrentUrl());
+			log.warn("URL = "+browser.getCurrentUrl());
 			log.warn("browser dimension = "+browser.getViewportSize());
 			log.warn("browser offset = "+browser.getXScrollOffset()+" , "+browser.getYScrollOffset());
 			log.warn("============================================================");;

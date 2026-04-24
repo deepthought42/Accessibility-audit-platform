@@ -559,7 +559,7 @@ public class AuditController {
 		for(Step step: steps) {
 			step_executor.execute(browser, step);
 			TimingUtils.pauseThread(2000L);
-			current_url = browser.getDriver().getCurrentUrl();
+			current_url = browser.getCurrentUrl();
 			if(!last_url.equals(current_url)) {
 				try{
 					browser.waitForPageToLoad();
