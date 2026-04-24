@@ -3,6 +3,7 @@ package com.looksee.services.browser;
 import com.looksee.browser.Browser;
 import com.looksee.browsing.client.BrowsingClient;
 import com.looksee.browsing.client.BrowsingClientException;
+import com.looksee.browsing.generated.model.ElementState;
 import com.looksee.browsing.generated.model.PageStatus;
 import com.looksee.browsing.generated.model.ScreenshotStrategy;
 import com.looksee.browsing.generated.model.ScrollOffset;
@@ -17,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.openqa.selenium.Alert;
 import org.openqa.selenium.Dimension;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.Point;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
@@ -152,31 +154,57 @@ public class RemoteBrowser extends Browser {
         return client.getViewport(sessionId).getScrollOffset().getY();
     }
 
-    // --- Element-handle ops: phase 3b -------------------------------------
+    // --- Element-handle ops -----------------------------------------------
 
     @Override
     public WebElement findElement(String xpath) throws WebDriverException {
-        throw new UnsupportedOperationException(PHASE_3B + " (findElement)");
+        ElementState state = client.findElement(sessionId, xpath);
+        if (!Boolean.TRUE.equals(state.getFound())) {
+            throw new NoSuchElementException(
+                "RemoteBrowser: element not found for xpath=" + xpath);
+        }
+        return new RemoteWebElement(sessionId, state);
     }
 
     @Override
     public WebElement findWebElementByXpath(String xpath) {
-        throw new UnsupportedOperationException(PHASE_3B + " (findWebElementByXpath)");
+        // Browser.findWebElementByXpath delegates to the same driver.findElement
+        // under the hood; the remote mapping is identical.
+        return findElement(xpath);
     }
 
     @Override
     public boolean isDisplayed(String xpath) {
-        throw new UnsupportedOperationException(PHASE_3B + " (isDisplayed)");
+        ElementState state = client.findElement(sessionId, xpath);
+        return Boolean.TRUE.equals(state.getFound())
+            && Boolean.TRUE.equals(state.getDisplayed());
     }
 
     @Override
     public Map<String, String> extractAttributes(WebElement element) {
-        throw new UnsupportedOperationException(PHASE_3B + " (extractAttributes)");
+        // Cached from the findElement response — no network call needed.
+        return requireRemote(element, "extractAttributes").cachedAttributes();
     }
 
     @Override
-    public BufferedImage getElementScreenshot(WebElement element) throws Exception {
-        throw new UnsupportedOperationException(PHASE_3B + " (getElementScreenshot)");
+    public BufferedImage getElementScreenshot(WebElement element) throws IOException {
+        byte[] bytes = client.captureElementScreenshot(
+            sessionId, requireRemote(element, "getElementScreenshot").getElementHandle());
+        return readPng(bytes);
+    }
+
+    /**
+     * Guards the contract that element-taking methods on {@link RemoteBrowser}
+     * must be called with {@link RemoteWebElement} instances obtained from this
+     * browser. Passing a locally-bound {@link WebElement} (e.g. from a
+     * concurrent local driver) is a programming error.
+     */
+    private RemoteWebElement requireRemote(WebElement element, String methodName) {
+        if (!(element instanceof RemoteWebElement)) {
+            throw new IllegalStateException(
+                "RemoteBrowser." + methodName + ": element was not obtained from this RemoteBrowser session");
+        }
+        return (RemoteWebElement) element;
     }
 
     @Override
