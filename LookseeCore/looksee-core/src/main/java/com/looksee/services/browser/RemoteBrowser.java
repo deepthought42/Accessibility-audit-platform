@@ -127,6 +127,41 @@ public class RemoteBrowser extends Browser {
         // super-method (which dereferences the null driver) is never called.
     }
 
+    // --- High-level Browser ops (phase-3b additions on Browser base) -----
+
+    @Override
+    public void performClick(WebElement element) {
+        client.performElementAction(
+            sessionId,
+            requireRemote(element, "performClick").getElementHandle(),
+            com.looksee.browsing.generated.model.ElementAction.CLICK,
+            null);
+    }
+
+    @Override
+    public void performAction(WebElement element,
+                              com.looksee.browser.enums.Action action,
+                              String input) {
+        client.performElementAction(
+            sessionId,
+            requireRemote(element, "performAction").getElementHandle(),
+            toGeneratedAction(action),
+            input == null ? "" : input);
+    }
+
+    @Override
+    public String getCurrentUrl() {
+        // SessionState.current_url is the authoritative post-navigate URL.
+        return client.getSession(sessionId).getCurrentUrl();
+    }
+
+    private static com.looksee.browsing.generated.model.ElementAction toGeneratedAction(
+            com.looksee.browser.enums.Action action) {
+        // Both enums share lowercase wire values; see openapi.yaml and
+        // com.looksee.browser.enums.Action.
+        return com.looksee.browsing.generated.model.ElementAction.fromValue(action.toString());
+    }
+
     // --- Lombok @Getter overrides (super reads the null driver) ----------
 
     @Override
