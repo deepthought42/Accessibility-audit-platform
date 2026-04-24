@@ -244,6 +244,19 @@ class RemoteBrowserElementOpsTest {
     }
 
     @Test
+    void getTitle_parsesFromSourceViaJsoup() {
+        when(client.getSource("session-1")).thenReturn(
+            "<!doctype html><html><head><title>Hello World</title></head><body/></html>");
+        assertEquals("Hello World", remote.getTitle());
+    }
+
+    @Test
+    void getTitle_emptySource_returnsEmptyString() {
+        when(client.getSource("session-1")).thenReturn("");
+        assertEquals("", remote.getTitle());
+    }
+
+    @Test
     void getCurrentUrl_readsFromPageStatus() {
         // PageStatus.current_url is required in the OpenAPI contract (unlike
         // SessionState.current_url which is optional) — protects journey-loop
