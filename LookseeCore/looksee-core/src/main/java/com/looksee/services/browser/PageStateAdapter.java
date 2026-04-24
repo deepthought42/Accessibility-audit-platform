@@ -103,7 +103,12 @@ public class PageStateAdapter {
 		Set<String> script_urls =  BrowserService.extractScriptUrls(html_doc);
 		Set<String> fav_icon_links = BrowserService.extractIconLinks(html_doc);
 
-		String title = browser.getTitle();
+		// Derive title from the already-parsed source — same snapshot as
+		// the metadata/stylesheet/script/favicon extractions above.
+		// Avoids a second source fetch + parse in remote mode (see PR #42
+		// review), and guarantees title can't desync from source if the DOM
+		// mutates between requests.
+		String title = html_doc.title();
 
 		BufferedImage viewport_screenshot = browser.getViewportScreenshot();
 		String screenshot_checksum = ImageUtils.getChecksum(viewport_screenshot);
@@ -191,7 +196,10 @@ public class PageStateAdapter {
 		//}
 
         //scroll to bottom then back to top to make sure all elements that may be hidden until the page is scrolled
-		String title = browser.getTitle();
+		// Derive title from the already-parsed source (see PR #42 review) —
+		// avoids a second remote source fetch and keeps title + source
+		// snapshot-consistent.
+		String title = html_doc.title();
 
 		BufferedImage viewport_screenshot = browser.getViewportScreenshot();
 		String screenshot_checksum = ImageUtils.getChecksum(viewport_screenshot);

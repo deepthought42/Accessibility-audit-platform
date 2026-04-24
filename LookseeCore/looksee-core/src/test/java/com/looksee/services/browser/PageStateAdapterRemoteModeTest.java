@@ -85,6 +85,22 @@ class PageStateAdapterRemoteModeTest {
         assertEquals("Remote Title", remote.getTitle());
     }
 
+    @Test
+    void browserTakingOverload_fetchesSourceOnlyOnce() throws Exception {
+        // PR #42 review guard: title is derived from the already-parsed source,
+        // not via a second browser.getTitle() → client.getSource() call. Each
+        // toPageState call should invoke client.getSource at most once.
+        adapter.toPageState(remote, 42L, "https://example.com/page");
+        verify(client, times(1)).getSource("s-rca");
+    }
+
+    @Test
+    void urlBrowserTakingOverload_fetchesSourceOnlyOnce() throws Exception {
+        adapter.toPageState(
+            new URL("https://example.com/page"), remote, true, 200, 7L);
+        verify(client, times(1)).getSource("s-rca");
+    }
+
     private static byte[] pngBytes(int w, int h) throws Exception {
         BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
