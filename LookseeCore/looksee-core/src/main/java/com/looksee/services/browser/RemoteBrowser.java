@@ -207,39 +207,43 @@ public class RemoteBrowser extends Browser {
         return (RemoteWebElement) element;
     }
 
+    // --- Scroll ops (ScrollMode enum maps 1:1 to Browser.java scroll methods) -
+
     @Override
     public void scrollToElement(String xpath, WebElement elem) {
-        throw new UnsupportedOperationException(PHASE_3B + " (scrollToElement)");
+        client.scrollToElement(sessionId, requireRemote(elem, "scrollToElement").getElementHandle(), xpath);
     }
 
     @Override
     public void scrollToElement(WebElement element) {
-        throw new UnsupportedOperationException(PHASE_3B + " (scrollToElement)");
+        // Browser.scrollToElement(WebElement) uses scrollIntoView({block:'center'})
+        // server-side — route to TO_ELEMENT_CENTERED to match semantics.
+        client.scrollToElementCentered(sessionId, requireRemote(element, "scrollToElement").getElementHandle());
     }
 
     @Override
     public void scrollToElementCentered(WebElement element) {
-        throw new UnsupportedOperationException(PHASE_3B + " (scrollToElementCentered)");
+        client.scrollToElementCentered(sessionId, requireRemote(element, "scrollToElementCentered").getElementHandle());
     }
 
     @Override
     public void scrollToBottomOfPage() {
-        throw new UnsupportedOperationException(PHASE_3B + " (scrollToBottomOfPage)");
+        client.scrollToBottom(sessionId);
     }
 
     @Override
     public void scrollToTopOfPage() {
-        throw new UnsupportedOperationException(PHASE_3B + " (scrollToTopOfPage)");
+        client.scrollToTop(sessionId);
     }
 
     @Override
     public void scrollDownPercent(double percent) {
-        throw new UnsupportedOperationException(PHASE_3B + " (scrollDownPercent)");
+        client.scrollDownPercent(sessionId, percent);
     }
 
     @Override
     public void scrollDownFull() {
-        throw new UnsupportedOperationException(PHASE_3B + " (scrollDownFull)");
+        client.scrollDownFull(sessionId);
     }
 
     @Override
