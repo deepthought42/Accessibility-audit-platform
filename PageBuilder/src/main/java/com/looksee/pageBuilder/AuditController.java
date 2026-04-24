@@ -212,7 +212,6 @@ public class AuditController {
 		Browser browser = null;
 
 	    try {
-	    	boolean is_secure = BrowserUtils.checkIfSecure(url);
 			int http_status = BrowserUtils.getHttpStatus(url);
 
 			//usually code 301 is returned which is a redirect, which is usually transferring to https
@@ -241,9 +240,11 @@ public class AuditController {
 				assert domain_map != null : "Invariant: domain_map must be non-null for DOMAIN audits";
 			}
 
-			//update audit record with progress
-			browser = browser_service.getConnection(BrowserType.CHROME, BrowserEnvironment.DISCOVERY);
-			page_state = browser_service.buildPageState(url, browser, is_secure, http_status, url_msg.getAuditId());
+			// Phase 4a.2: capturePage is mode-agnostic — works byte-identically in
+			// local and remote mode, single round-trip on the remote side, no raw
+			// getDriver() reach-through. Replaces the prior open-browser +
+			// buildPageState dance. See browser-service/phase-4-consumer-cutover.md.
+			page_state = browser_service.capturePage(url, BrowserType.CHROME, url_msg.getAuditId());
 
 			//CHECK IF PAGE STATE EXISTS IN DOMAIN AUDIT ALREADY. IF IT DOESN'T, OR IT DOES AND
 			// THERE AREN'T ANY ELEMENTS ASSOCIATED IN DB THEN BUILD PAGE ELEMENTS,
@@ -254,6 +255,13 @@ public class AuditController {
 					|| element_state_service.getAllExistingKeys(page_state_record.getId()).isEmpty())
 			{
 				log.warn("Extracting element states...");
+				// Element-state extraction still needs a live Browser. In remote
+				// mode this becomes a RemoteBrowser, which requires phase-3b code
+				// to implement findElement/extractAttributes — do not flip
+				// looksee.browsing.mode=remote on PageBuilder until phase 3b has
+				// shipped. See phase-4-consumer-cutover.md §14.2.
+				browser = browser_service.getConnection(BrowserType.CHROME, BrowserEnvironment.DISCOVERY);
+				browser.navigateTo(url.toString());
 				List<String> xpaths = browser_service.extractAllUniqueElementXpaths(page_state.getSrc());
 				List<ElementState> element_states = browser_service.getDomElementStates(	page_state,
 																							xpaths,
