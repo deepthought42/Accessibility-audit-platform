@@ -121,36 +121,12 @@ class RemoteBrowserTest {
         verifyNoInteractions(client);
     }
 
-    // --- unsupported (phase 3b) ------------------------------------------
+    // --- The only remaining intentional throw in RemoteBrowser is getDriver.
+    // Every other op is wired in phase 3b — see RemoteBrowserElementOpsTest.
 
     @Test
     void getDriver_throwsUnsupported() {
         assertThrows(UnsupportedOperationException.class, () -> remote.getDriver());
-    }
-
-    @Test
-    void findElement_throwsUnsupported() {
-        assertThrows(UnsupportedOperationException.class, () -> remote.findElement("//x"));
-    }
-
-    @Test
-    void extractAttributes_throwsUnsupported() {
-        assertThrows(UnsupportedOperationException.class, () -> remote.extractAttributes(null));
-    }
-
-    @Test
-    void removeDriftChat_throwsUnsupported() {
-        assertThrows(UnsupportedOperationException.class, () -> remote.removeDriftChat());
-    }
-
-    @Test
-    void scrollToElement_throwsUnsupported() {
-        assertThrows(UnsupportedOperationException.class, () -> remote.scrollToElement(null));
-    }
-
-    @Test
-    void isAlertPresent_throwsUnsupported() {
-        assertThrows(UnsupportedOperationException.class, () -> remote.isAlertPresent());
     }
 
     private static byte[] pngBytes(int w, int h) throws Exception {
