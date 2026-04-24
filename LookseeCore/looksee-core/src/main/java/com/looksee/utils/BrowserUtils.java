@@ -1374,7 +1374,7 @@ public class BrowserUtils {
 				browser = browser_service.getConnection(BrowserType.CHROME, BrowserEnvironment.DISCOVERY);
 				browser.navigateTo(sanitized_url.toString());
 				
-				sanitized_url = new URL(browser.getDriver().getCurrentUrl());
+				sanitized_url = new URL(browser.getCurrentUrl());
 				page_src = browser_service.getPageSource(browser, sanitized_url);
 				attempt_cnt = 10000000;
 				break;
@@ -1462,7 +1462,7 @@ public class BrowserUtils {
 		if(!transition_detected && new_checksum.equals(last_checksum) && image_checksums.size()>2){
 			return new PageLoadAnimation(image_urls,
 										image_checksums,
-										BrowserUtils.sanitizeUrl(browser.getDriver().getCurrentUrl(), true));
+										BrowserUtils.sanitizeUrl(browser.getCurrentUrl(), true));
 		}
 
 		return null;

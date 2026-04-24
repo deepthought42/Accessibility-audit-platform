@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.7.1] - 2026-04-24
+
+### Added
+- **`Browser.getTitle()`** with a local default (`driver.getTitle()`) and a `RemoteBrowser` override that Jsoup-parses the `getSource()` response. No new browser-service endpoint; Jsoup is already a LookseeCore dependency.
+
+### Changed
+- **`PageStateAdapter`'s two `Browser`-taking overloads** no longer reach through `browser.getDriver()`. Seven call-site swaps route through `browser.getCurrentUrl()` / `getSource()` / `getTitle()` / `getViewportSize()` instead. Both overloads now work transparently against a `RemoteBrowser`.
+- **`BrowserUtils`** URL-sanitization helpers (lines 1377, 1465) migrated to `browser.getCurrentUrl()`.
+- No behavior change in local mode. Default `looksee.browsing.mode` remains `local`.
+
+### Unblocks
+- Phase 4a.2 — PageBuilder `buildPageState` → `capturePage` migration (reverted in PR #36 for DOM-consistency reasons) can re-land now that `buildPageState`'s call graph runs in remote mode.
+
+### Still deferred (phase 3d — trigger on demand)
+- `BrowserService` form extraction (lines 454, 1953, 3291, 3292, 3401) — needs server-side endpoint or full rewrite.
+- `com.looksee.browsing.table.Table` helper (`element.findElements` on passed-in WebElement) — same constraint.
+- `RemoteWebElement` unsupported `WebElement` methods (click, submit, sendKeys, clear, getTagName, isSelected, isEnabled, getText, findElement(s), getCssValue, getScreenshotAs — 11 methods).
+
+See `browser-service/phase-3c-internal-remote-compat.md` §14 for the full deferral list with trigger conditions.
+
 ## [0.7.0] - 2026-04-24
 
 ### Added
