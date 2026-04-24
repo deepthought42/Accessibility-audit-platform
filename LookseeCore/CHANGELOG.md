@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.7.2] - 2026-04-24
+
+### Added
+- New static helper `BrowserService.extractTagFromXpath(String)` — derives an HTML tag from the last segment of an xpath (handles indexed predicates, attribute predicates, namespace prefixes, nested paths). Mode-agnostic; no driver round-trip.
+- `RemoteWebElement.getTagName()` now reads from a cached `tag_name` attribute when the server's `/v1/sessions/{id}/element/find` response includes one. Falls back to a clearer `UnsupportedOperationException` that points at both the server-side synthesis option (phase 3e) and the xpath-derived workaround.
+
+### Changed
+- `BrowserService.getDomElementStates` is remote-safe:
+  - Line 454 `browser.getDriver().getCurrentUrl()` → `browser.getCurrentUrl()`.
+  - Line 471 `web_element.getTagName()` → `extractTagFromXpath(xpath)` for the structure-tag filter.
+  - The deprecated `isImageElement(WebElement)` overload (only callers were two `web_element.getTagName()` consumers in this method) is removed; both call sites now use the existing `isImageElement(String)` overload with `extractTagFromXpath(xpath)`.
+- No behavior change in local mode. Default `looksee.browsing.mode` remains `local`.
+
+### Unblocks
+- Phase 4a.2 — PageBuilder `buildPageState` → `capturePage` migration is now **fully** unblocked. The single-session flow (`getConnection` + `buildPageState` + `getDomElementStates` + `close`) works transparently in remote mode after this merges. Phase 3c only handled `buildPageState`'s call graph; this phase closes `getDomElementStates`.
+
+### Still deferred (phase 3e)
+- `BrowserService.enrichElementStates` (lines ~1953, 1997, 2003, 2510) — needs a new `Browser.findElements` or `Browser.waitForElement` method backed by a server endpoint.
+- `BrowserService` form extraction (lines 3291, 3292, 3306, 3385, 3401).
+- `com.looksee.browsing.table.Table` helper (`element.findElements` on a passed-in WebElement).
+- Remaining `RemoteWebElement` unsupported `WebElement` methods (click, submit, sendKeys, clear, isSelected, isEnabled, getText, findElement(s), getCssValue, getScreenshotAs).
+
+Phase 3e triggers when phase 4b (element-enrichment cutover) surfaces the first blocker.
+
 ## [0.7.1] - 2026-04-24
 
 ### Added
