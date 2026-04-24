@@ -1,6 +1,9 @@
 package com.looksee.services;
 
 import com.looksee.browser.helpers.BrowserConnectionHelper;
+import com.looksee.browsing.client.BrowsingClient;
+import com.looksee.browsing.generated.model.Session;
+import com.looksee.config.LookseeBrowsingProperties;
 import com.looksee.exceptions.PagesAreNotMatchingException;
 import com.looksee.models.ActionOLD;
 import com.looksee.models.Animation;
@@ -68,7 +71,13 @@ public class TestService {
 	
 	@Autowired
 	private PageStateRepository page_state_repo;
-	
+
+	@Autowired
+	private LookseeBrowsingProperties browsingProps;
+
+	@Autowired(required = false)
+	private BrowsingClient browsingClient;
+
 	/**
 	 * Runs an {@code Test}
 	 *
@@ -106,9 +115,16 @@ public class TestService {
 		
 		do{
 			try {
-				browser = BrowserConnectionHelper.getConnection(
-						BrowserType.create(browser_name),
-						BrowserEnvironment.create("test"));
+				BrowserType browser_type = BrowserType.create(browser_name);
+				BrowserEnvironment env = BrowserEnvironment.create("test");
+				if (browsingProps == null
+						|| browsingProps.getMode() == LookseeBrowsingProperties.Mode.LOCAL) {
+					browser = BrowserConnectionHelper.getConnection(browser_type, env);
+				} else {
+					Session session = browsingClient.createSession(browser_type, env);
+					browser = new com.looksee.services.browser.RemoteBrowser(
+							browsingClient, session.getSessionId(), browser_type.toString());
+				}
 				//page = crawler.crawlPath(user_id, domain, test.getPathKeys(), test.getPathObjects(), browser, new URL(PathUtils.getFirstPage(test.getPathObjects()).getUrl()).getHost(), visible_element_map, visible_elements);
 			} catch(PagesAreNotMatchingException e){
 				log.warn(e.getMessage());

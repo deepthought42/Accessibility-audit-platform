@@ -3,6 +3,9 @@ package com.looksee.services;
 import com.google.cloud.storage.StorageException;
 import com.looksee.models.form.ElementRuleExtractor;
 import com.looksee.browser.helpers.BrowserConnectionHelper;
+import com.looksee.browsing.client.BrowsingClient;
+import com.looksee.browsing.generated.model.Session;
+import com.looksee.config.LookseeBrowsingProperties;
 import com.looksee.exceptions.ServiceUnavailableException;
 import com.looksee.gcp.CloudVisionUtils;
 import com.looksee.gcp.GoogleCloudStorage;
@@ -113,6 +116,13 @@ public class BrowserService {
 	@Autowired
 	private PageStateAdapter pageStateAdapter;
 
+	@Autowired
+	private LookseeBrowsingProperties browsingProps;
+
+	// Optional: present only when looksee.browsing.mode=remote.
+	@Autowired(required = false)
+	private BrowsingClient browsingClient;
+
 	/**
 	 * Retrieves a new browser connection
 	 *
@@ -130,9 +140,17 @@ public class BrowserService {
 		assert browser != null;
 		assert browser_env != null;
 
-		return BrowserConnectionHelper.getConnection(
-				BrowserType.create(browser.toString()),
-				BrowserEnvironment.create(browser_env.toString()));
+		if (browsingProps == null
+				|| browsingProps.getMode() == LookseeBrowsingProperties.Mode.LOCAL) {
+			return BrowserConnectionHelper.getConnection(
+					BrowserType.create(browser.toString()),
+					BrowserEnvironment.create(browser_env.toString()));
+		}
+
+		// Remote mode: create a server-side session and wrap it in RemoteBrowser.
+		Session session = browsingClient.createSession(browser, browser_env);
+		return new com.looksee.services.browser.RemoteBrowser(
+				browsingClient, session.getSessionId(), browser.toString());
 	}
 
 	/**
