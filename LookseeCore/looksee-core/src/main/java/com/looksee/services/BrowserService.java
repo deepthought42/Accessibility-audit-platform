@@ -4,8 +4,6 @@ import com.google.cloud.storage.StorageException;
 import com.looksee.models.form.ElementRuleExtractor;
 import com.looksee.browser.helpers.BrowserConnectionHelper;
 import com.looksee.browsing.client.BrowsingClient;
-import com.looksee.browsing.generated.model.CaptureRequest;
-import com.looksee.browsing.generated.model.CaptureResponse;
 import com.looksee.browsing.generated.model.Session;
 import com.looksee.config.LookseeBrowsingProperties;
 import com.looksee.exceptions.ServiceUnavailableException;
@@ -186,17 +184,32 @@ public class BrowserService {
 			}
 		}
 
-		// Remote: POST /capture returns source + a screenshot reference in one
-		// round-trip. Pull the screenshot bytes by capture_id.
-		CaptureRequest req = new CaptureRequest()
-				.url(java.net.URI.create(url.toString()))
-				.browser(com.looksee.browsing.generated.model.BrowserType.fromValue(browser.toString()))
-				.extract(java.util.List.of(CaptureRequest.ExtractEnum.SOURCE));
-		CaptureResponse resp = browsingClient.capture(req);
-		byte[] screenshotBytes = browsingClient.getCaptureScreenshotBytes(resp.getCaptureId());
-		String sourceOrEmpty = resp.getSource() == null ? "" : resp.getSource();
-		return pageStateAdapter.toPageState(
-				screenshotBytes, sourceOrEmpty, audit_record_id, url.toString(), browser);
+		// Remote (phase 3b): explicit session lifecycle produces distinct
+		// viewport and full-page screenshots — previously the one-shot
+		// /capture path had to reuse the same bytes for both fields (noted in
+		// 0.6.0 CHANGELOG as 3b work). Five round-trips instead of two; same
+		// fidelity as local mode.
+		com.looksee.browsing.generated.model.Session session =
+				browsingClient.createSession(browser, BrowserEnvironment.DISCOVERY);
+		String sessionId = session.getSessionId();
+		try {
+			browsingClient.navigate(sessionId, url.toString());
+			String source = browsingClient.getSource(sessionId);
+			byte[] viewportBytes = browsingClient.screenshot(sessionId,
+					com.looksee.browsing.generated.model.ScreenshotStrategy.VIEWPORT);
+			byte[] fullPageBytes = browsingClient.screenshot(sessionId,
+					com.looksee.browsing.generated.model.ScreenshotStrategy.FULL_PAGE_SHUTTERBUG);
+			String sourceOrEmpty = source == null ? "" : source;
+			return pageStateAdapter.toPageState(
+					viewportBytes, fullPageBytes, sourceOrEmpty,
+					audit_record_id, url.toString(), browser);
+		} finally {
+			try {
+				browsingClient.deleteSession(sessionId);
+			} catch (com.looksee.browsing.client.BrowsingClientException e) {
+				log.warn("capturePage: deleteSession({}) failed; swallowing", sessionId, e);
+			}
+		}
 	}
 
 	/**

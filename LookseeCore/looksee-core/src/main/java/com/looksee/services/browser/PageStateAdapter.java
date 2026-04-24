@@ -240,22 +240,36 @@ public class PageStateAdapter {
 
 	/**
 	 * Builds a {@link PageState} from a pre-captured screenshot and page source,
-	 * without a live {@link Browser}. Used by the remote-mode one-shot capture
-	 * flow in {@link BrowserService#capturePage(URL, BrowserType, long)}, where
-	 * browser-service's {@code POST /v1/capture} returns both in a single
-	 * round-trip.
+	 * without a live {@link Browser}. Single-screenshot form — delegates to the
+	 * two-byte overload by passing the same bytes for both viewport and full-page.
 	 *
-	 * <p>Known simplification: only one screenshot is stored; it's uploaded as
-	 * both the viewport and full-page screenshot of the resulting
-	 * {@link PageState}. Splitting viewport from full-page in remote mode is a
-	 * phase-3b enhancement.
+	 * <p>Kept around for backward compatibility with any caller that truly has
+	 * only one screenshot. Phase-3b remote {@code capturePage} uses the two-byte
+	 * overload below so viewport and full-page are distinct.
 	 */
 	public PageState toPageState(byte[] screenshot,
 								 String source,
 								 long audit_record_id,
 								 String browser_url,
 								 BrowserType browser_type) throws IOException {
-		assert screenshot != null && screenshot.length > 0;
+		return toPageState(screenshot, screenshot, source, audit_record_id, browser_url, browser_type);
+	}
+
+	/**
+	 * Builds a {@link PageState} from pre-captured viewport + full-page
+	 * screenshots and page source. Used by the remote-mode {@code capturePage}
+	 * explicit lifecycle flow in phase 3b, where two separate
+	 * {@code POST /v1/sessions/{id}/screenshot} calls produce distinct bytes
+	 * for the two fields.
+	 */
+	public PageState toPageState(byte[] viewportScreenshot,
+								 byte[] fullPageScreenshot,
+								 String source,
+								 long audit_record_id,
+								 String browser_url,
+								 BrowserType browser_type) throws IOException {
+		assert viewportScreenshot != null && viewportScreenshot.length > 0;
+		assert fullPageScreenshot != null && fullPageScreenshot.length > 0;
 		assert source != null;
 		assert browser_url != null && !browser_url.isEmpty();
 		assert browser_type != null;
@@ -277,31 +291,31 @@ public class PageStateAdapter {
 		Set<String> fav_icon_links = BrowserService.extractIconLinks(html_doc);
 		String title = html_doc.title();
 
-		BufferedImage image;
-		try (ByteArrayInputStream in = new ByteArrayInputStream(screenshot)) {
-			image = javax.imageio.ImageIO.read(in);
-		}
-		if (image == null) {
-			throw new IOException("remote capture returned bytes that are not a decodable image");
-		}
-		String checksum = ImageUtils.getChecksum(image);
-		String screenshot_url = googleCloudStorage.saveImage(image,
-				current_url.getHost(), checksum, browser_type);
-		int width = image.getWidth();
-		int height = image.getHeight();
-		image.flush();
+		BufferedImage viewport_image = decodePng(viewportScreenshot);
+		String viewport_url = googleCloudStorage.saveImage(viewport_image,
+				current_url.getHost(), ImageUtils.getChecksum(viewport_image), browser_type);
+		int viewport_w = viewport_image.getWidth();
+		int viewport_h = viewport_image.getHeight();
+		viewport_image.flush();
+
+		BufferedImage full_image = decodePng(fullPageScreenshot);
+		String full_url = googleCloudStorage.saveImage(full_image,
+				current_url.getHost(), ImageUtils.getChecksum(full_image), browser_type);
+		int full_w = full_image.getWidth();
+		int full_h = full_image.getHeight();
+		full_image.flush();
 
 		return new PageState(
-				screenshot_url,
+				viewport_url,
 				clean_source,
 				0L,
 				0L,
-				width,
-				height,
+				viewport_w,
+				viewport_h,
 				browser_type,
-				screenshot_url,
-				width,
-				height,
+				full_url,
+				full_w,
+				full_h,
 				url_without_protocol,
 				title,
 				is_secure,
@@ -312,5 +326,16 @@ public class PageStateAdapter {
 				stylesheets,
 				script_urls,
 				fav_icon_links);
+	}
+
+	private static BufferedImage decodePng(byte[] bytes) throws IOException {
+		BufferedImage image;
+		try (ByteArrayInputStream in = new ByteArrayInputStream(bytes)) {
+			image = javax.imageio.ImageIO.read(in);
+		}
+		if (image == null) {
+			throw new IOException("remote capture returned bytes that are not a decodable image");
+		}
+		return image;
 	}
 }
