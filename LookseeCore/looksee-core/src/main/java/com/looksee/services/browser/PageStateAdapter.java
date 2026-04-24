@@ -83,7 +83,7 @@ public class PageStateAdapter {
 		browser.navigateTo(url.toString());
 		browser.removeDriftChat();
 
-		URL current_url = new URL(browser.getDriver().getCurrentUrl());
+		URL current_url = new URL(browser.getCurrentUrl());
 		String url_without_protocol = BrowserUtils.getPageUrl(current_url.toString());
 		log.warn("building page state for URL :: "+current_url);
 
@@ -91,7 +91,7 @@ public class PageStateAdapter {
         int status_code = BrowserUtils.getHttpStatus(current_url);
 
         //scroll to bottom then back to top to make sure all elements that may be hidden until the page is scrolled
-		String source = HtmlUtils.cleanSrc(browser.getDriver().getPageSource());
+		String source = HtmlUtils.cleanSrc(browser.getSource());
 
 		if(HtmlUtils.is503Error(source)) {
 			browser.close();
@@ -103,7 +103,7 @@ public class PageStateAdapter {
 		Set<String> script_urls =  BrowserService.extractScriptUrls(html_doc);
 		Set<String> fav_icon_links = BrowserService.extractIconLinks(html_doc);
 
-		String title = browser.getDriver().getTitle();
+		String title = browser.getTitle();
 
 		BufferedImage viewport_screenshot = browser.getViewportScreenshot();
 		String screenshot_checksum = ImageUtils.getChecksum(viewport_screenshot);
@@ -123,7 +123,7 @@ public class PageStateAdapter {
 
 		long x_offset = browser.getXScrollOffset();
 		long y_offset = browser.getYScrollOffset();
-		Dimension size = browser.getDriver().manage().window().getSize();
+		Dimension size = browser.getViewportSize();
 
 		return new PageState(viewport_screenshot_url,
 							source,
@@ -174,7 +174,7 @@ public class PageStateAdapter {
 		browser.removeGDPRmodals();
 		boolean is_secure = BrowserUtils.checkIfSecure(current_url);
 
-		String source = HtmlUtils.cleanSrc(browser.getDriver().getPageSource());
+		String source = HtmlUtils.cleanSrc(browser.getSource());
 
 		if(HtmlUtils.is503Error(source)) {
 			throw new ServiceUnavailableException("503(Service Unavailable) Error encountered. Starting over..");
@@ -191,7 +191,7 @@ public class PageStateAdapter {
 		//}
 
         //scroll to bottom then back to top to make sure all elements that may be hidden until the page is scrolled
-		String title = browser.getDriver().getTitle();
+		String title = browser.getTitle();
 
 		BufferedImage viewport_screenshot = browser.getViewportScreenshot();
 		String screenshot_checksum = ImageUtils.getChecksum(viewport_screenshot);
@@ -213,7 +213,7 @@ public class PageStateAdapter {
 
 		long x_offset = browser.getXScrollOffset();
 		long y_offset = browser.getYScrollOffset();
-		Dimension size = browser.getDriver().manage().window().getSize();
+		Dimension size = browser.getViewportSize();
 
 		return new PageState(
 							viewport_screenshot_url,
