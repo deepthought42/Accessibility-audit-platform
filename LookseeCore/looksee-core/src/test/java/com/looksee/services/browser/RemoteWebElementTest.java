@@ -90,6 +90,10 @@ class RemoteWebElementTest {
 
     @Test
     void unsupportedWebElementMethods_allThrowWithPhase3cMarker() {
+        // getTagName moved out of the always-unsupported set in phase 3d —
+        // it's now graceful: returns a cached tag_name attribute when present
+        // and throws with a phase-3d-pointing message otherwise. Covered in
+        // its own test cases below.
         RemoteWebElement el = new RemoteWebElement("s1", state("h1", true, Map.of(), null));
 
         Runnable[] checks = new Runnable[] {
@@ -97,7 +101,6 @@ class RemoteWebElementTest {
             () -> el.submit(),
             () -> el.sendKeys("x"),
             () -> el.clear(),
-            () -> el.getTagName(),
             () -> el.isSelected(),
             () -> el.isEnabled(),
             () -> el.getText(),
@@ -111,6 +114,31 @@ class RemoteWebElementTest {
             assertTrue(ex.getMessage().contains("phase 3c"),
                 "message should point at phase 3c: " + ex.getMessage());
         }
+    }
+
+    @Test
+    void getTagName_readsCachedTagNameAttribute() {
+        // Phase 3d: when the server includes a synthetic tag_name in the
+        // findElement response's attributes map, RemoteWebElement.getTagName
+        // returns it without a round-trip.
+        RemoteWebElement el = new RemoteWebElement("s1",
+            state("h1", true, Map.of("tag_name", "div"), null));
+        assertEquals("div", el.getTagName());
+    }
+
+    @Test
+    void getTagName_throwsWhenAttributeAbsent() {
+        // Browser-service today does NOT synthesize tag_name. Confirms the
+        // throw still fires with an actionable message pointing at the
+        // phase-3d xpath workaround.
+        RemoteWebElement el = new RemoteWebElement("s1",
+            state("h1", true, Map.of("id", "submit"), null));
+        UnsupportedOperationException ex = assertThrows(
+            UnsupportedOperationException.class, el::getTagName);
+        assertTrue(ex.getMessage().contains("tag_name"),
+            "message should mention the missing tag_name attribute: " + ex.getMessage());
+        assertTrue(ex.getMessage().contains("extractTagFromXpath"),
+            "message should point at the workaround: " + ex.getMessage());
     }
 
     @Test
