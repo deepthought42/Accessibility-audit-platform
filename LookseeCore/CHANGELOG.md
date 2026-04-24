@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.7.0] - 2026-04-24
+
+### Added
+- **Remote element-handle ops in `RemoteBrowser`.** Every method previously stubbed with `UnsupportedOperationException("phase 3b")` now forwards to the corresponding browser-service endpoint: `findElement`, `findWebElementByXpath`, `isDisplayed`, `extractAttributes`, `getElementScreenshot`, six scroll ops (`scrollTo*`, `scrollDown*`), four DOM-removal ops (`removeElement`, `removeDriftChat`, `removeGDPRmodals`, `removeGDPR`), `moveMouseOutOfFrame`, `moveMouseToNonInteractive`, `isAlertPresent`. Only `getDriver()` still throws — that's the point of the shim.
+- **`RemoteWebElement`** (`com.looksee.services.browser.RemoteWebElement`) — implements `org.openqa.selenium.WebElement`, bound to a remote session via `sessionId + element_handle`. Caches `rect` / `attributes` / `displayed` from the `/element/find` response so `isDisplayed` and `extractAttributes` serve without round-trips. Equality is `sessionId + elementHandle`.
+- **`RemoteAlert`** (`com.looksee.services.browser.RemoteAlert`) — implements `org.openqa.selenium.Alert`; `accept()`/`dismiss()` forward to `POST /v1/sessions/{id}/alert/respond`.
+- **Three new `Browser` methods** with mode-agnostic local defaults: `performClick(WebElement)`, `performAction(WebElement, Action, String)`, `getCurrentUrl()`. `RemoteBrowser` overrides them to route through browser-service. Consumers can now use these instead of reaching through `browser.getDriver()`.
+- **`BrowsingClient` facade extensions.** 15 new methods wrapping `ElementsApi`, `TouchApi`, `DomApi`, `MouseApi`, `AlertsApi`, plus the new scroll + element-screenshot methods on existing APIs. All routed through the phase-4 `recordCall` instrumentation so each emits a `browser_service_calls` timer.
+- **`PageStateAdapter.toPageState(byte[] viewport, byte[] fullPage, …)` overload** — accepts both screenshots separately. The single-byte overload delegates by passing the same bytes twice for backward compatibility.
+
+### Changed
+- **`BrowserService.capturePage` remote mode** now uses an explicit session lifecycle (`createSession → navigate → getSource → screenshot(VIEWPORT) → screenshot(FULL_PAGE_SHUTTERBUG) → deleteSession`) instead of `POST /capture`. The resulting `PageState` stores distinct viewport and full-page screenshot URLs — matches local-mode fidelity. `BrowsingClient.capture` / `getCaptureScreenshotBytes` remain on the facade for callers that want the cheaper single-shot.
+- **`StepExecutor.execute`** no longer reaches through `browser.getDriver()`. The SimpleStep click, the three LoginStep field entries, and the exception-path URL read now use `browser.performClick` / `browser.performAction` / `browser.getCurrentUrl`. Local behavior is byte-identical; remote mode now works end-to-end for journey execution.
+- **`journeyExecutor/.../AuditController.java:562`** migrated from `browser.getDriver().getCurrentUrl()` to `browser.getCurrentUrl()` — the last direct `getDriver()` call in non-test consumer code.
+
+### Deferred (phase 3c)
+- Every `UnsupportedOperationException` in `RemoteWebElement` (click, submit, sendKeys, clear, getTagName, isSelected, isEnabled, getText, findElement(s), getCssValue, getScreenshotAs) — current consumer census has no callers; they'll be wired when a consumer needs them.
+- `RemoteAlert.sendKeys` — no current callers.
+- LookseeCore-internal `browser.getDriver()` reach-throughs enumerated in `browser-service/phase-3b-element-handle-ops.md` §14.9 (PageStateAdapter's `Browser`-taking overloads, `BrowserService` form extraction, `BrowserUtils` URL sanitization, `com.looksee.browsing.table.Table`). These were remote-incompatible in 0.6.0 too — the remote path just never reached them.
+
+### Version sequencing
+0.7.0 stacks on 0.6.0 (phase 3) + 0.6.1 (phase 4a.1 facade instrumentation). The phase-3b plan doc originally called this release 0.7.0 bumping from 0.6.0; intermediate 0.6.1 delivered just the instrumentation ahead of the full 3b wire-up.
+
 ## [0.6.1] - 2026-04-24
 
 ### Added

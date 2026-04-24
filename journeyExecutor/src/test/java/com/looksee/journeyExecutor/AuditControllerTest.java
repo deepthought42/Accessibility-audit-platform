@@ -13,7 +13,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.openqa.selenium.WebDriver;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -112,9 +111,11 @@ class AuditControllerTest {
         stepExecutorField.set(controller, stepExecutor);
 
         Browser browser = mock(Browser.class);
-        WebDriver driver = mock(WebDriver.class);
-        when(browser.getDriver()).thenReturn(driver);
-        when(driver.getCurrentUrl()).thenReturn("https://example.com/page-1", "https://example.com/page-2");
+        // AuditController.performJourneyStepsInBrowser now reads the URL
+        // through the Browser abstraction (phase-3b refactor — the old
+        // browser.getDriver().getCurrentUrl() reach-through is gone so the
+        // local-mode path and RemoteBrowser path share a seam).
+        when(browser.getCurrentUrl()).thenReturn("https://example.com/page-1", "https://example.com/page-2");
         doNothing().when(browser).waitForPageToLoad();
 
         Step firstStep = mock(Step.class);

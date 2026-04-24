@@ -3,6 +3,9 @@ package com.looksee.services.browser;
 import com.looksee.browser.Browser;
 import com.looksee.browsing.client.BrowsingClient;
 import com.looksee.browsing.client.BrowsingClientException;
+import com.looksee.browsing.generated.model.AlertState;
+import com.looksee.browsing.generated.model.DomRemovePreset;
+import com.looksee.browsing.generated.model.ElementState;
 import com.looksee.browsing.generated.model.PageStatus;
 import com.looksee.browsing.generated.model.ScreenshotStrategy;
 import com.looksee.browsing.generated.model.ScrollOffset;
@@ -17,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.openqa.selenium.Alert;
 import org.openqa.selenium.Dimension;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.Point;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
@@ -123,6 +127,44 @@ public class RemoteBrowser extends Browser {
         // super-method (which dereferences the null driver) is never called.
     }
 
+    // --- High-level Browser ops (phase-3b additions on Browser base) -----
+
+    @Override
+    public void performClick(WebElement element) {
+        client.performElementAction(
+            sessionId,
+            requireRemote(element, "performClick").getElementHandle(),
+            com.looksee.browsing.generated.model.ElementAction.CLICK,
+            null);
+    }
+
+    @Override
+    public void performAction(WebElement element,
+                              com.looksee.browser.enums.Action action,
+                              String input) {
+        client.performElementAction(
+            sessionId,
+            requireRemote(element, "performAction").getElementHandle(),
+            toGeneratedAction(action),
+            input == null ? "" : input);
+    }
+
+    @Override
+    public String getCurrentUrl() {
+        // PageStatus.current_url is required in the OpenAPI contract (unlike
+        // SessionState.current_url which is optional), so callers that chain
+        // .equals / null-compare the result won't NPE. See
+        // browser-service/phase-3b-element-handle-ops.md review on PR #38.
+        return client.getStatus(sessionId).getCurrentUrl();
+    }
+
+    private static com.looksee.browsing.generated.model.ElementAction toGeneratedAction(
+            com.looksee.browser.enums.Action action) {
+        // Both enums share lowercase wire values; see openapi.yaml and
+        // com.looksee.browser.enums.Action.
+        return com.looksee.browsing.generated.model.ElementAction.fromValue(action.toString());
+    }
+
     // --- Lombok @Getter overrides (super reads the null driver) ----------
 
     @Override
@@ -152,101 +194,160 @@ public class RemoteBrowser extends Browser {
         return client.getViewport(sessionId).getScrollOffset().getY();
     }
 
-    // --- Element-handle ops: phase 3b -------------------------------------
+    // --- Element-handle ops -----------------------------------------------
 
     @Override
     public WebElement findElement(String xpath) throws WebDriverException {
-        throw new UnsupportedOperationException(PHASE_3B + " (findElement)");
+        ElementState state = client.findElement(sessionId, xpath);
+        if (!Boolean.TRUE.equals(state.getFound())) {
+            throw new NoSuchElementException(
+                "RemoteBrowser: element not found for xpath=" + xpath);
+        }
+        return new RemoteWebElement(sessionId, state);
     }
 
     @Override
     public WebElement findWebElementByXpath(String xpath) {
-        throw new UnsupportedOperationException(PHASE_3B + " (findWebElementByXpath)");
+        // Browser.findWebElementByXpath delegates to the same driver.findElement
+        // under the hood; the remote mapping is identical.
+        return findElement(xpath);
     }
 
     @Override
     public boolean isDisplayed(String xpath) {
-        throw new UnsupportedOperationException(PHASE_3B + " (isDisplayed)");
+        ElementState state = client.findElement(sessionId, xpath);
+        return Boolean.TRUE.equals(state.getFound())
+            && Boolean.TRUE.equals(state.getDisplayed());
     }
 
     @Override
     public Map<String, String> extractAttributes(WebElement element) {
-        throw new UnsupportedOperationException(PHASE_3B + " (extractAttributes)");
+        // Cached from the findElement response — no network call needed.
+        return requireRemote(element, "extractAttributes").cachedAttributes();
     }
 
     @Override
-    public BufferedImage getElementScreenshot(WebElement element) throws Exception {
-        throw new UnsupportedOperationException(PHASE_3B + " (getElementScreenshot)");
+    public BufferedImage getElementScreenshot(WebElement element) throws IOException {
+        byte[] bytes = client.captureElementScreenshot(
+            sessionId, requireRemote(element, "getElementScreenshot").getElementHandle());
+        return readPng(bytes);
     }
+
+    /**
+     * Guards the contract that element-taking methods on {@link RemoteBrowser}
+     * must be called with {@link RemoteWebElement} instances obtained from
+     * **this** session. Passing a locally-bound {@link WebElement} or a
+     * {@link RemoteWebElement} bound to a different session is a programming
+     * error — in the cross-session case the handle would be forwarded to this
+     * session's endpoints and either 404 or (worse) collide with a handle from
+     * this session's namespace.
+     */
+    private RemoteWebElement requireRemote(WebElement element, String methodName) {
+        if (!(element instanceof RemoteWebElement)) {
+            throw new IllegalStateException(
+                "RemoteBrowser." + methodName + ": element was not obtained from a RemoteBrowser session");
+        }
+        RemoteWebElement remote = (RemoteWebElement) element;
+        if (!sessionId.equals(remote.getSessionId())) {
+            throw new IllegalStateException(
+                "RemoteBrowser." + methodName + ": element is bound to session "
+                + remote.getSessionId() + " but this browser is session " + sessionId);
+        }
+        return remote;
+    }
+
+    // --- Scroll ops (ScrollMode enum maps 1:1 to Browser.java scroll methods) -
 
     @Override
     public void scrollToElement(String xpath, WebElement elem) {
-        throw new UnsupportedOperationException(PHASE_3B + " (scrollToElement)");
+        client.scrollToElement(sessionId, requireRemote(elem, "scrollToElement").getElementHandle(), xpath);
     }
 
     @Override
     public void scrollToElement(WebElement element) {
-        throw new UnsupportedOperationException(PHASE_3B + " (scrollToElement)");
+        // Browser.scrollToElement(WebElement) uses scrollIntoView({block:'center'})
+        // server-side — route to TO_ELEMENT_CENTERED to match semantics.
+        client.scrollToElementCentered(sessionId, requireRemote(element, "scrollToElement").getElementHandle());
     }
 
     @Override
     public void scrollToElementCentered(WebElement element) {
-        throw new UnsupportedOperationException(PHASE_3B + " (scrollToElementCentered)");
+        client.scrollToElementCentered(sessionId, requireRemote(element, "scrollToElementCentered").getElementHandle());
     }
 
     @Override
     public void scrollToBottomOfPage() {
-        throw new UnsupportedOperationException(PHASE_3B + " (scrollToBottomOfPage)");
+        client.scrollToBottom(sessionId);
     }
 
     @Override
     public void scrollToTopOfPage() {
-        throw new UnsupportedOperationException(PHASE_3B + " (scrollToTopOfPage)");
+        client.scrollToTop(sessionId);
     }
 
     @Override
     public void scrollDownPercent(double percent) {
-        throw new UnsupportedOperationException(PHASE_3B + " (scrollDownPercent)");
+        client.scrollDownPercent(sessionId, percent);
     }
 
     @Override
     public void scrollDownFull() {
-        throw new UnsupportedOperationException(PHASE_3B + " (scrollDownFull)");
+        client.scrollDownFull(sessionId);
     }
+
+    // --- DOM removal (DomRemovePreset enum) -------------------------------
 
     @Override
     public void removeElement(String className) {
-        throw new UnsupportedOperationException(PHASE_3B + " (removeElement)");
+        client.removeDomElement(sessionId, DomRemovePreset.BY_CLASS, className);
     }
 
     @Override
     public void removeDriftChat() {
-        throw new UnsupportedOperationException(PHASE_3B + " (removeDriftChat)");
+        client.removeDomElement(sessionId, DomRemovePreset.DRIFT_CHAT, null);
     }
 
     @Override
     public void removeGDPRmodals() {
-        throw new UnsupportedOperationException(PHASE_3B + " (removeGDPRmodals)");
+        client.removeDomElement(sessionId, DomRemovePreset.GDPR_MODAL, null);
     }
 
     @Override
     public void removeGDPR() {
-        throw new UnsupportedOperationException(PHASE_3B + " (removeGDPR)");
+        client.removeDomElement(sessionId, DomRemovePreset.GDPR, null);
     }
+
+    // --- Mouse (MouseMoveMode enum) ---------------------------------------
 
     @Override
     public void moveMouseOutOfFrame() {
-        throw new UnsupportedOperationException(PHASE_3B + " (moveMouseOutOfFrame)");
+        // Local Browser.moveMouseOutOfFrame swallows exceptions; mirror that.
+        try {
+            client.moveMouseOutOfFrame(sessionId);
+        } catch (BrowsingClientException e) {
+            log.debug("RemoteBrowser.moveMouseOutOfFrame: swallowed {}", e.getMessage());
+        }
     }
 
     @Override
     public void moveMouseToNonInteractive(Point point) {
-        throw new UnsupportedOperationException(PHASE_3B + " (moveMouseToNonInteractive)");
+        // Local Browser.moveMouseToNonInteractive swallows exceptions; mirror that.
+        try {
+            client.moveMouseToNonInteractive(sessionId, point.getX(), point.getY());
+        } catch (BrowsingClientException e) {
+            log.debug("RemoteBrowser.moveMouseToNonInteractive: swallowed {}", e.getMessage());
+        }
     }
+
+    // --- Alert ------------------------------------------------------------
 
     @Override
     public Alert isAlertPresent() {
-        throw new UnsupportedOperationException(PHASE_3B + " (isAlertPresent)");
+        AlertState state = client.getAlert(sessionId);
+        if (!Boolean.TRUE.equals(state.getPresent())) {
+            return null;
+        }
+        return new RemoteAlert(client, sessionId, state.getText());
     }
 
     // --- helpers ----------------------------------------------------------

@@ -585,4 +585,44 @@ public class Browser {
 		int result = Integer.parseInt(js.executeScript(JS_GET_VIEWPORT_HEIGHT, new Object[0]).toString());
 		return result;
 	}
+
+	// --- High-level ops routed through the Browser abstraction ---------------
+	// These exist so StepExecutor and friends don't need to reach through
+	// browser.getDriver() — RemoteBrowser overrides them to forward to
+	// browser-service. Local bodies preserve the exact pre-0.7.0 behavior so
+	// the byte-identical local-mode contract holds.
+
+	/**
+	 * Clicks {@code element} via JavaScript. Local-mode body is the same script
+	 * StepExecutor previously inlined; {@link com.looksee.services.browser.RemoteBrowser}
+	 * overrides this to forward to {@code POST /v1/sessions/{id}/element/action}
+	 * with {@code ElementAction.CLICK}.
+	 */
+	public void performClick(WebElement element) {
+		assert element != null;
+		((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
+	}
+
+	/**
+	 * Dispatches an {@link com.looksee.browser.enums.Action} against {@code element}.
+	 * Local-mode body uses {@link ActionFactory} — the same code StepExecutor's
+	 * LoginStep branch previously inlined. {@link com.looksee.services.browser.RemoteBrowser}
+	 * overrides this to forward to {@code POST /v1/sessions/{id}/element/action}.
+	 */
+	public void performAction(WebElement element,
+	                          com.looksee.browser.enums.Action action,
+	                          String input) {
+		assert element != null;
+		assert action != null;
+		new ActionFactory(driver).execAction(element, input == null ? "" : input, action);
+	}
+
+	/**
+	 * Returns the current URL of the browser. Local-mode delegates to
+	 * {@link WebDriver#getCurrentUrl()}; {@link com.looksee.services.browser.RemoteBrowser}
+	 * overrides this to read {@code SessionState.current_url} from the server.
+	 */
+	public String getCurrentUrl() {
+		return driver.getCurrentUrl();
+	}
 }
