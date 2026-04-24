@@ -12,7 +12,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>17</java.version>
 	    <springboot.version>2.6.13</springboot.version>
-		<core.version>0.6.0</core.version>
+		<core.version>0.6.1</core.version>
 		<spring-cloud-gcp.version>3.1.0</spring-cloud-gcp.version>
 		<google-cloud-bom.version>24.4.0</google-cloud-bom.version>    </properties>
 
