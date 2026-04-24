@@ -158,6 +158,17 @@ public class RemoteBrowser extends Browser {
         return client.getStatus(sessionId).getCurrentUrl();
     }
 
+    @Override
+    public String getTitle() {
+        // No dedicated /title endpoint in the OpenAPI spec; deriving the title
+        // from getSource() avoids a contract change. Callers that need both
+        // title and source should fetch source once and Jsoup-parse locally —
+        // this method is the title-only convenience path used by
+        // PageStateAdapter.toPageState(Browser, ...). See
+        // browser-service/phase-3c-internal-remote-compat.md §Step 1.
+        return org.jsoup.Jsoup.parse(client.getSource(sessionId)).title();
+    }
+
     private static com.looksee.browsing.generated.model.ElementAction toGeneratedAction(
             com.looksee.browser.enums.Action action) {
         // Both enums share lowercase wire values; see openapi.yaml and

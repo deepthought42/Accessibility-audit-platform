@@ -625,4 +625,14 @@ public class Browser {
 	public String getCurrentUrl() {
 		return driver.getCurrentUrl();
 	}
+
+	/**
+	 * Returns the current document title. Local-mode delegates to
+	 * {@link WebDriver#getTitle()}; {@link com.looksee.services.browser.RemoteBrowser}
+	 * overrides this to derive the title from the remote {@link #getSource()}
+	 * response via Jsoup — no new browser-service endpoint required.
+	 */
+	public String getTitle() {
+		return driver.getTitle();
+	}
 }
