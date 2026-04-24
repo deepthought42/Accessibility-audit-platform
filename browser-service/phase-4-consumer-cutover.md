@@ -78,7 +78,18 @@ Source: monorepo grep sweep during planning. Compare against `phase-3b-element-h
 
 ### Observability prereqs
 
-- A dashboard showing `browser_service_calls_total{consumer, operation, outcome}` + p50/p95/p99 latency + error rate. Live before any flip.
+- A dashboard driven by the **one metric contract** below. Live before any flip.
+
+  **Metric contract (use this exact form end-to-end — emitter, dashboard, alerts):**
+
+  | Field | Value |
+  |---|---|
+  | Meter name | `browser_service_calls` (Micrometer `Timer`) |
+  | Prometheus series | `browser_service_calls_seconds_count`, `_seconds_sum`, `_seconds_max` (auto-generated from the timer) |
+  | Required tags | `operation` (facade method name), `outcome` (`success` \| `failure`) |
+  | Common tag (set by each consumer) | `consumer` (e.g. `page-builder`, `element-enrichment`, `journey-executor`) — applied via a `MeterFilter.commonTags` bean in the consumer's config so it's added to every metric without the facade needing to know the caller |
+
+  Dashboard / alert queries always reference `browser_service_calls_seconds_count{consumer="…", operation="…", outcome="…"}` (for RPS + error rate) and the associated `_sum` / `_max` for latency. Do **not** use a bare `browser_service_calls{…}` — it doesn't exist in Prometheus; the timer expands to the three `_seconds_*` series above.
 - A smoke-check cron firing `browserService.capturePage(new URL("https://example.com"), CHROME, 1L)` every 60s against the deployed browser-service. Doubles as a watchdog during rollout; reports success via Micrometer counter, failure via Sentry.
 - Alert rule: error rate >1% over 5 minutes pages oncall. Document who oncall is.
 
@@ -91,13 +102,20 @@ git checkout main && git pull --ff-only
 # Confirm LookseeCore is at expected version.
 grep "<looksee.version>" LookseeCore/pom.xml
 
-# Re-run the phase-3b consumer census; no new findings expected.
-EXCLUDE='LookseeCore/(looksee-browser|looksee-core/src/test)/|/src/test/'
+# Re-run the phase-3b consumer census — consumer hits only, so filter out
+# all of LookseeCore/ (same pattern phase-3b Sweep A uses).
 grep -rn "browserService\\.getConnection\\|browser_service\\.getConnection" --include="*.java" \
-  | grep -Ev "$EXCLUDE"
-# Expected: exactly the three lines in the Bucket A table above. Any new
-# consumer that grew a getConnection call since the last sub-phase is a new
-# finding — either bring it into the phase-4 scope or defer it.
+  | grep -v '^LookseeCore/'
+# Expected: exactly three lines — the three entries in the Bucket A table
+# above (PageBuilder:245, element-enrichment:113, journeyExecutor:214). Any
+# new consumer that grew a getConnection call since the last sub-phase is a
+# new finding — either bring it into the phase-4 scope or defer it.
+#
+# Note: a plain `grep -rn ...` without the `^LookseeCore/` filter also matches
+# one LookseeCore-internal site — BrowserUtils.java:1374 — which is part of
+# the phase-3b §14.9 enumeration, not a consumer. That hit must NOT appear in
+# Sweep A; if it does, the filter is off and this sweep is producing false
+# positives.
 
 # Confirm no-op bucket is still no-op (add-only regression check).
 for svc in AuditManager audit-service CrawlerAPI contentAudit informationArchitectureAudit visualDesignAudit journeyExpander journeyErrors journey-map-cleanup look-see-front-end-broadcaster; do
@@ -151,6 +169,8 @@ private <T> T recordCall(String operation, SupplierWithException<T> body) {
 ```
 
 Wrap every public facade method. The `meterRegistry == null` guard means consumers without a `MeterRegistry` bean don't break on the 0.7.1 upgrade — see §14.4.
+
+**The `consumer` tag is applied per-consumer, not by the facade.** Each consumer's Spring config adds a `MeterFilter.commonTags("consumer", "<name>")` bean — e.g. PageBuilder sets `consumer=page-builder`. This keeps the facade generic (LookseeCore doesn't need to know who's calling) and makes the metric contract tag set match §Observability prereqs and the dashboard queries in 4a.4 exactly.
 
 **Commit:** `feat(browsing-client): instrument facade methods with Micrometer timers`
 
@@ -225,7 +245,11 @@ Default value is `local`, so this commit alone does **not** flip anything. It on
 
 Two infra artifacts, documented here but shipped in whatever infra repo owns observability:
 
-1. **Dashboard panel(s)** — query `browser_service_calls{consumer="page-builder"}`. Panels: total RPS by operation, p50/p95/p99 latency by operation, error rate, distinct failure types (from Sentry grouping).
+1. **Dashboard panel(s)** — all queries use the exact metric contract defined in §Observability prereqs. Examples:
+   - RPS by operation: `sum by (operation) (rate(browser_service_calls_seconds_count{consumer="page-builder"}[1m]))`
+   - Error rate: `sum by (operation) (rate(browser_service_calls_seconds_count{consumer="page-builder", outcome="failure"}[5m])) / sum by (operation) (rate(browser_service_calls_seconds_count{consumer="page-builder"}[5m]))`
+   - p95 latency: `histogram_quantile(0.95, sum by (le, operation) (rate(browser_service_calls_seconds_bucket{consumer="page-builder"}[5m])))` — requires publishing the timer with histogram enabled; add `.publishPercentileHistogram()` to the timer builder if p95 isn't already available from your registry config.
+   - Distinct failure types pulled from Sentry grouping (orthogonal to the metric contract).
 
 2. **Smoke-check cron** — a minimal Spring Boot job:
 
