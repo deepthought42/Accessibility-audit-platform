@@ -4,6 +4,8 @@ import com.google.cloud.storage.StorageException;
 import com.looksee.models.form.ElementRuleExtractor;
 import com.looksee.browser.helpers.BrowserConnectionHelper;
 import com.looksee.browsing.client.BrowsingClient;
+import com.looksee.browsing.generated.model.CaptureRequest;
+import com.looksee.browsing.generated.model.CaptureResponse;
 import com.looksee.browsing.generated.model.Session;
 import com.looksee.config.LookseeBrowsingProperties;
 import com.looksee.exceptions.ServiceUnavailableException;
@@ -151,6 +153,48 @@ public class BrowserService {
 		Session session = browsingClient.createSession(browser, browser_env);
 		return new com.looksee.services.browser.RemoteBrowser(
 				browsingClient, session.getSessionId(), browser.toString());
+	}
+
+	/**
+	 * One-shot page capture: navigate, fetch source, screenshot, close — all in
+	 * a single high-level call. In local mode this runs the current
+	 * open → navigate → adapt → close sequence. In remote mode it uses
+	 * browser-service's {@code POST /v1/capture} in a single round-trip.
+	 *
+	 * <p>Consumers can call this instead of the open/close dance to get
+	 * transparent local→remote migration via the
+	 * {@code looksee.browsing.mode} flag.
+	 */
+	public PageState capturePage(URL url, BrowserType browser, long audit_record_id)
+			throws WebDriverException, IOException {
+		assert url != null;
+		assert browser != null;
+
+		if (browsingProps == null
+				|| browsingProps.getMode() == LookseeBrowsingProperties.Mode.LOCAL) {
+			Browser b = null;
+			try {
+				b = getConnection(browser, BrowserEnvironment.DISCOVERY);
+				b.navigateTo(url.toString());
+				return pageStateAdapter.toPageState(b, audit_record_id, url.toString());
+			} finally {
+				if (b != null) {
+					b.close();
+				}
+			}
+		}
+
+		// Remote: POST /capture returns source + a screenshot reference in one
+		// round-trip. Pull the screenshot bytes by capture_id.
+		CaptureRequest req = new CaptureRequest()
+				.url(java.net.URI.create(url.toString()))
+				.browser(com.looksee.browsing.generated.model.BrowserType.fromValue(browser.toString()))
+				.extract(java.util.List.of(CaptureRequest.ExtractEnum.SOURCE));
+		CaptureResponse resp = browsingClient.capture(req);
+		byte[] screenshotBytes = browsingClient.getCaptureScreenshotBytes(resp.getCaptureId());
+		String sourceOrEmpty = resp.getSource() == null ? "" : resp.getSource();
+		return pageStateAdapter.toPageState(
+				screenshotBytes, sourceOrEmpty, audit_record_id, url.toString());
 	}
 
 	/**
