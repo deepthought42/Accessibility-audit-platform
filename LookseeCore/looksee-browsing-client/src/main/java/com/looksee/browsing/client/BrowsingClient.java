@@ -185,18 +185,21 @@ public class BrowsingClient {
 
     private <T> T recordCall(String operation, String contextForErrorMessage, ApiCall<T> call) {
         long start = System.nanoTime();
-        String outcome = "success";
+        // Default to failure; flipped to success only once call.invoke() returns
+        // normally. Ensures unexpected runtime errors (e.g. IllegalArgumentException
+        // from URI.create) don't produce a false-success metric entry.
+        String outcome = "failure";
         try {
-            return call.invoke();
+            T result = call.invoke();
+            outcome = "success";
+            return result;
         } catch (ApiException e) {
-            outcome = "failure";
             String ctx = contextForErrorMessage.isEmpty() ? "" : (": " + contextForErrorMessage);
             log.warn("BrowsingClient.{}{} failed (status={}): {}",
                 operation, ctx, e.getCode(), e.getMessage());
             throw new BrowsingClientException(operation + " failed" + ctx, e);
         } catch (BrowsingClientException e) {
             // IO failure inside a nested screenshot read — already has context.
-            outcome = "failure";
             log.warn("BrowsingClient.{} failed: {}", operation, e.getMessage());
             throw e;
         } finally {

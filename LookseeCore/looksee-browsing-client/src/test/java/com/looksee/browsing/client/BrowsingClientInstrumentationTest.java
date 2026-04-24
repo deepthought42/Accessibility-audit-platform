@@ -134,6 +134,28 @@ class BrowsingClientInstrumentationTest {
     }
 
     @Test
+    void unexpectedRuntimeException_recordsFailureTimer() throws Exception {
+        // navigate() calls URI.create which throws IllegalArgumentException on
+        // malformed input — that's a RuntimeException, not an ApiException, so
+        // it bypasses our explicit catch blocks. The metric must still flip to
+        // outcome=failure via the default-failure-then-set-success pattern.
+        assertThrows(IllegalArgumentException.class,
+            () -> client.navigate("s", "not a valid uri with spaces"));
+
+        Timer t = registry.find("browser_service_calls")
+            .tags(Tags.of("operation", "navigate", "outcome", "failure"))
+            .timer();
+        assertNotNull(t, "unexpected RuntimeException should still produce a failure timer");
+        assertEquals(1L, t.count());
+
+        // And crucially, no success timer was emitted for the same call.
+        Timer success = registry.find("browser_service_calls")
+            .tags(Tags.of("operation", "navigate", "outcome", "success"))
+            .timer();
+        assertNull(success, "failed call must not also appear as success");
+    }
+
+    @Test
     void consumerTagIsNotSetByFacade() throws Exception {
         // The facade must emit only operation + outcome. The `consumer` tag is
         // the consumer's responsibility (via MeterFilter.commonTags). This guards
