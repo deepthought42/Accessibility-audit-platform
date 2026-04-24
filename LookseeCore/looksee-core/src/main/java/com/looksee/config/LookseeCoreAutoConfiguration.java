@@ -25,7 +25,8 @@ import com.looksee.gcp.GoogleCloudStorageProperties;
     LookseeCoreBrowserBeansConfiguration.class,
     PusherConfiguration.class,
     SeleniumConfiguration.class,
-    BrowserStackConfiguration.class
+    BrowserStackConfiguration.class,
+    BrowsingClientConfiguration.class
 })
 public class LookseeCoreAutoConfiguration {
     

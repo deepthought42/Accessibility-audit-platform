@@ -2,6 +2,7 @@ package com.looksee.services.browser;
 
 import com.looksee.browser.Browser;
 import com.looksee.browsing.client.BrowsingClient;
+import com.looksee.browsing.client.BrowsingClientException;
 import com.looksee.browsing.generated.model.PageStatus;
 import com.looksee.browsing.generated.model.ScreenshotStrategy;
 import com.looksee.browsing.generated.model.ScrollOffset;
@@ -12,6 +13,8 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Map;
 import javax.imageio.ImageIO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openqa.selenium.Alert;
 import org.openqa.selenium.Dimension;
 import org.openqa.selenium.Point;
@@ -37,6 +40,7 @@ import org.openqa.selenium.WebElement;
  */
 public class RemoteBrowser extends Browser {
 
+    private static final Logger log = LoggerFactory.getLogger(RemoteBrowser.class);
     private static final String PHASE_3B = "RemoteBrowser: element-handle ops are deferred to phase 3b";
 
     private final BrowsingClient client;
@@ -63,7 +67,14 @@ public class RemoteBrowser extends Browser {
 
     @Override
     public void close() {
-        client.deleteSession(sessionId);
+        // Mirror Browser.close() semantics: callers invoke this from finally
+        // blocks, so a transient cleanup failure must not mask the original
+        // exception or break retry/control flow. Log and move on.
+        try {
+            client.deleteSession(sessionId);
+        } catch (BrowsingClientException e) {
+            log.warn("RemoteBrowser.close: deleteSession({}) failed; swallowing", sessionId, e);
+        }
     }
 
     @Override

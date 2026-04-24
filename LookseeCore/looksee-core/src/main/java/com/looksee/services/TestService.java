@@ -72,7 +72,9 @@ public class TestService {
 	@Autowired
 	private PageStateRepository page_state_repo;
 
-	@Autowired
+	// Optional: absent if a consumer opts out of BrowsingClientConfiguration.
+	// Null here means "local mode" — guarded in runTest below.
+	@Autowired(required = false)
 	private LookseeBrowsingProperties browsingProps;
 
 	@Autowired(required = false)

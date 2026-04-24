@@ -253,10 +253,12 @@ public class PageStateAdapter {
 	public PageState toPageState(byte[] screenshot,
 								 String source,
 								 long audit_record_id,
-								 String browser_url) throws IOException {
+								 String browser_url,
+								 BrowserType browser_type) throws IOException {
 		assert screenshot != null && screenshot.length > 0;
 		assert source != null;
 		assert browser_url != null && !browser_url.isEmpty();
+		assert browser_type != null;
 
 		URL current_url = new URL(browser_url);
 		int status_code = BrowserUtils.getHttpStatus(current_url);
@@ -284,7 +286,7 @@ public class PageStateAdapter {
 		}
 		String checksum = ImageUtils.getChecksum(image);
 		String screenshot_url = googleCloudStorage.saveImage(image,
-				current_url.getHost(), checksum, BrowserType.CHROME);
+				current_url.getHost(), checksum, browser_type);
 		int width = image.getWidth();
 		int height = image.getHeight();
 		image.flush();
@@ -296,7 +298,7 @@ public class PageStateAdapter {
 				0L,
 				width,
 				height,
-				BrowserType.CHROME,
+				browser_type,
 				screenshot_url,
 				width,
 				height,

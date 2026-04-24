@@ -118,7 +118,9 @@ public class BrowserService {
 	@Autowired
 	private PageStateAdapter pageStateAdapter;
 
-	@Autowired
+	// Optional: absent if a consumer opts out of BrowsingClientConfiguration.
+	// Null here means "local mode" — guarded in getConnection/capturePage.
+	@Autowired(required = false)
 	private LookseeBrowsingProperties browsingProps;
 
 	// Optional: present only when looksee.browsing.mode=remote.
@@ -194,7 +196,7 @@ public class BrowserService {
 		byte[] screenshotBytes = browsingClient.getCaptureScreenshotBytes(resp.getCaptureId());
 		String sourceOrEmpty = resp.getSource() == null ? "" : resp.getSource();
 		return pageStateAdapter.toPageState(
-				screenshotBytes, sourceOrEmpty, audit_record_id, url.toString());
+				screenshotBytes, sourceOrEmpty, audit_record_id, url.toString(), browser);
 	}
 
 	/**
