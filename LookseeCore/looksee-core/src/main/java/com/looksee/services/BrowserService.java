@@ -468,7 +468,7 @@ public class BrowserService {
 				if( !is_displayed
 						|| !hasWidthAndHeight(element_size)
 						|| doesElementHaveNegativePosition(element_location)
-						|| isStructureTag( web_element.getTagName())
+						|| isStructureTag( extractTagFromXpath(xpath))
 						|| BrowserUtils.isHidden(element_location, element_size)){
 					continue;
 				}
@@ -482,7 +482,7 @@ public class BrowserService {
 				Element element = elements.first();
 				String css_selector = generateCssSelectorFromXpath(xpath);
 				ElementClassification classification = ElementClassification.UNKNOWN;
-				if(isImageElement(web_element)) {
+				if(isImageElement(extractTagFromXpath(xpath))) {
 					ElementState element_state = buildImageElementState(xpath,
 																		new HashMap<>(),
 																		element,
@@ -534,17 +534,6 @@ public class BrowserService {
 		}
 
 		return visited_elements;
-	}
-
-	/**
-	 * Checks if element tag is 'img'
-	 * @param web_element the web element to check (must not be null)
-	 * @return true if the element tag is 'img', otherwise false
-	 * @throws IllegalArgumentException if web_element is null
-	 */
-	@Deprecated
-	private boolean isImageElement(WebElement web_element) {
-		return web_element.getTagName().equalsIgnoreCase("img");
 	}
 
 	/** MESSAGE GENERATION METHODS **/
@@ -2529,7 +2518,7 @@ public class BrowserService {
 				Element element = elements.first();
 				
 
-				if(isImageElement(web_element) && element_screenshot != null) {
+				if(isImageElement(extractTagFromXpath(xpath)) && element_screenshot != null) {
 					//retrieve image landmark properties from google cloud vision
 					Set<ImageLandmarkInfo> landmark_info_set = CloudVisionUtils.extractImageLandmarks(element_screenshot);
 					
@@ -2976,6 +2965,35 @@ public class BrowserService {
 	 */
 	private boolean isImageElement(String tag_name) {
 		return "img".equalsIgnoreCase(tag_name);
+	}
+
+	/**
+	 * Extracts the HTML tag from the last segment of an xpath. Mode-agnostic —
+	 * doesn't round-trip to a driver or server. Reads the text between the
+	 * final {@code "/"} and the first {@code "["} or end-of-string. Matches the
+	 * shape of xpaths produced by {@link #extractAllUniqueElementXpaths} and
+	 * {@link #generateXpath}, and the xpaths stored in
+	 * {@code ElementState.getXpath()}.
+	 *
+	 * <p>Used by {@link #getDomElementStates} so the tag-based filter doesn't
+	 * need to call {@code WebElement.getTagName()} — which would throw on a
+	 * {@link com.looksee.services.browser.RemoteWebElement} (phase-3c-deferred
+	 * surface). Phase 3d unblocks PageBuilder's remote-mode audit by sourcing
+	 * the tag from data we already have.
+	 *
+	 * <p>If the xpath is malformed, empty, or null, returns {@code ""} —
+	 * callers treat that as "unknown tag" and fall through their tag-name
+	 * checks naturally.
+	 */
+	static String extractTagFromXpath(String xpath) {
+		if (xpath == null || xpath.isEmpty()) return "";
+		int lastSlash = xpath.lastIndexOf('/');
+		String tail = lastSlash >= 0 ? xpath.substring(lastSlash + 1) : xpath;
+		int bracket = tail.indexOf('[');
+		String tag = bracket >= 0 ? tail.substring(0, bracket) : tail;
+		// Strip namespace prefix (e.g. "svg:rect" → "rect").
+		int colon = tag.indexOf(':');
+		return colon >= 0 ? tag.substring(colon + 1) : tag;
 	}
 
 	/**
