@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.8.0] - 2026-04-25
+
+### Added
+- **`Browser.waitForElementClickable(WebElement, Duration)`** — local body uses Selenium's `WebDriverWait` + `ExpectedConditions.elementToBeClickable`. `RemoteBrowser` overrides it with a 250ms-cadence client-side poll of `client.findElement` for the `displayed` flag — no new browser-service endpoint needed.
+- **`Browser.getComputedCssProperties(WebElement)`** — local body delegates to the existing `CssUtils.loadCssProperties(element, driver)`. `RemoteBrowser` overrides it by running `window.getComputedStyle()` server-side via the new `BrowsingClient.executeScript` facade method.
+- **`BrowsingClient.executeScript(sessionId, script, args)`** — wraps the previously-unused `POST /v1/sessions/{id}/execute` endpoint. Phase-3b §14.3 deferred this; phase 3e wires it up. **`script` must be a literal — never user-controlled input** to avoid script-injection on the remote browser. Element references pass via `Map.of("element_handle", ...)` per the OpenAPI contract.
+- New 3-arg `RemoteWebElement` constructor `(sessionId, sourceXpath, state)` — the existing 2-arg form delegates with `sourceXpath=null`. Lets `waitForElementClickable` re-issue `client.findElement` to refresh the displayed flag during polling.
+
+### Changed
+- **`BrowserService.enrichElementState`** is remote-safe — three reach-throughs migrated to the new `Browser` methods (`browser.findElement` at line 1942, `browser.waitForElementClickable` at line 1986, `browser.getComputedCssProperties` at lines 1992 + 2499). Both `enrichElementStates` (used by element-enrichment) and the 6-arg `getDomElementStates` (used by journeyExecutor's `buildPage`) now run end-to-end against a `RemoteBrowser`.
+- No behavior change in local mode. Default `looksee.browsing.mode` remains `local`.
+
+### Unblocks
+- **Phase 4b** — element-enrichment cutover becomes a config-only flip.
+- **Phase 4c** — journeyExecutor cutover becomes a config-only flip.
+
+The remote-mode flip is still gated on browser-service deployment for both — same external prerequisite as 4a.
+
+### Still deferred (phase 3f)
+- `BrowserService` form extraction (lines 3339, 3340, 3354, 3433, 3449)
+- `com.looksee.browsing.table.Table` helper (3 sites)
+- Remaining `RemoteWebElement` unsupported `WebElement` methods (10 methods: click, submit, sendKeys, clear, isSelected, isEnabled, getText, findElement(s), getCssValue, getScreenshotAs)
+
+Phase 3f triggers when a phase-4 cutover surfaces a blocker.
+
 ## [0.7.2] - 2026-04-24
 
 ### Added
