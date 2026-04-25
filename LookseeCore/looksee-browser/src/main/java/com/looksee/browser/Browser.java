@@ -30,6 +30,7 @@ import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import java.time.Duration;
 import org.slf4j.Logger;
@@ -648,10 +649,16 @@ public class Browser {
 	public void waitForElementClickable(WebElement element, Duration timeout) {
 		assert element != null;
 		assert timeout != null;
-		// LookseeCore is on Selenium 3 — WebDriverWait takes seconds as long.
-		// Selenium 4's Duration constructor is the future, but until that
-		// upgrade ships the conversion stays here.
-		new WebDriverWait(driver, timeout.getSeconds())
+		// Selenium 3's WebDriverWait constructor only accepts seconds-as-long,
+		// which would truncate sub-second Duration values to 0 (immediate
+		// failure for a Duration.ofMillis(500) caller). FluentWait.withTimeout
+		// is the Duration-aware path in Selenium 3 and ports cleanly to
+		// Selenium 4's WebDriverWait(Duration) constructor when that upgrade
+		// ships. Poll cadence matches the default WebDriverWait used (500ms).
+		new FluentWait<>(driver)
+			.withTimeout(timeout)
+			.pollingEvery(Duration.ofMillis(500))
+			.ignoring(org.openqa.selenium.NoSuchElementException.class)
 			.until(ExpectedConditions.elementToBeClickable(element));
 	}
 
