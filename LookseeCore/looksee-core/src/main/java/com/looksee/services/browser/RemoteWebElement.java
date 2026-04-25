@@ -194,12 +194,43 @@ public final class RemoteWebElement implements WebElement {
             + "the server-side attributes synthesis (phase 3e candidate) or "
             + "derive from xpath via BrowserService.extractTagFromXpath.");
     }
-    @Override public boolean isSelected()                   { throw new UnsupportedOperationException(PHASE_3C + " (isSelected)"); }
-    @Override public boolean isEnabled()                    { throw new UnsupportedOperationException(PHASE_3C + " (isEnabled)"); }
-    @Override public String getText()                       { throw new UnsupportedOperationException(PHASE_3C + " (getText)"); }
+    @Override
+    public boolean isSelected() {
+        Object r = requireClient("isSelected").executeScript(sessionId,
+            "return !!(arguments[0].selected || arguments[0].checked);",
+            List.of(Map.of("element_handle", elementHandle)));
+        return Boolean.TRUE.equals(r);
+    }
+
+    @Override
+    public boolean isEnabled() {
+        // Default-true on null/missing — matches Selenium's "if uncertain,
+        // assume enabled" convention for elements without a 'disabled'
+        // attribute (most non-form elements).
+        Object r = requireClient("isEnabled").executeScript(sessionId,
+            "return !arguments[0].disabled;",
+            List.of(Map.of("element_handle", elementHandle)));
+        return !Boolean.FALSE.equals(r);
+    }
+
+    @Override
+    public String getText() {
+        Object r = requireClient("getText").executeScript(sessionId,
+            "return arguments[0].textContent;",
+            List.of(Map.of("element_handle", elementHandle)));
+        return r == null ? "" : r.toString();
+    }
+
     @Override public java.util.List<WebElement> findElements(By by) { throw new UnsupportedOperationException(PHASE_3C + " (findElements)"); }
     @Override public WebElement findElement(By by)          { throw new UnsupportedOperationException(PHASE_3C + " (findElement-nested)"); }
-    @Override public String getCssValue(String propertyName){ throw new UnsupportedOperationException(PHASE_3C + " (getCssValue)"); }
+
+    @Override
+    public String getCssValue(String propertyName) {
+        Object r = requireClient("getCssValue").executeScript(sessionId,
+            "return window.getComputedStyle(arguments[0]).getPropertyValue(arguments[1]);",
+            List.of(Map.of("element_handle", elementHandle), propertyName));
+        return r == null ? "" : r.toString();
+    }
     @Override public <X> X getScreenshotAs(OutputType<X> t) { throw new UnsupportedOperationException(PHASE_3C + " (getScreenshotAs)"); }
 
     // --- Identity --------------------------------------------------------
