@@ -170,6 +170,36 @@ public class RemoteBrowser extends Browser {
     }
 
     @Override
+    public java.util.Map<String, String> getComputedCssProperties(org.openqa.selenium.WebElement element) {
+        String handle = requireRemote(element, "getComputedCssProperties").getElementHandle();
+        // Mirror what CssUtils.loadCssProperties extracts locally:
+        // window.getComputedStyle over every property in the CSS declaration,
+        // returned as { name: value }. The script is a literal — never
+        // user-controlled — so there's no script-injection surface.
+        String script =
+            "var el = arguments[0]; "
+            + "var s = window.getComputedStyle(el); "
+            + "var out = {}; "
+            + "for (var i = 0; i < s.length; i++) { "
+            + "  var n = s.item(i); "
+            + "  out[n] = s.getPropertyValue(n); "
+            + "} "
+            + "return out;";
+        Object result = client.executeScript(sessionId, script,
+            java.util.List.of(java.util.Map.of("element_handle", handle)));
+        if (!(result instanceof java.util.Map)) {
+            return java.util.Collections.emptyMap();
+        }
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> raw = (java.util.Map<String, Object>) result;
+        java.util.Map<String, String> out = new java.util.HashMap<>(raw.size());
+        for (java.util.Map.Entry<String, Object> e : raw.entrySet()) {
+            out.put(e.getKey(), e.getValue() == null ? "" : e.getValue().toString());
+        }
+        return out;
+    }
+
+    @Override
     public void waitForElementClickable(org.openqa.selenium.WebElement element,
                                         java.time.Duration timeout) {
         RemoteWebElement remote = requireRemote(element, "waitForElementClickable");

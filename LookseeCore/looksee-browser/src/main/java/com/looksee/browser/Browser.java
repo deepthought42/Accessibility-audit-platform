@@ -654,4 +654,18 @@ public class Browser {
 		new WebDriverWait(driver, timeout.getSeconds())
 			.until(ExpectedConditions.elementToBeClickable(element));
 	}
+
+	/**
+	 * Returns the computed CSS properties for {@code element} as a
+	 * {@code name → value} map. Local mode delegates to
+	 * {@link com.looksee.browser.utils.CssUtils#loadCssProperties};
+	 * {@link com.looksee.services.browser.RemoteBrowser} overrides this to
+	 * run {@code window.getComputedStyle(...)} server-side via the
+	 * {@code POST /v1/sessions/{id}/execute} endpoint — no new browser-service
+	 * endpoint required.
+	 */
+	public Map<String, String> getComputedCssProperties(WebElement element) {
+		assert element != null;
+		return com.looksee.browser.utils.CssUtils.loadCssProperties(element, driver);
+	}
 }

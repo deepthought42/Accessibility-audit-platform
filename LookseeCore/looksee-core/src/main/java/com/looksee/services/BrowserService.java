@@ -1986,7 +1986,7 @@ public class BrowserService {
 		//String current_url = browser.getDriver().getCurrentUrl();
 		String element_screenshot_url = "";
 		BufferedImage element_screenshot = null;
-		Map<String, String> rendered_css_props = CssUtils.loadCssProperties(web_element, browser.getDriver());
+		Map<String, String> rendered_css_props = browser.getComputedCssProperties(web_element);
 		Map<String, String> attributes = browser.extractAttributes(web_element);
 		
 		if(BrowserUtils.isLargerThanViewport(element_state, browser.getViewportSize().getWidth(), browser.getViewportSize().getHeight())) {
@@ -2493,7 +2493,7 @@ public class BrowserService {
 				}
 				
 				
-				Map<String, String> rendered_css_props = CssUtils.loadCssProperties(web_element, browser.getDriver());
+				Map<String, String> rendered_css_props = browser.getComputedCssProperties(web_element);
 				Map<String, String> attributes = browser.extractAttributes(web_element);
 
 				ElementClassification classification = null;
