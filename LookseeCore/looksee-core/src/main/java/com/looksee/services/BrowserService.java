@@ -76,8 +76,6 @@ import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -1983,8 +1981,7 @@ public class BrowserService {
 			browser.scrollToElementCentered(web_element);
 		}
 		
-		WebDriverWait wait = new WebDriverWait(browser.getDriver(), 10);
-		wait.until(ExpectedConditions.elementToBeClickable(web_element));
+		browser.waitForElementClickable(web_element, java.time.Duration.ofSeconds(10));
 		
 		//String current_url = browser.getDriver().getCurrentUrl();
 		String element_screenshot_url = "";

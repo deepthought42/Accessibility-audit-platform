@@ -169,6 +169,47 @@ public class RemoteBrowser extends Browser {
         return org.jsoup.Jsoup.parse(client.getSource(sessionId)).title();
     }
 
+    @Override
+    public void waitForElementClickable(org.openqa.selenium.WebElement element,
+                                        java.time.Duration timeout) {
+        RemoteWebElement remote = requireRemote(element, "waitForElementClickable");
+        String xpath = remote.getSourceXpath();
+        if (xpath == null) {
+            // Element wasn't constructed with a sourceXpath (e.g. came from a
+            // pre-3e RemoteWebElement constructor). Fall back to a single
+            // displayed-flag check from the cache; can't poll without an xpath.
+            if (remote.isDisplayed()) return;
+            throw new org.openqa.selenium.TimeoutException(
+                "RemoteBrowser.waitForElementClickable: element " + remote.getElementHandle()
+                + " has no sourceXpath cached and is not currently displayed");
+        }
+        long deadlineNanos = System.nanoTime() + timeout.toNanos();
+        long pollMillis = 250;
+        while (true) {
+            try {
+                ElementState fresh = client.findElement(sessionId, xpath);
+                if (Boolean.TRUE.equals(fresh.getFound()) && Boolean.TRUE.equals(fresh.getDisplayed())) {
+                    return;
+                }
+            } catch (com.looksee.browsing.client.BrowsingClientException e) {
+                // Transient — keep polling until deadline.
+                log.debug("waitForElementClickable: transient lookup error, retrying: {}", e.getMessage());
+            }
+            if (System.nanoTime() >= deadlineNanos) {
+                throw new org.openqa.selenium.TimeoutException(
+                    "RemoteBrowser.waitForElementClickable: element " + remote.getElementHandle()
+                    + " (xpath=" + xpath + ") did not become clickable within " + timeout);
+            }
+            try {
+                Thread.sleep(pollMillis);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                throw new org.openqa.selenium.TimeoutException(
+                    "RemoteBrowser.waitForElementClickable interrupted for element " + remote.getElementHandle());
+            }
+        }
+    }
+
     private static com.looksee.browsing.generated.model.ElementAction toGeneratedAction(
             com.looksee.browser.enums.Action action) {
         // Both enums share lowercase wire values; see openapi.yaml and
@@ -214,7 +255,7 @@ public class RemoteBrowser extends Browser {
             throw new NoSuchElementException(
                 "RemoteBrowser: element not found for xpath=" + xpath);
         }
-        return new RemoteWebElement(sessionId, state);
+        return new RemoteWebElement(sessionId, xpath, state);
     }
 
     @Override

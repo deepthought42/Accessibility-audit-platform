@@ -45,14 +45,26 @@ public final class RemoteWebElement implements WebElement {
 
     private final String sessionId;
     private final String elementHandle;
+    private final String sourceXpath;             // may be null if constructed without one (back-compat)
     private final Rect rect;                      // may be null if server omitted
     private final Map<String, String> attributes; // never null, immutable
     private final boolean displayed;
 
     public RemoteWebElement(String sessionId, ElementState state) {
+        this(sessionId, null, state);
+    }
+
+    /**
+     * Phase-3e overload: also remembers the xpath used to find this element,
+     * so {@link RemoteBrowser#waitForElementClickable} can re-issue
+     * {@code client.findElement(sessionId, sourceXpath)} to refresh the
+     * displayed flag without needing a server-side wait endpoint.
+     */
+    public RemoteWebElement(String sessionId, String sourceXpath, ElementState state) {
         Objects.requireNonNull(sessionId, "sessionId");
         Objects.requireNonNull(state, "state");
         this.sessionId = sessionId;
+        this.sourceXpath = sourceXpath;
         this.elementHandle = Objects.requireNonNull(state.getElementHandle(), "element_handle");
         this.rect = state.getRect();
         this.attributes = state.getAttributes() == null
@@ -63,6 +75,9 @@ public final class RemoteWebElement implements WebElement {
 
     public String getSessionId()     { return sessionId; }
     public String getElementHandle() { return elementHandle; }
+
+    /** Package-private: source xpath for re-fetching live state during waitForElementClickable. */
+    String getSourceXpath() { return sourceXpath; }
 
     /** Package-private: used by {@link RemoteBrowser#extractAttributes(WebElement)}. */
     Map<String, String> cachedAttributes() { return attributes; }

@@ -29,7 +29,9 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.yandex.qatools.ashot.AShot;
@@ -634,5 +636,22 @@ public class Browser {
 	 */
 	public String getTitle() {
 		return driver.getTitle();
+	}
+
+	/**
+	 * Waits up to {@code timeout} for {@code element} to become clickable.
+	 * Local mode uses Selenium's {@link WebDriverWait};
+	 * {@link com.looksee.services.browser.RemoteBrowser} overrides this to
+	 * poll {@code client.findElement} for the element's displayed state,
+	 * since the OpenAPI contract has no dedicated wait endpoint.
+	 */
+	public void waitForElementClickable(WebElement element, Duration timeout) {
+		assert element != null;
+		assert timeout != null;
+		// LookseeCore is on Selenium 3 — WebDriverWait takes seconds as long.
+		// Selenium 4's Duration constructor is the future, but until that
+		// upgrade ships the conversion stays here.
+		new WebDriverWait(driver, timeout.getSeconds())
+			.until(ExpectedConditions.elementToBeClickable(element));
 	}
 }
