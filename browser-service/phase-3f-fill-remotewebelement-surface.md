@@ -71,9 +71,13 @@ cd /path/to/Look-see
 git checkout -b phase-3f/fill-remotewebelement-surface
 
 cd LookseeCore && mvn -q verify   # 0.8.0 green baseline (186 looksee-core tests, 32 browsing-client tests)
+cd ..   # back to repo root for the grep below; the path is repo-rooted
 
-# Confirm exactly 11 PHASE_3C throws remain (we'll convert 9, leave 2 for phase 3g):
-grep -c "PHASE_3C" LookseeCore/looksee-core/src/main/java/com/looksee/services/browser/RemoteWebElement.java
+# Confirm exactly 11 PHASE_3C throw sites remain (we'll convert 9, leave 2
+# for phase 3g). Use the throw-line pattern — a bare `PHASE_3C` grep would
+# also count the `private static final String PHASE_3C = …` declaration.
+grep -c "throw new UnsupportedOperationException(PHASE_3C" \
+  LookseeCore/looksee-core/src/main/java/com/looksee/services/browser/RemoteWebElement.java
 ```
 
 Expected: `11`. After this phase: `2` (the two `findElement(s)` overloads).
@@ -233,11 +237,12 @@ Same pattern as prior patches. CHANGELOG entry under `## [0.8.1]`:
 
 1. `mvn clean verify` from LookseeCore root — `BUILD SUCCESS` across all 11 modules. Test counts: looksee-core ≥ 196 (was 186; +~10 for the new RemoteWebElement tests), browsing-client unchanged at 32.
 
-2. Post-3f sweep:
+2. Post-3f sweep (run from repo root, throw-lines only — same pattern as Step 0):
    ```bash
-   grep -c "PHASE_3C" LookseeCore/looksee-core/src/main/java/com/looksee/services/browser/RemoteWebElement.java
+   grep -c "throw new UnsupportedOperationException(PHASE_3C" \
+     LookseeCore/looksee-core/src/main/java/com/looksee/services/browser/RemoteWebElement.java
    ```
-   Expect: `2` (only `findElement(By)` and `findElements(By)`).
+   Expect: `2` (only the two `findElement(By)` / `findElements(By)` overloads still throw).
 
 3. **Scope-preservation check:**
    ```bash
