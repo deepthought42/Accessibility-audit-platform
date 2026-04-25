@@ -349,6 +349,27 @@ class RemoteBrowserElementOpsTest {
         assertTrue(remote.getComputedCssProperties(el).isEmpty());
     }
 
+    @Test
+    void findElement_returnedElementCarriesBrowsingClient() {
+        // Phase 3f end-to-end smoke: an element from remote.findElement
+        // must carry the BrowsingClient reference, so its WebElement-API
+        // methods (click, sendKeys, etc.) route correctly without needing
+        // a parent RemoteBrowser. Verifies the client passthrough in
+        // RemoteBrowser.findElement.
+        when(client.findElement("session-1", "//button"))
+            .thenReturn(new com.looksee.browsing.generated.model.ElementState()
+                .elementHandle("h-found").found(true).displayed(true).attributes(java.util.Map.of()));
+
+        org.openqa.selenium.WebElement found = remote.findElement("//button");
+        assertTrue(found instanceof RemoteWebElement);
+        // If the client wasn't wired, click() would throw with "constructed
+        // without BrowsingClient". A successful routing call confirms the
+        // passthrough worked.
+        found.click();
+        verify(client).performElementAction("session-1", "h-found",
+            com.looksee.browsing.generated.model.ElementAction.CLICK, null);
+    }
+
     // --- helper ------------------------------------------------------------
 
     private static byte[] pngBytes(int w, int h) throws Exception {

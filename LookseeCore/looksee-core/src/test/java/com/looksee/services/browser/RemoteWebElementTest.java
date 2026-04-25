@@ -90,13 +90,32 @@ class RemoteWebElementTest {
 
     @Test
     void unsupportedWebElementMethods_allThrowWithPhase3cMarker() {
-        // getTagName moved out of the always-unsupported set in phase 3d —
-        // it's now graceful: returns a cached tag_name attribute when present
-        // and throws with a phase-3d-pointing message otherwise. Covered in
-        // its own test cases below.
+        // After phase 3f, only findElement(By) and findElements(By) still
+        // throw the phase-3c marker — both need either client-side xpath
+        // composition or a new server-side find-children endpoint (phase 3g).
+        // The other 9 phase-3c-deferred methods got real implementations
+        // routed through executeScript / performElementAction /
+        // captureElementScreenshot — covered in their own test cases below.
         RemoteWebElement el = new RemoteWebElement("s1", state("h1", true, Map.of(), null));
 
         Runnable[] checks = new Runnable[] {
+            () -> el.findElements(By.xpath("//*")),
+            () -> el.findElement(By.xpath("//*")),
+        };
+        for (Runnable r : checks) {
+            UnsupportedOperationException ex = assertThrows(UnsupportedOperationException.class, r::run);
+            assertTrue(ex.getMessage().contains("phase 3c"),
+                "message should point at phase 3c: " + ex.getMessage());
+        }
+    }
+
+    @Test
+    void clientLessConstruction_throwsForWebElementApiMethods() {
+        // RemoteWebElement constructed via the legacy 2-arg or 3-arg form
+        // (no BrowsingClient) can't route WebElement-API calls. Each method
+        // throws with a clear pointer at construction-style ambiguity.
+        RemoteWebElement el = new RemoteWebElement("s1", state("h1", true, Map.of(), null));
+        for (Runnable r : new Runnable[] {
             () -> el.click(),
             () -> el.submit(),
             () -> el.sendKeys("x"),
@@ -104,15 +123,12 @@ class RemoteWebElementTest {
             () -> el.isSelected(),
             () -> el.isEnabled(),
             () -> el.getText(),
-            () -> el.findElements(By.xpath("//*")),
-            () -> el.findElement(By.xpath("//*")),
             () -> el.getCssValue("color"),
             () -> el.getScreenshotAs(OutputType.BYTES),
-        };
-        for (Runnable r : checks) {
+        }) {
             UnsupportedOperationException ex = assertThrows(UnsupportedOperationException.class, r::run);
-            assertTrue(ex.getMessage().contains("phase 3c"),
-                "message should point at phase 3c: " + ex.getMessage());
+            assertTrue(ex.getMessage().contains("BrowsingClient"),
+                "message should point at the missing client: " + ex.getMessage());
         }
     }
 
