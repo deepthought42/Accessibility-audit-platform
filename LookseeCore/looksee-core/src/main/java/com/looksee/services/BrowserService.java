@@ -2969,9 +2969,8 @@ public class BrowserService {
 
 	/**
 	 * Extracts the HTML tag from the last segment of an xpath. Mode-agnostic —
-	 * doesn't round-trip to a driver or server. Reads the text between the
-	 * final {@code "/"} and the first {@code "["} or end-of-string. Matches the
-	 * shape of xpaths produced by {@link #extractAllUniqueElementXpaths} and
+	 * doesn't round-trip to a driver or server. Matches the shape of xpaths
+	 * produced by {@link #extractAllUniqueElementXpaths} and
 	 * {@link #generateXpath}, and the xpaths stored in
 	 * {@code ElementState.getXpath()}.
 	 *
@@ -2981,16 +2980,47 @@ public class BrowserService {
 	 * surface). Phase 3d unblocks PageBuilder's remote-mode audit by sourcing
 	 * the tag from data we already have.
 	 *
+	 * <p><b>Predicate-aware scanning.</b> A naive {@code lastIndexOf('/')}
+	 * fails on xpaths whose predicates contain quoted slashes — e.g.
+	 * {@code //a[contains(@title,'foo/bar')]} — because the slash inside the
+	 * string literal looks identical to a path separator. The implementation
+	 * tracks bracket depth and quote state to find the last <em>structural</em>
+	 * slash (the one between path segments, not the one inside a literal).
+	 *
 	 * <p>If the xpath is malformed, empty, or null, returns {@code ""} —
 	 * callers treat that as "unknown tag" and fall through their tag-name
 	 * checks naturally.
 	 */
 	static String extractTagFromXpath(String xpath) {
 		if (xpath == null || xpath.isEmpty()) return "";
-		int lastSlash = xpath.lastIndexOf('/');
-		String tail = lastSlash >= 0 ? xpath.substring(lastSlash + 1) : xpath;
-		int bracket = tail.indexOf('[');
-		String tag = bracket >= 0 ? tail.substring(0, bracket) : tail;
+
+		// Scan once tracking bracket depth + quote state. tailStart is the
+		// position just after the last '/' that's outside any [...] predicate
+		// and outside any quoted string.
+		int tailStart = 0;
+		int depth = 0;
+		char quote = 0;
+		for (int i = 0; i < xpath.length(); i++) {
+			char c = xpath.charAt(i);
+			if (quote != 0) {
+				if (c == quote) quote = 0;
+			} else if (c == '\'' || c == '"') {
+				quote = c;
+			} else if (c == '[') {
+				depth++;
+			} else if (c == ']') {
+				if (depth > 0) depth--;
+			} else if (c == '/' && depth == 0) {
+				tailStart = i + 1;
+			}
+		}
+
+		// Once we're past the last structural slash, the tag name is text up
+		// to the first '['. Tag names can't legally contain '[' or quotes,
+		// so a plain indexOf is safe here.
+		int bracket = xpath.indexOf('[', tailStart);
+		String tag = bracket >= 0 ? xpath.substring(tailStart, bracket) : xpath.substring(tailStart);
+
 		// Strip namespace prefix (e.g. "svg:rect" → "rect").
 		int colon = tag.indexOf(':');
 		return colon >= 0 ? tag.substring(colon + 1) : tag;

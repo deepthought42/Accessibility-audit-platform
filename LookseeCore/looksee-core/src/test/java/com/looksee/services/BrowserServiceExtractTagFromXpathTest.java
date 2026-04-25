@@ -27,4 +27,29 @@ class BrowserServiceExtractTagFromXpathTest {
     @Test void unprefixedTag()          { assertEquals("body", extract("body")); }
     @Test void emptyXpath_returnsEmpty(){ assertEquals("",     extract("")); }
     @Test void nullXpath_returnsEmpty() { assertEquals("",     extract(null)); }
+
+    // --- Quoted-slash regressions (PR #46 review) ------------------------
+    // A naive lastIndexOf('/') misclassifies tags when predicates contain
+    // quoted slashes. The implementation must respect bracket + quote state.
+
+    @Test void singleQuotedSlashInPredicate() {
+        assertEquals("a", extract("//a[contains(@title,'foo/bar')]"));
+    }
+
+    @Test void doubleQuotedSlashInPredicate() {
+        assertEquals("div", extract("//div[@onclick=\"go('foo/bar')\"]"));
+    }
+
+    @Test void slashInHrefPredicateOnLastSegment() {
+        assertEquals("a", extract("//html/body/a[contains(@href,'/path/to/page')]"));
+    }
+
+    @Test void nestedBracketsWithSlash() {
+        assertEquals("input", extract("//input[@data-x=\"a[b/c]d\"]"));
+    }
+
+    @Test void slashInsideMidPathPredicate() {
+        // Slash inside a predicate on a non-tail segment must not affect the tail.
+        assertEquals("span", extract("//div[contains(@class,'x/y')]/span"));
+    }
 }
