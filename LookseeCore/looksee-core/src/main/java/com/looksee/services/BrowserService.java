@@ -1939,7 +1939,7 @@ public class BrowserService {
 				browser.scrollToTopOfPage();
 			}
 			
-			WebElement web_element = browser.getDriver().findElement(By.xpath(element.getXpath()));
+			WebElement web_element = browser.findElement(element.getXpath());
 			enrichElementState(browser, web_element, element, full_page_screenshot, host);
 		}
 		
