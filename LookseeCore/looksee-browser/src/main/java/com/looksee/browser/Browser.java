@@ -29,7 +29,10 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.yandex.qatools.ashot.AShot;
@@ -634,5 +637,42 @@ public class Browser {
 	 */
 	public String getTitle() {
 		return driver.getTitle();
+	}
+
+	/**
+	 * Waits up to {@code timeout} for {@code element} to become clickable.
+	 * Local mode uses Selenium's {@link WebDriverWait};
+	 * {@link com.looksee.services.browser.RemoteBrowser} overrides this to
+	 * poll {@code client.findElement} for the element's displayed state,
+	 * since the OpenAPI contract has no dedicated wait endpoint.
+	 */
+	public void waitForElementClickable(WebElement element, Duration timeout) {
+		assert element != null;
+		assert timeout != null;
+		// Selenium 3's WebDriverWait constructor only accepts seconds-as-long,
+		// which would truncate sub-second Duration values to 0 (immediate
+		// failure for a Duration.ofMillis(500) caller). FluentWait.withTimeout
+		// is the Duration-aware path in Selenium 3 and ports cleanly to
+		// Selenium 4's WebDriverWait(Duration) constructor when that upgrade
+		// ships. Poll cadence matches the default WebDriverWait used (500ms).
+		new FluentWait<>(driver)
+			.withTimeout(timeout)
+			.pollingEvery(Duration.ofMillis(500))
+			.ignoring(org.openqa.selenium.NoSuchElementException.class)
+			.until(ExpectedConditions.elementToBeClickable(element));
+	}
+
+	/**
+	 * Returns the computed CSS properties for {@code element} as a
+	 * {@code name → value} map. Local mode delegates to
+	 * {@link com.looksee.browser.utils.CssUtils#loadCssProperties};
+	 * {@link com.looksee.services.browser.RemoteBrowser} overrides this to
+	 * run {@code window.getComputedStyle(...)} server-side via the
+	 * {@code POST /v1/sessions/{id}/execute} endpoint — no new browser-service
+	 * endpoint required.
+	 */
+	public Map<String, String> getComputedCssProperties(WebElement element) {
+		assert element != null;
+		return com.looksee.browser.utils.CssUtils.loadCssProperties(element, driver);
 	}
 }

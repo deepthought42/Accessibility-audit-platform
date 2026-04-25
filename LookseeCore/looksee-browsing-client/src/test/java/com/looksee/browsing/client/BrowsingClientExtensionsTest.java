@@ -218,4 +218,24 @@ class BrowsingClientExtensionsTest {
         verify(alertsApi).respondToAlert(eq("s1"), cap.capture());
         assertEquals(AlertChoice.ACCEPT, cap.getValue().getChoice());
     }
+
+    @Test
+    void executeScript_forwardsScriptAndArgsAndReturnsResult() throws Exception {
+        com.looksee.browsing.generated.model.ExecuteScript200Response resp =
+            new com.looksee.browsing.generated.model.ExecuteScript200Response()
+                .result(java.util.Map.of("color", "rgb(0, 0, 0)"));
+        when(elementsApi.executeScript(eq("s1"), any())).thenReturn(resp);
+
+        Object result = client.executeScript(
+            "s1",
+            "return arguments[0]",
+            java.util.List.of(java.util.Map.of("element_handle", "h1")));
+
+        ArgumentCaptor<com.looksee.browsing.generated.model.ExecuteRequest> cap =
+            ArgumentCaptor.forClass(com.looksee.browsing.generated.model.ExecuteRequest.class);
+        verify(elementsApi).executeScript(eq("s1"), cap.capture());
+        assertEquals("return arguments[0]", cap.getValue().getScript());
+        assertEquals(1, cap.getValue().getArgs().size());
+        assertTrue(result instanceof java.util.Map);
+    }
 }

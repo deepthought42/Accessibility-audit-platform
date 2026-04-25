@@ -278,6 +278,77 @@ class RemoteBrowserElementOpsTest {
         verify(client, never()).performElementAction(any(), any(), any(), any());
     }
 
+    // --- phase 3e additions: waitForElementClickable + getComputedCssProperties ----
+
+    @Test
+    void waitForElementClickable_returnsImmediatelyWhenDisplayed() {
+        ElementState found = new ElementState().elementHandle("h1").found(true).displayed(true).attributes(java.util.Map.of());
+        when(client.findElement("session-1", "//button")).thenReturn(found);
+        RemoteWebElement el = new RemoteWebElement("session-1", "//button", found);
+
+        assertDoesNotThrow(() -> remote.waitForElementClickable(el, java.time.Duration.ofSeconds(1)));
+        verify(client, atLeastOnce()).findElement("session-1", "//button");
+    }
+
+    @Test
+    void waitForElementClickable_pollsUntilDisplayed() {
+        ElementState notReady = new ElementState().elementHandle("h1").found(true).displayed(false).attributes(java.util.Map.of());
+        ElementState ready = new ElementState().elementHandle("h1").found(true).displayed(true).attributes(java.util.Map.of());
+        when(client.findElement("session-1", "//slow"))
+            .thenReturn(notReady, notReady, ready);
+        RemoteWebElement el = new RemoteWebElement("session-1", "//slow",
+            new ElementState().elementHandle("h1").found(true).displayed(false).attributes(java.util.Map.of()));
+
+        assertDoesNotThrow(() -> remote.waitForElementClickable(el, java.time.Duration.ofSeconds(2)));
+        verify(client, atLeast(2)).findElement("session-1", "//slow");
+    }
+
+    @Test
+    void waitForElementClickable_throwsOnTimeout() {
+        ElementState notReady = new ElementState().elementHandle("h1").found(true).displayed(false).attributes(java.util.Map.of());
+        when(client.findElement("session-1", "//never")).thenReturn(notReady);
+        RemoteWebElement el = new RemoteWebElement("session-1", "//never", notReady);
+
+        // 0-second timeout — the post-loop check after the first findElement
+        // reads "not yet" + deadline already passed, throws.
+        assertThrows(org.openqa.selenium.TimeoutException.class,
+            () -> remote.waitForElementClickable(el, java.time.Duration.ofMillis(1)));
+    }
+
+    @Test
+    void waitForElementClickable_fallsBackWhenNoSourceXpath() {
+        // Backward-compat: if the RemoteWebElement was constructed without
+        // an xpath (legacy 2-arg constructor), the override can't poll —
+        // it does a single cached-displayed check and returns or throws.
+        RemoteWebElement displayed = new RemoteWebElement("session-1", state("h1"));
+        assertDoesNotThrow(() -> remote.waitForElementClickable(displayed, java.time.Duration.ofMillis(1)));
+        verify(client, never()).findElement(any(), any());
+    }
+
+    @Test
+    void getComputedCssProperties_invokesExecuteScriptAndConvertsResult() {
+        when(client.executeScript(eq("session-1"), any(), any()))
+            .thenReturn(java.util.Map.of("color", "rgb(0, 0, 0)", "display", "block"));
+        RemoteWebElement el = new RemoteWebElement("session-1", state("h1"));
+
+        java.util.Map<String, String> css = remote.getComputedCssProperties(el);
+
+        assertEquals("rgb(0, 0, 0)", css.get("color"));
+        assertEquals("block", css.get("display"));
+
+        org.mockito.ArgumentCaptor<String> scriptCap = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(client).executeScript(eq("session-1"), scriptCap.capture(), any());
+        assertTrue(scriptCap.getValue().contains("getComputedStyle"),
+            "remote getComputedCssProperties must run getComputedStyle JS");
+    }
+
+    @Test
+    void getComputedCssProperties_returnsEmptyOnNonMapResult() {
+        when(client.executeScript(any(), any(), any())).thenReturn("not a map");
+        RemoteWebElement el = new RemoteWebElement("session-1", state("h1"));
+        assertTrue(remote.getComputedCssProperties(el).isEmpty());
+    }
+
     // --- helper ------------------------------------------------------------
 
     private static byte[] pngBytes(int w, int h) throws Exception {

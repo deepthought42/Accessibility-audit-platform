@@ -76,8 +76,6 @@ import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -1939,7 +1937,7 @@ public class BrowserService {
 				browser.scrollToTopOfPage();
 			}
 			
-			WebElement web_element = browser.getDriver().findElement(By.xpath(element.getXpath()));
+			WebElement web_element = browser.findElement(element.getXpath());
 			enrichElementState(browser, web_element, element, full_page_screenshot, host);
 		}
 		
@@ -1983,13 +1981,12 @@ public class BrowserService {
 			browser.scrollToElementCentered(web_element);
 		}
 		
-		WebDriverWait wait = new WebDriverWait(browser.getDriver(), 10);
-		wait.until(ExpectedConditions.elementToBeClickable(web_element));
+		browser.waitForElementClickable(web_element, java.time.Duration.ofSeconds(10));
 		
 		//String current_url = browser.getDriver().getCurrentUrl();
 		String element_screenshot_url = "";
 		BufferedImage element_screenshot = null;
-		Map<String, String> rendered_css_props = CssUtils.loadCssProperties(web_element, browser.getDriver());
+		Map<String, String> rendered_css_props = browser.getComputedCssProperties(web_element);
 		Map<String, String> attributes = browser.extractAttributes(web_element);
 		
 		if(BrowserUtils.isLargerThanViewport(element_state, browser.getViewportSize().getWidth(), browser.getViewportSize().getHeight())) {
@@ -2496,7 +2493,7 @@ public class BrowserService {
 				}
 				
 				
-				Map<String, String> rendered_css_props = CssUtils.loadCssProperties(web_element, browser.getDriver());
+				Map<String, String> rendered_css_props = browser.getComputedCssProperties(web_element);
 				Map<String, String> attributes = browser.extractAttributes(web_element);
 
 				ElementClassification classification = null;

@@ -25,6 +25,8 @@ import com.looksee.browsing.generated.model.ElementActionRequest;
 import com.looksee.browsing.generated.model.ElementScreenshotRequest;
 import com.looksee.browsing.generated.model.ElementState;
 import com.looksee.browsing.generated.model.ElementTouchRequest;
+import com.looksee.browsing.generated.model.ExecuteRequest;
+import com.looksee.browsing.generated.model.ExecuteScript200Response;
 import com.looksee.browsing.generated.model.FindElementRequest;
 import com.looksee.browsing.generated.model.MouseMoveMode;
 import com.looksee.browsing.generated.model.MouseMoveRequest;
@@ -259,6 +261,24 @@ public class BrowsingClient {
                     .action(action)
                     .input(input));
             return null;
+        });
+    }
+
+    /**
+     * Phase 3e: wraps the previously-unused {@code POST /v1/sessions/{id}/execute}
+     * endpoint. {@code script} must be a literal — never user-controlled
+     * input — to avoid script-injection on the remote browser. {@code args}
+     * are serialized per the OpenAPI contract; element references should be
+     * passed as {@code Map.of("element_handle", "...")}, which the server
+     * resolves to a real DOM element on the {@code arguments[i]} side.
+     *
+     * <p>Returns the script's untyped result. Callers cast as needed.
+     */
+    public Object executeScript(String sessionId, String script, java.util.List<Object> args) {
+        return recordCall("executeScript", sessionId, () -> {
+            ExecuteRequest req = new ExecuteRequest().script(script).args(args);
+            ExecuteScript200Response resp = elementsApi.executeScript(sessionId, req);
+            return resp.getResult();
         });
     }
 
