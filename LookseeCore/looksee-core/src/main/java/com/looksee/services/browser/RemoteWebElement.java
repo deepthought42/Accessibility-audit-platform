@@ -1,8 +1,11 @@
 package com.looksee.services.browser;
 
+import com.looksee.browsing.client.BrowsingClient;
+import com.looksee.browsing.generated.model.ElementAction;
 import com.looksee.browsing.generated.model.ElementState;
 import com.looksee.browsing.generated.model.Rect;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.openqa.selenium.By;
@@ -49,9 +52,10 @@ public final class RemoteWebElement implements WebElement {
     private final Rect rect;                      // may be null if server omitted
     private final Map<String, String> attributes; // never null, immutable
     private final boolean displayed;
+    private final BrowsingClient client;          // may be null in test/legacy constructions
 
     public RemoteWebElement(String sessionId, ElementState state) {
-        this(sessionId, null, state);
+        this(sessionId, null, state, null);
     }
 
     /**
@@ -61,6 +65,19 @@ public final class RemoteWebElement implements WebElement {
      * displayed flag without needing a server-side wait endpoint.
      */
     public RemoteWebElement(String sessionId, String sourceXpath, ElementState state) {
+        this(sessionId, sourceXpath, state, null);
+    }
+
+    /**
+     * Phase-3f overload: carries the {@link BrowsingClient} so the WebElement
+     * methods that route through {@code /element/action}, {@code /execute},
+     * and {@code /element/screenshot} (click, sendKeys, submit, clear,
+     * getText, isSelected, isEnabled, getCssValue, getScreenshotAs) can
+     * forward without needing a parent {@link RemoteBrowser} reference.
+     * Constructed via {@link RemoteBrowser#findElement} which has the client
+     * in scope. Without a client, those methods throw with a clear pointer.
+     */
+    public RemoteWebElement(String sessionId, String sourceXpath, ElementState state, BrowsingClient client) {
         Objects.requireNonNull(sessionId, "sessionId");
         Objects.requireNonNull(state, "state");
         this.sessionId = sessionId;
@@ -71,6 +88,19 @@ public final class RemoteWebElement implements WebElement {
             ? Collections.emptyMap()
             : Collections.unmodifiableMap(state.getAttributes());
         this.displayed = Boolean.TRUE.equals(state.getDisplayed());
+        this.client = client;
+    }
+
+    /** Used by phase-3f WebElement-method routing. Throws if no client was passed at construction. */
+    private BrowsingClient requireClient(String methodName) {
+        if (client == null) {
+            throw new UnsupportedOperationException(
+                "RemoteWebElement." + methodName + ": this element was constructed without a "
+                + "BrowsingClient (likely a test fixture or pre-3f code path) and cannot route "
+                + "WebElement-API calls. Construct via RemoteBrowser.findElement to get a fully-"
+                + "wired element.");
+        }
+        return client;
     }
 
     public String getSessionId()     { return sessionId; }
@@ -106,10 +136,50 @@ public final class RemoteWebElement implements WebElement {
 
     // --- Unsupported (phase 3c) ------------------------------------------
 
-    @Override public void click()                           { throw new UnsupportedOperationException(PHASE_3C + " (click)"); }
-    @Override public void submit()                          { throw new UnsupportedOperationException(PHASE_3C + " (submit)"); }
-    @Override public void sendKeys(CharSequence... keys)    { throw new UnsupportedOperationException(PHASE_3C + " (sendKeys)"); }
-    @Override public void clear()                           { throw new UnsupportedOperationException(PHASE_3C + " (clear)"); }
+    // --- Phase 3f: wired via BrowsingClient (was phase-3c-deferred throws) ---
+
+    @Override
+    public void click() {
+        // Routed through /element/action — the dedicated server endpoint
+        // phase 3b already wired. Same path Browser.performClick uses.
+        requireClient("click").performElementAction(sessionId, elementHandle, ElementAction.CLICK, null);
+    }
+
+    @Override
+    public void submit() {
+        // No SUBMIT enum on /element/action; route through /execute.
+        // Falls back to el.submit() if the element isn't form-bound.
+        requireClient("submit").executeScript(sessionId,
+            "var el = arguments[0]; "
+            + "if (el.form) { el.form.submit(); } "
+            + "else if (typeof el.submit === 'function') { el.submit(); } "
+            + "else { throw new Error('not submittable: ' + el.tagName); }",
+            List.of(Map.of("element_handle", elementHandle)));
+    }
+
+    @Override
+    public void sendKeys(CharSequence... keys) {
+        // Selenium contract: "the strings are concatenated". Match that.
+        StringBuilder sb = new StringBuilder();
+        if (keys != null) {
+            for (CharSequence k : keys) {
+                if (k != null) sb.append(k);
+            }
+        }
+        requireClient("sendKeys").performElementAction(sessionId, elementHandle, ElementAction.SEND_KEYS, sb.toString());
+    }
+
+    @Override
+    public void clear() {
+        // Setting value="" alone doesn't fire 'input', which React/Vue/etc.
+        // listen for to update bound state. Selenium's local clear() does
+        // fire it via WebDriver's routing; dispatch a synthetic event for
+        // parity. See phase-3f doc §14.4.
+        requireClient("clear").executeScript(sessionId,
+            "var el = arguments[0]; el.value = ''; "
+            + "el.dispatchEvent(new Event('input', { bubbles: true }));",
+            List.of(Map.of("element_handle", elementHandle)));
+    }
     @Override public String getTagName() {
         // Server-side engines may synthesize a "tag_name" pseudo-attribute on
         // the findElement response; if so, read from the cache and avoid a
