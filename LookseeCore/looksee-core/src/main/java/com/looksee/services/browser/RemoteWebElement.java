@@ -95,7 +95,20 @@ public final class RemoteWebElement implements WebElement {
     @Override public void submit()                          { throw new UnsupportedOperationException(PHASE_3C + " (submit)"); }
     @Override public void sendKeys(CharSequence... keys)    { throw new UnsupportedOperationException(PHASE_3C + " (sendKeys)"); }
     @Override public void clear()                           { throw new UnsupportedOperationException(PHASE_3C + " (clear)"); }
-    @Override public String getTagName()                    { throw new UnsupportedOperationException(PHASE_3C + " (getTagName)"); }
+    @Override public String getTagName() {
+        // Server-side engines may synthesize a "tag_name" pseudo-attribute on
+        // the findElement response; if so, read from the cache and avoid a
+        // round-trip. Browser-service today doesn't include it, so the
+        // fallback throws with a pointer to the xpath-derived workaround
+        // (see com.looksee.services.BrowserService.extractTagFromXpath).
+        String cached = attributes.get("tag_name");
+        if (cached != null) return cached;
+        throw new UnsupportedOperationException(
+            "RemoteWebElement.getTagName: server did not include a 'tag_name' "
+            + "attribute in the findElement response. Either add tag_name to "
+            + "the server-side attributes synthesis (phase 3e candidate) or "
+            + "derive from xpath via BrowserService.extractTagFromXpath.");
+    }
     @Override public boolean isSelected()                   { throw new UnsupportedOperationException(PHASE_3C + " (isSelected)"); }
     @Override public boolean isEnabled()                    { throw new UnsupportedOperationException(PHASE_3C + " (isEnabled)"); }
     @Override public String getText()                       { throw new UnsupportedOperationException(PHASE_3C + " (getText)"); }

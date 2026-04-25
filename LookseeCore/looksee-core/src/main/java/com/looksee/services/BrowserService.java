@@ -451,7 +451,7 @@ public class BrowserService {
 		BufferedImage full_page_screenshot = ImageIO.read(new URL(page_state.getFullPageScreenshotUrl()));
 
 		Document html_doc = Jsoup.parse(body_src);
-		String host = (new URL(browser.getDriver().getCurrentUrl())).getHost();
+		String host = (new URL(browser.getCurrentUrl())).getHost();
 		
 		List<String> errored_xpaths = new ArrayList<>();
 		//iterate over xpaths to build ElementStates without screenshots
@@ -468,7 +468,7 @@ public class BrowserService {
 				if( !is_displayed
 						|| !hasWidthAndHeight(element_size)
 						|| doesElementHaveNegativePosition(element_location)
-						|| isStructureTag( web_element.getTagName())
+						|| isStructureTag( extractTagFromXpath(xpath))
 						|| BrowserUtils.isHidden(element_location, element_size)){
 					continue;
 				}
@@ -482,7 +482,7 @@ public class BrowserService {
 				Element element = elements.first();
 				String css_selector = generateCssSelectorFromXpath(xpath);
 				ElementClassification classification = ElementClassification.UNKNOWN;
-				if(isImageElement(web_element)) {
+				if(isImageElement(extractTagFromXpath(xpath))) {
 					ElementState element_state = buildImageElementState(xpath,
 																		new HashMap<>(),
 																		element,
@@ -534,17 +534,6 @@ public class BrowserService {
 		}
 
 		return visited_elements;
-	}
-
-	/**
-	 * Checks if element tag is 'img'
-	 * @param web_element the web element to check (must not be null)
-	 * @return true if the element tag is 'img', otherwise false
-	 * @throws IllegalArgumentException if web_element is null
-	 */
-	@Deprecated
-	private boolean isImageElement(WebElement web_element) {
-		return web_element.getTagName().equalsIgnoreCase("img");
 	}
 
 	/** MESSAGE GENERATION METHODS **/
@@ -2529,7 +2518,7 @@ public class BrowserService {
 				Element element = elements.first();
 				
 
-				if(isImageElement(web_element) && element_screenshot != null) {
+				if(isImageElement(extractTagFromXpath(xpath)) && element_screenshot != null) {
 					//retrieve image landmark properties from google cloud vision
 					Set<ImageLandmarkInfo> landmark_info_set = CloudVisionUtils.extractImageLandmarks(element_screenshot);
 					
@@ -2976,6 +2965,65 @@ public class BrowserService {
 	 */
 	private boolean isImageElement(String tag_name) {
 		return "img".equalsIgnoreCase(tag_name);
+	}
+
+	/**
+	 * Extracts the HTML tag from the last segment of an xpath. Mode-agnostic —
+	 * doesn't round-trip to a driver or server. Matches the shape of xpaths
+	 * produced by {@link #extractAllUniqueElementXpaths} and
+	 * {@link #generateXpath}, and the xpaths stored in
+	 * {@code ElementState.getXpath()}.
+	 *
+	 * <p>Used by {@link #getDomElementStates} so the tag-based filter doesn't
+	 * need to call {@code WebElement.getTagName()} — which would throw on a
+	 * {@link com.looksee.services.browser.RemoteWebElement} (phase-3c-deferred
+	 * surface). Phase 3d unblocks PageBuilder's remote-mode audit by sourcing
+	 * the tag from data we already have.
+	 *
+	 * <p><b>Predicate-aware scanning.</b> A naive {@code lastIndexOf('/')}
+	 * fails on xpaths whose predicates contain quoted slashes — e.g.
+	 * {@code //a[contains(@title,'foo/bar')]} — because the slash inside the
+	 * string literal looks identical to a path separator. The implementation
+	 * tracks bracket depth and quote state to find the last <em>structural</em>
+	 * slash (the one between path segments, not the one inside a literal).
+	 *
+	 * <p>If the xpath is malformed, empty, or null, returns {@code ""} —
+	 * callers treat that as "unknown tag" and fall through their tag-name
+	 * checks naturally.
+	 */
+	static String extractTagFromXpath(String xpath) {
+		if (xpath == null || xpath.isEmpty()) return "";
+
+		// Scan once tracking bracket depth + quote state. tailStart is the
+		// position just after the last '/' that's outside any [...] predicate
+		// and outside any quoted string.
+		int tailStart = 0;
+		int depth = 0;
+		char quote = 0;
+		for (int i = 0; i < xpath.length(); i++) {
+			char c = xpath.charAt(i);
+			if (quote != 0) {
+				if (c == quote) quote = 0;
+			} else if (c == '\'' || c == '"') {
+				quote = c;
+			} else if (c == '[') {
+				depth++;
+			} else if (c == ']') {
+				if (depth > 0) depth--;
+			} else if (c == '/' && depth == 0) {
+				tailStart = i + 1;
+			}
+		}
+
+		// Once we're past the last structural slash, the tag name is text up
+		// to the first '['. Tag names can't legally contain '[' or quotes,
+		// so a plain indexOf is safe here.
+		int bracket = xpath.indexOf('[', tailStart);
+		String tag = bracket >= 0 ? xpath.substring(tailStart, bracket) : xpath.substring(tailStart);
+
+		// Strip namespace prefix (e.g. "svg:rect" → "rect").
+		int colon = tag.indexOf(':');
+		return colon >= 0 ? tag.substring(colon + 1) : tag;
 	}
 
 	/**
