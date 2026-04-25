@@ -231,7 +231,20 @@ public final class RemoteWebElement implements WebElement {
             List.of(Map.of("element_handle", elementHandle), propertyName));
         return r == null ? "" : r.toString();
     }
-    @Override public <X> X getScreenshotAs(OutputType<X> t) { throw new UnsupportedOperationException(PHASE_3C + " (getScreenshotAs)"); }
+    @Override
+    @SuppressWarnings("unchecked")
+    public <X> X getScreenshotAs(OutputType<X> outputType) {
+        if (outputType == OutputType.BYTES) {
+            return (X) requireClient("getScreenshotAs").captureElementScreenshot(sessionId, elementHandle);
+        }
+        // BASE64 / FILE / others: real Look-see consumers don't use them.
+        // Convert client-side from BYTES if needed (BASE64 = one Base64
+        // encoder call; FILE = one Files.write).
+        throw new UnsupportedOperationException(
+            "RemoteWebElement.getScreenshotAs: only OutputType.BYTES is supported "
+            + "in remote mode (got " + outputType + "). Convert client-side if "
+            + "BASE64 or FILE is needed.");
+    }
 
     // --- Identity --------------------------------------------------------
 
