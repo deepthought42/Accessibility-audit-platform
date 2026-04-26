@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.SchedulingConfigurer;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 import org.springframework.scheduling.support.PeriodicTrigger;
@@ -41,13 +42,19 @@ import org.springframework.scheduling.support.PeriodicTrigger;
  * sidesteps that — the interval is read directly via constructor-injected
  * {@code LookseeBrowsingProperties}.
  *
- * <p>Note: scheduling itself depends on the consumer's app having
- * {@code @EnableScheduling} (or auto-config equivalent). If absent,
- * {@link #configureTasks} simply isn't invoked — bean exists, never fires,
- * visible as a flat-zero smoke-check counter on the dashboard.
+ * <p>Self-enables scheduling via {@link EnableScheduling}, so consumers don't
+ * need to add {@code @EnableScheduling} on their own app class for the
+ * watchdog to run. Because the entire {@code @Configuration} is gated by the
+ * {@code @ConditionalOnProperty}, scheduling is only enabled when a consumer
+ * has explicitly opted in to the smoke-check — no side effect on consumers
+ * that don't set {@code looksee.browsing.smoke-check.enabled=true}.
+ * (Consumers that already have {@code @EnableScheduling} elsewhere are
+ * unaffected — Spring is fine with multiple enablers; the underlying
+ * {@code TaskScheduler} bean is shared.)
  */
 @Configuration
 @ConditionalOnProperty(name = "looksee.browsing.smoke-check.enabled", havingValue = "true")
+@EnableScheduling
 public class CapturePageSmokeCheck implements SchedulingConfigurer {
 
     private static final Logger log = LoggerFactory.getLogger(CapturePageSmokeCheck.class);
