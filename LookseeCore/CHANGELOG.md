@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.8.1] - 2026-04-25
+
+### Added
+- **`RemoteWebElement` now implements 9 of the 11 phase-3c-deferred WebElement methods** — `click`, `submit`, `sendKeys`, `clear`, `getText`, `isSelected`, `isEnabled`, `getCssValue`, `getScreenshotAs(OutputType.BYTES)`. All route through facades that already exist (`performElementAction`, `executeScript`, `captureElementScreenshot`) — no new browser-service contract change required.
+  - `click` and `sendKeys` use the dedicated `/v1/sessions/{id}/element/action` endpoint (same path `Browser.performClick`/`performAction` already use).
+  - `submit`, `clear`, `getText`, `isSelected`, `isEnabled`, `getCssValue` use `/v1/sessions/{id}/execute` with literal JS snippets.
+  - `clear` dispatches a synthetic `input` event after setting `value=""` for React/Vue/etc. framework parity (Selenium's local `clear()` fires the event via WebDriver routing).
+  - `getScreenshotAs` only implements `OutputType.BYTES` — other output types throw with a "convert client-side" pointer (BASE64 = one Base64 encoder call from BYTES; FILE = one `Files.write`).
+
+### Changed
+- `RemoteWebElement` constructor grows a `BrowsingClient` parameter so each element can route its own WebElement-API calls without needing a parent `RemoteBrowser` reference. Existing 2-arg and 3-arg constructors stay (without a client = wired methods throw with a clear "constructed without BrowsingClient" pointer).
+- `RemoteBrowser.findElement` passes the `BrowsingClient` through to the constructed element. End-to-end: every element returned from `remote.findElement(xpath)` carries a working facade ref.
+- No behavior change in local mode. Default `looksee.browsing.mode` remains `local`.
+
+### Still deferred (phase 3g — trigger on demand)
+- `RemoteWebElement.findElement(By)` and `findElements(By)` — both need either client-side xpath composition or a new `/v1/sessions/{id}/element/{handle}/find-children` server endpoint.
+- `BrowserService` form extraction (lines 3339, 3340, 3354, 3433, 3449)
+- `com.looksee.browsing.table.Table` helper
+
+### State of phase-4 prep
+After this release, **the LookseeCore-side prep for phase 4 is functionally complete**. Every code path the active consumer set (PageBuilder, element-enrichment, journeyExecutor) exercises works in remote mode, plus 9 of 11 standard WebElement methods on `RemoteWebElement` for any future consumer. The remaining work to enable production cutover (4a.5 staging flip, 4a.6 prod flip, 4b/4c) is **browser-service deployment** — the external prerequisite enumerated in `browser-service/phase-4-consumer-cutover.md` §Prerequisites.
+
 ## [0.8.0] - 2026-04-25
 
 ### Added

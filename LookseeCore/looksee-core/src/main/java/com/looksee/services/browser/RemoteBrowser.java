@@ -285,7 +285,10 @@ public class RemoteBrowser extends Browser {
             throw new NoSuchElementException(
                 "RemoteBrowser: element not found for xpath=" + xpath);
         }
-        return new RemoteWebElement(sessionId, xpath, state);
+        // Pass the BrowsingClient through so the returned element can route
+        // its own WebElement-API calls (phase 3f) without needing this
+        // RemoteBrowser as a parent reference.
+        return new RemoteWebElement(sessionId, xpath, state, client);
     }
 
     @Override

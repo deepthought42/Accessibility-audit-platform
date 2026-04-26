@@ -1,8 +1,11 @@
 package com.looksee.services.browser;
 
+import com.looksee.browsing.client.BrowsingClient;
+import com.looksee.browsing.generated.model.ElementAction;
 import com.looksee.browsing.generated.model.ElementState;
 import com.looksee.browsing.generated.model.Rect;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.openqa.selenium.By;
@@ -49,9 +52,10 @@ public final class RemoteWebElement implements WebElement {
     private final Rect rect;                      // may be null if server omitted
     private final Map<String, String> attributes; // never null, immutable
     private final boolean displayed;
+    private final BrowsingClient client;          // may be null in test/legacy constructions
 
     public RemoteWebElement(String sessionId, ElementState state) {
-        this(sessionId, null, state);
+        this(sessionId, null, state, null);
     }
 
     /**
@@ -61,6 +65,19 @@ public final class RemoteWebElement implements WebElement {
      * displayed flag without needing a server-side wait endpoint.
      */
     public RemoteWebElement(String sessionId, String sourceXpath, ElementState state) {
+        this(sessionId, sourceXpath, state, null);
+    }
+
+    /**
+     * Phase-3f overload: carries the {@link BrowsingClient} so the WebElement
+     * methods that route through {@code /element/action}, {@code /execute},
+     * and {@code /element/screenshot} (click, sendKeys, submit, clear,
+     * getText, isSelected, isEnabled, getCssValue, getScreenshotAs) can
+     * forward without needing a parent {@link RemoteBrowser} reference.
+     * Constructed via {@link RemoteBrowser#findElement} which has the client
+     * in scope. Without a client, those methods throw with a clear pointer.
+     */
+    public RemoteWebElement(String sessionId, String sourceXpath, ElementState state, BrowsingClient client) {
         Objects.requireNonNull(sessionId, "sessionId");
         Objects.requireNonNull(state, "state");
         this.sessionId = sessionId;
@@ -71,6 +88,19 @@ public final class RemoteWebElement implements WebElement {
             ? Collections.emptyMap()
             : Collections.unmodifiableMap(state.getAttributes());
         this.displayed = Boolean.TRUE.equals(state.getDisplayed());
+        this.client = client;
+    }
+
+    /** Used by phase-3f WebElement-method routing. Throws if no client was passed at construction. */
+    private BrowsingClient requireClient(String methodName) {
+        if (client == null) {
+            throw new UnsupportedOperationException(
+                "RemoteWebElement." + methodName + ": this element was constructed without a "
+                + "BrowsingClient (likely a test fixture or pre-3f code path) and cannot route "
+                + "WebElement-API calls. Construct via RemoteBrowser.findElement to get a fully-"
+                + "wired element.");
+        }
+        return client;
     }
 
     public String getSessionId()     { return sessionId; }
@@ -106,10 +136,69 @@ public final class RemoteWebElement implements WebElement {
 
     // --- Unsupported (phase 3c) ------------------------------------------
 
-    @Override public void click()                           { throw new UnsupportedOperationException(PHASE_3C + " (click)"); }
-    @Override public void submit()                          { throw new UnsupportedOperationException(PHASE_3C + " (submit)"); }
-    @Override public void sendKeys(CharSequence... keys)    { throw new UnsupportedOperationException(PHASE_3C + " (sendKeys)"); }
-    @Override public void clear()                           { throw new UnsupportedOperationException(PHASE_3C + " (clear)"); }
+    // --- Phase 3f: wired via BrowsingClient (was phase-3c-deferred throws) ---
+
+    @Override
+    public void click() {
+        // Routed through /element/action — the dedicated server endpoint
+        // phase 3b already wired. Same path Browser.performClick uses.
+        requireClient("click").performElementAction(sessionId, elementHandle, ElementAction.CLICK, null);
+    }
+
+    @Override
+    public void submit() {
+        // Prefer form.requestSubmit() (modern browsers) over form.submit() —
+        // requestSubmit fires the `submit` event listeners and runs HTML5
+        // constraint validation, matching what local WebDriver sessions do.
+        // form.submit() bypasses both, which would silently break React/Vue
+        // forms that hook onSubmit + skip validation entirely (PR #54 review).
+        // Legacy-browser fallback to form.submit() retained behind a feature
+        // check so the method still works on environments without
+        // requestSubmit support, with a clear console.warn in that case.
+        requireClient("submit").executeScript(sessionId,
+            "var el = arguments[0]; "
+            + "var form = el.form || (el.tagName === 'FORM' ? el : null); "
+            + "if (form) { "
+            + "  if (typeof form.requestSubmit === 'function') { form.requestSubmit(); } "
+            + "  else { console.warn('RemoteWebElement.submit: requestSubmit not supported; "
+            +          "falling back to form.submit() which bypasses submit handlers'); "
+            + "    form.submit(); "
+            + "  } "
+            + "} else { throw new Error('not submittable: ' + el.tagName); }",
+            List.of(Map.of("element_handle", elementHandle)));
+    }
+
+    @Override
+    public void sendKeys(CharSequence... keys) {
+        // Selenium contract (RemoteWebElement / W3C WebDriver): null array OR
+        // null array element throws IllegalArgumentException. Concatenate
+        // non-null entries into one string — matches the local sendKeys
+        // semantics so callers see the same failure mode in both modes.
+        if (keys == null) {
+            throw new IllegalArgumentException("Keys to send should be a not null CharSequence");
+        }
+        StringBuilder sb = new StringBuilder();
+        for (CharSequence k : keys) {
+            if (k == null) {
+                throw new IllegalArgumentException(
+                    "Keys to send should be a not null CharSequence");
+            }
+            sb.append(k);
+        }
+        requireClient("sendKeys").performElementAction(sessionId, elementHandle, ElementAction.SEND_KEYS, sb.toString());
+    }
+
+    @Override
+    public void clear() {
+        // Setting value="" alone doesn't fire 'input', which React/Vue/etc.
+        // listen for to update bound state. Selenium's local clear() does
+        // fire it via WebDriver's routing; dispatch a synthetic event for
+        // parity. See phase-3f doc §14.4.
+        requireClient("clear").executeScript(sessionId,
+            "var el = arguments[0]; el.value = ''; "
+            + "el.dispatchEvent(new Event('input', { bubbles: true }));",
+            List.of(Map.of("element_handle", elementHandle)));
+    }
     @Override public String getTagName() {
         // Server-side engines may synthesize a "tag_name" pseudo-attribute on
         // the findElement response; if so, read from the cache and avoid a
@@ -124,13 +213,57 @@ public final class RemoteWebElement implements WebElement {
             + "the server-side attributes synthesis (phase 3e candidate) or "
             + "derive from xpath via BrowserService.extractTagFromXpath.");
     }
-    @Override public boolean isSelected()                   { throw new UnsupportedOperationException(PHASE_3C + " (isSelected)"); }
-    @Override public boolean isEnabled()                    { throw new UnsupportedOperationException(PHASE_3C + " (isEnabled)"); }
-    @Override public String getText()                       { throw new UnsupportedOperationException(PHASE_3C + " (getText)"); }
+    @Override
+    public boolean isSelected() {
+        Object r = requireClient("isSelected").executeScript(sessionId,
+            "return !!(arguments[0].selected || arguments[0].checked);",
+            List.of(Map.of("element_handle", elementHandle)));
+        return Boolean.TRUE.equals(r);
+    }
+
+    @Override
+    public boolean isEnabled() {
+        // Default-true on null/missing — matches Selenium's "if uncertain,
+        // assume enabled" convention for elements without a 'disabled'
+        // attribute (most non-form elements).
+        Object r = requireClient("isEnabled").executeScript(sessionId,
+            "return !arguments[0].disabled;",
+            List.of(Map.of("element_handle", elementHandle)));
+        return !Boolean.FALSE.equals(r);
+    }
+
+    @Override
+    public String getText() {
+        Object r = requireClient("getText").executeScript(sessionId,
+            "return arguments[0].textContent;",
+            List.of(Map.of("element_handle", elementHandle)));
+        return r == null ? "" : r.toString();
+    }
+
     @Override public java.util.List<WebElement> findElements(By by) { throw new UnsupportedOperationException(PHASE_3C + " (findElements)"); }
     @Override public WebElement findElement(By by)          { throw new UnsupportedOperationException(PHASE_3C + " (findElement-nested)"); }
-    @Override public String getCssValue(String propertyName){ throw new UnsupportedOperationException(PHASE_3C + " (getCssValue)"); }
-    @Override public <X> X getScreenshotAs(OutputType<X> t) { throw new UnsupportedOperationException(PHASE_3C + " (getScreenshotAs)"); }
+
+    @Override
+    public String getCssValue(String propertyName) {
+        Object r = requireClient("getCssValue").executeScript(sessionId,
+            "return window.getComputedStyle(arguments[0]).getPropertyValue(arguments[1]);",
+            List.of(Map.of("element_handle", elementHandle), propertyName));
+        return r == null ? "" : r.toString();
+    }
+    @Override
+    @SuppressWarnings("unchecked")
+    public <X> X getScreenshotAs(OutputType<X> outputType) {
+        if (outputType == OutputType.BYTES) {
+            return (X) requireClient("getScreenshotAs").captureElementScreenshot(sessionId, elementHandle);
+        }
+        // BASE64 / FILE / others: real Look-see consumers don't use them.
+        // Convert client-side from BYTES if needed (BASE64 = one Base64
+        // encoder call; FILE = one Files.write).
+        throw new UnsupportedOperationException(
+            "RemoteWebElement.getScreenshotAs: only OutputType.BYTES is supported "
+            + "in remote mode (got " + outputType + "). Convert client-side if "
+            + "BASE64 or FILE is needed.");
+    }
 
     // --- Identity --------------------------------------------------------
 
