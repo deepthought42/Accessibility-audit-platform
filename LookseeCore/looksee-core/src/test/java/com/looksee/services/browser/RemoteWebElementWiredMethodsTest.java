@@ -48,20 +48,38 @@ class RemoteWebElementWiredMethodsTest {
     }
 
     @Test
-    void sendKeys_nullArrayHandledGracefully() {
-        el.sendKeys((CharSequence[]) null);
-        verify(client).performElementAction("s1", "h1", ElementAction.SEND_KEYS, "");
+    void sendKeys_nullArrayThrowsIllegalArgument() {
+        // Selenium contract: null keys array throws. Don't silently no-op
+        // (PR #54 review).
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+            () -> el.sendKeys((CharSequence[]) null));
+        assertTrue(ex.getMessage().contains("not null"),
+            "error should mention nulls being rejected: " + ex.getMessage());
+        verify(client, never()).performElementAction(any(), any(), any(), any());
+    }
+
+    @Test
+    void sendKeys_nullElementThrowsIllegalArgument() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+            () -> el.sendKeys("ok", null, "more"));
+        assertTrue(ex.getMessage().contains("not null"),
+            "error should mention nulls being rejected: " + ex.getMessage());
+        verify(client, never()).performElementAction(any(), any(), any(), any());
     }
 
     // --- submit + clear → /execute ----------------------------------------
 
     @Test
-    void submit_executesFormSubmitJs() {
+    void submit_prefersRequestSubmitOverSubmit() {
+        // PR #54 review: prefer form.requestSubmit() over form.submit() so
+        // submit handlers fire and constraint validation runs. Falls back
+        // to .submit() only if requestSubmit isn't available.
         el.submit();
         ArgumentCaptor<String> scriptCap = ArgumentCaptor.forClass(String.class);
         verify(client).executeScript(eq("s1"), scriptCap.capture(), any());
-        assertTrue(scriptCap.getValue().contains("el.form.submit()"),
-            "submit script must call el.form.submit(): " + scriptCap.getValue());
+        String script = scriptCap.getValue();
+        assertTrue(script.contains("requestSubmit"),
+            "submit script must prefer requestSubmit() to fire submit events: " + script);
     }
 
     @Test

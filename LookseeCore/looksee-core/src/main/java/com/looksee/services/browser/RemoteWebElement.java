@@ -147,24 +147,43 @@ public final class RemoteWebElement implements WebElement {
 
     @Override
     public void submit() {
-        // No SUBMIT enum on /element/action; route through /execute.
-        // Falls back to el.submit() if the element isn't form-bound.
+        // Prefer form.requestSubmit() (modern browsers) over form.submit() —
+        // requestSubmit fires the `submit` event listeners and runs HTML5
+        // constraint validation, matching what local WebDriver sessions do.
+        // form.submit() bypasses both, which would silently break React/Vue
+        // forms that hook onSubmit + skip validation entirely (PR #54 review).
+        // Legacy-browser fallback to form.submit() retained behind a feature
+        // check so the method still works on environments without
+        // requestSubmit support, with a clear console.warn in that case.
         requireClient("submit").executeScript(sessionId,
             "var el = arguments[0]; "
-            + "if (el.form) { el.form.submit(); } "
-            + "else if (typeof el.submit === 'function') { el.submit(); } "
-            + "else { throw new Error('not submittable: ' + el.tagName); }",
+            + "var form = el.form || (el.tagName === 'FORM' ? el : null); "
+            + "if (form) { "
+            + "  if (typeof form.requestSubmit === 'function') { form.requestSubmit(); } "
+            + "  else { console.warn('RemoteWebElement.submit: requestSubmit not supported; "
+            +          "falling back to form.submit() which bypasses submit handlers'); "
+            + "    form.submit(); "
+            + "  } "
+            + "} else { throw new Error('not submittable: ' + el.tagName); }",
             List.of(Map.of("element_handle", elementHandle)));
     }
 
     @Override
     public void sendKeys(CharSequence... keys) {
-        // Selenium contract: "the strings are concatenated". Match that.
+        // Selenium contract (RemoteWebElement / W3C WebDriver): null array OR
+        // null array element throws IllegalArgumentException. Concatenate
+        // non-null entries into one string — matches the local sendKeys
+        // semantics so callers see the same failure mode in both modes.
+        if (keys == null) {
+            throw new IllegalArgumentException("Keys to send should be a not null CharSequence");
+        }
         StringBuilder sb = new StringBuilder();
-        if (keys != null) {
-            for (CharSequence k : keys) {
-                if (k != null) sb.append(k);
+        for (CharSequence k : keys) {
+            if (k == null) {
+                throw new IllegalArgumentException(
+                    "Keys to send should be a not null CharSequence");
             }
+            sb.append(k);
         }
         requireClient("sendKeys").performElementAction(sessionId, elementHandle, ElementAction.SEND_KEYS, sb.toString());
     }
