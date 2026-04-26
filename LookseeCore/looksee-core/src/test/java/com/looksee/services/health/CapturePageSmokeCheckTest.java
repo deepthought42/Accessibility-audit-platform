@@ -16,8 +16,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.scheduling.config.ScheduledTaskRegistrar;
-import org.springframework.scheduling.support.PeriodicTrigger;
 
 /**
  * Phase 4a.4: covers the CapturePageSmokeCheck probe path + Throwable-safety
@@ -119,16 +117,35 @@ class CapturePageSmokeCheckTest {
     }
 
     @Test
-    void configureTasks_registersPeriodicTriggerWithConfiguredInterval() {
-        props.getSmokeCheck().setInterval(java.time.Duration.ofSeconds(30));
+    void startAndStop_schedulesProbeAndShutsDownCleanly() throws Exception {
+        // Use a tight interval so the probe fires at least once during the wait
+        // window without making the test slow.
+        props.getSmokeCheck().setInterval(java.time.Duration.ofMillis(50));
+        when(browserService.capturePage(any(URL.class), any(), anyLong())).thenReturn(null);
 
-        ScheduledTaskRegistrar registrar = mock(ScheduledTaskRegistrar.class);
-        check.configureTasks(registrar);
+        CapturePageSmokeCheck lifecycleCheck =
+            new CapturePageSmokeCheck(browserService, props, registryProvider);
+        try {
+            lifecycleCheck.start();
+            // Allow the scheduler at least one fixed-rate tick.
+            Thread.sleep(200);
+            verify(browserService, atLeastOnce())
+                .capturePage(any(URL.class), any(), anyLong());
+        } finally {
+            lifecycleCheck.stop();
+        }
 
-        ArgumentCaptor<PeriodicTrigger> triggerCap = ArgumentCaptor.forClass(PeriodicTrigger.class);
-        verify(registrar).addTriggerTask(any(Runnable.class), triggerCap.capture());
-        // Spring 5's PeriodicTrigger exposes the period via getPeriod() (long millis).
-        assertEquals(30_000L, triggerCap.getValue().getPeriod(),
-            "trigger should reflect 30s interval");
+        // After stop(), no further probes should run. Reset and wait again.
+        clearInvocations(browserService);
+        Thread.sleep(150);
+        verify(browserService, never())
+            .capturePage(any(URL.class), any(), anyLong());
+    }
+
+    @Test
+    void stop_isSafeWhenNeverStarted() {
+        CapturePageSmokeCheck unstarted =
+            new CapturePageSmokeCheck(browserService, props, registryProvider);
+        assertDoesNotThrow(unstarted::stop);
     }
 }

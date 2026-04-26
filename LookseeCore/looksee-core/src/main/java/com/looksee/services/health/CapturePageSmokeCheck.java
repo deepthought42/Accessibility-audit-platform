@@ -4,16 +4,17 @@ import com.looksee.config.LookseeBrowsingProperties;
 import com.looksee.services.BrowserService;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.net.URL;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.scheduling.annotation.SchedulingConfigurer;
-import org.springframework.scheduling.config.ScheduledTaskRegistrar;
-import org.springframework.scheduling.support.PeriodicTrigger;
 
 /**
  * Periodically calls {@link BrowserService#capturePage} against the configured
@@ -32,30 +33,19 @@ import org.springframework.scheduling.support.PeriodicTrigger;
  * {@code MeterFilter.commonTags} responsibility (same pattern as the phase-4a.1
  * facade instrumentation).
  *
- * <p>Implements {@link SchedulingConfigurer} rather than using
- * {@code @Scheduled(fixedRateString=...)} so the interval can be read from a
- * {@link java.time.Duration} property without needing a SpEL bean reference.
- * The {@code @EnableConfigurationProperties}-bound bean name (e.g.
- * {@code looksee.browsing-com.looksee.config.LookseeBrowsingProperties}) isn't
- * the camelCase form SpEL would expect, so a {@code @bean} reference in
- * {@code fixedRateString} would fail to resolve at startup. This pattern
- * sidesteps that — the interval is read directly via constructor-injected
- * {@code LookseeBrowsingProperties}.
- *
- * <p>Self-enables scheduling via {@link EnableScheduling}, so consumers don't
- * need to add {@code @EnableScheduling} on their own app class for the
- * watchdog to run. Because the entire {@code @Configuration} is gated by the
- * {@code @ConditionalOnProperty}, scheduling is only enabled when a consumer
- * has explicitly opted in to the smoke-check — no side effect on consumers
- * that don't set {@code looksee.browsing.smoke-check.enabled=true}.
- * (Consumers that already have {@code @EnableScheduling} elsewhere are
- * unaffected — Spring is fine with multiple enablers; the underlying
- * {@code TaskScheduler} bean is shared.)
+ * <p><b>Scheduling isolation.</b> Uses a private {@link ScheduledExecutorService}
+ * (single-thread, daemon) rather than Spring's {@code @Scheduled} /
+ * {@code @EnableScheduling} infrastructure. This is deliberate: enabling Spring
+ * scheduling at the application level would also activate any other
+ * {@code @Scheduled} methods on the consumer's classpath — for example
+ * {@code OutboxEventPublisher} and {@code IdempotencyService} in
+ * {@code looksee-persistence} — which are currently dormant in consumers that
+ * don't declare {@code @EnableScheduling}. Turning on the smoke-check must
+ * never have the side effect of waking unrelated background jobs.
  */
 @Configuration
 @ConditionalOnProperty(name = "looksee.browsing.smoke-check.enabled", havingValue = "true")
-@EnableScheduling
-public class CapturePageSmokeCheck implements SchedulingConfigurer {
+public class CapturePageSmokeCheck {
 
     private static final Logger log = LoggerFactory.getLogger(CapturePageSmokeCheck.class);
     private static final String METRIC_NAME = "browser_service_smoke_checks";
@@ -63,6 +53,8 @@ public class CapturePageSmokeCheck implements SchedulingConfigurer {
     private final BrowserService browserService;
     private final LookseeBrowsingProperties props;
     private final MeterRegistry meterRegistry; // may be null
+
+    private ScheduledExecutorService scheduler;
 
     public CapturePageSmokeCheck(BrowserService browserService,
                                  LookseeBrowsingProperties props,
@@ -72,12 +64,24 @@ public class CapturePageSmokeCheck implements SchedulingConfigurer {
         this.meterRegistry = meterRegistryProvider.getIfAvailable();
     }
 
-    @Override
-    public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
-        // Reads the Duration property at registration time. PeriodicTrigger
-        // accepts millis-as-long; convert via Duration.toMillis().
+    @PostConstruct
+    void start() {
         long intervalMs = props.getSmokeCheck().getInterval().toMillis();
-        taskRegistrar.addTriggerTask(this::probe, new PeriodicTrigger(intervalMs));
+        scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "looksee-smoke-check");
+            t.setDaemon(true);
+            return t;
+        });
+        scheduler.scheduleAtFixedRate(this::probe, intervalMs, intervalMs, TimeUnit.MILLISECONDS);
+        log.info("CapturePageSmokeCheck started: interval={}ms target={}",
+            intervalMs, props.getSmokeCheck().getTargetUrl());
+    }
+
+    @PreDestroy
+    void stop() {
+        if (scheduler != null) {
+            scheduler.shutdownNow();
+        }
     }
 
     /**
