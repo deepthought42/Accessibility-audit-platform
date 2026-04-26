@@ -52,7 +52,8 @@ If the smoke-check ever needs more than what's listed here (e.g. multiple target
 | Metric contract | Counter `browser_service_smoke_checks` with one tag: `outcome` ∈ `{success, failure}`. **Does not** add the `consumer` tag — that's the consumer's `MeterFilter.commonTags` responsibility (same pattern as phase 4a.1 facade instrumentation). |
 | Failure handling | Catch `Throwable` (broadest possible — we don't want a probe failure to crash the scheduler), log warn with the failure type + message, increment the failure counter. Don't rethrow. |
 | Conditional gating | `@ConditionalOnProperty(name = "looksee.browsing.smoke-check.enabled", havingValue = "true")`. Bean isn't even instantiated when disabled. No runtime overhead for opted-out consumers. |
-| `@EnableScheduling` | Don't add it from LookseeCore — too invasive for an opt-in bean. Document in javadoc that consumers enabling the smoke-check must have `@EnableScheduling` on their app config (most Spring Boot apps already do via auto-configuration). If absent, the `@Scheduled` annotation is a no-op and the class just gets created but never fires — clear failure mode. |
+| Scheduling mechanism | **`SchedulingConfigurer` + `PeriodicTrigger`**, not `@Scheduled(fixedRateString = ...)`. `@EnableConfigurationProperties` registers `LookseeBrowsingProperties` under a bean name like `looksee.browsing-com.looksee.config.LookseeBrowsingProperties` (per Spring's properties-binding convention), not `lookseeBrowsingProperties` — so a SpEL `@bean` reference in `fixedRateString` fails to resolve at startup and prevents the app from booting. `SchedulingConfigurer` reads the bound `Duration` directly at task-registration time and is the canonical Spring pattern for runtime-configured intervals. |
+| `@EnableScheduling` | The `SchedulingConfigurer` interface implementation registers tasks via the `ScheduledTaskRegistrar` Spring provides, which itself depends on the consumer's `@EnableScheduling` (or auto-config equivalent). If absent, `SchedulingConfigurer.configureTasks` simply isn't called and the bean exists without firing — same "visible-as-flat-zero-counter" failure mode as the original sketch, with no SpEL fragility. |
 | Version bump | 0.8.1 → **0.8.2** (patch). Pure additive, conditional bean — no public API change, no behavior change for opted-out consumers. Same sizing as 4a.1 (which shipped facade instrumentation as 0.6.1). |
 
 ## Prerequisites
@@ -112,7 +113,7 @@ public static class SmokeCheck {
 
 **File:** `LookseeCore/looksee-core/src/main/java/com/looksee/services/health/CapturePageSmokeCheck.java`
 
-Inline the full class:
+Inline the full class. Note this implements `SchedulingConfigurer` rather than using `@Scheduled` — see Locked decisions for the bean-name SpEL trap that approach hits with `@EnableConfigurationProperties`.
 
 ```java
 package com.looksee.services.health;
@@ -126,8 +127,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.SchedulingConfigurer;
+import org.springframework.scheduling.config.ScheduledTaskRegistrar;
+import org.springframework.scheduling.support.PeriodicTrigger;
 
 /**
  * Periodically calls {@link BrowserService#capturePage} against the configured
@@ -145,14 +148,24 @@ import org.springframework.stereotype.Component;
  * {@code MeterFilter.commonTags} responsibility (same pattern as the phase-4a.1
  * facade instrumentation).
  *
- * <p>Note: {@code @Scheduled} requires the consumer's Spring Boot app to have
- * scheduling enabled (most do via {@code @EnableScheduling} or auto-config).
- * If absent, this bean is created but never fires — visible as a flat-zero
- * smoke-check counter on the dashboard.
+ * <p>Implements {@link SchedulingConfigurer} rather than using
+ * {@code @Scheduled(fixedRateString=...)} so the interval can be read from a
+ * {@link java.time.Duration} property without needing a SpEL bean reference.
+ * The {@code @EnableConfigurationProperties}-bound bean name (e.g.
+ * {@code looksee.browsing-com.looksee.config.LookseeBrowsingProperties}) isn't
+ * the camelCase form SpEL would expect, so a {@code @bean} reference in
+ * {@code fixedRateString} would fail to resolve at startup. This pattern
+ * sidesteps that — the interval is read directly via constructor-injected
+ * {@code LookseeBrowsingProperties}.
+ *
+ * <p>Note: scheduling itself depends on the consumer's app having
+ * {@code @EnableScheduling} (or auto-config equivalent). If absent,
+ * {@link #configureTasks} simply isn't invoked — bean exists, never fires,
+ * visible as a flat-zero smoke-check counter on the dashboard.
  */
-@Component
+@Configuration
 @ConditionalOnProperty(name = "looksee.browsing.smoke-check.enabled", havingValue = "true")
-public class CapturePageSmokeCheck {
+public class CapturePageSmokeCheck implements SchedulingConfigurer {
 
     private static final Logger log = LoggerFactory.getLogger(CapturePageSmokeCheck.class);
     private static final String METRIC_NAME = "browser_service_smoke_checks";
@@ -169,14 +182,16 @@ public class CapturePageSmokeCheck {
         this.meterRegistry = meterRegistryProvider.getIfAvailable();
     }
 
-    /**
-     * Runs at the interval configured by
-     * {@code looksee.browsing.smoke-check.interval} (default 60s). The
-     * fixedRateString reads from the property each application start; runtime
-     * changes don't take effect.
-     */
-    @Scheduled(fixedRateString = "#{@lookseeBrowsingProperties.smokeCheck.interval.toMillis()}")
-    public void probe() {
+    @Override
+    public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
+        // Reads the Duration property at registration time. PeriodicTrigger
+        // accepts millis-as-long; convert via Duration.toMillis().
+        long intervalMs = props.getSmokeCheck().getInterval().toMillis();
+        taskRegistrar.addTriggerTask(this::probe, new PeriodicTrigger(intervalMs));
+    }
+
+    /** Visible-for-tests: package-private. */
+    void probe() {
         String outcome = "failure";
         try {
             URL url = new URL(props.getSmokeCheck().getTargetUrl());
@@ -203,10 +218,12 @@ public class CapturePageSmokeCheck {
 
 A few important details:
 
+- **`SchedulingConfigurer` over `@Scheduled`**: see Locked decisions. The plan-time SpEL approach `@Scheduled(fixedRateString = "#{@lookseeBrowsingProperties.smokeCheck.interval.toMillis()}")` would fail to resolve the bean reference at startup and prevent the app from booting whenever a consumer set `smoke-check.enabled=true`. `SchedulingConfigurer` reads the bound Duration directly via constructor injection — no SpEL, no bean-name fragility.
 - `ObjectProvider<MeterRegistry>` lets the bean construct fine even when no `MeterRegistry` is wired in the consumer (matches the phase-4a.1 facade-instrumentation safety contract). When absent, metric recording is silently a no-op.
-- `@Scheduled(fixedRateString = "#{@lookseeBrowsingProperties.smokeCheck.interval.toMillis()}")` reads the interval from the bound `LookseeBrowsingProperties` bean at app start. Static — config changes need a restart, which is the right tradeoff for an internal smoke-check.
+- The interval is read once at `configureTasks` time. Runtime config changes need a restart — the right tradeoff for an internal smoke-check, and matches the previous `@Scheduled(fixedRateString=...)` semantics anyway.
 - Catching `Throwable` (not just `Exception`) is intentional — `BrowsingClientException`, `IOException`, `IllegalArgumentException`, `OutOfMemoryError` (rare but possible) all need to be caught so the scheduler thread isn't poisoned.
-- The "failure" default + "success" flip pattern is the same one phase 4a.1 used for facade instrumentation — guarantees an unexpected exception (missed by the catch) still records a failure timer.
+- The "failure" default + "success" flip pattern is the same one phase 4a.1 used for facade instrumentation — guarantees an unexpected exception (missed by the catch) still records a failure metric.
+- `probe()` is package-private (rather than `private`) so tests can invoke it directly without going through the scheduler.
 
 **Commit:** `feat(core): add CapturePageSmokeCheck bean for phase-4 cutover watchdog`
 
@@ -305,7 +322,7 @@ The LookseeCore-side preparation for phase 4 cutover is complete. The remaining 
 
 1. **Bean location.** `com.looksee.services.health` is a new package. Alternative was `com.looksee.services` directly, but a dedicated package signals the smoke-check is observability-adjacent rather than a domain service. If a future health-check (DB liveness, GCS connectivity, etc.) lands, it sits naturally beside this one.
 
-2. **Static interval via SpEL.** `@Scheduled(fixedRateString = "#{@lookseeBrowsingProperties.smokeCheck.interval.toMillis()}")` requires the bound `LookseeBrowsingProperties` bean to be named `lookseeBrowsingProperties`. Spring Boot's default bean naming convention should produce that, but if `@EnableConfigurationProperties` ever lands the bean under a different name, the SpEL breaks. Add a verification test that catches that early.
+2. **Why `SchedulingConfigurer` instead of `@Scheduled`.** Resolved during PR #56 review. `@EnableConfigurationProperties` registers `LookseeBrowsingProperties` under a bean name like `looksee.browsing-com.looksee.config.LookseeBrowsingProperties` (per Spring's properties-binding convention), not the camelCase `lookseeBrowsingProperties` SpEL would expect. A `@Scheduled(fixedRateString = "#{@bean.smokeCheck.interval.toMillis()}")` reference therefore fails to resolve at startup and would prevent the app from booting whenever `smoke-check.enabled=true`. `SchedulingConfigurer` reads the bound `Duration` directly via constructor-injected `LookseeBrowsingProperties` — no SpEL, no bean-name fragility.
 
 3. **`@EnableScheduling` not auto-applied.** Most Spring Boot apps have it via auto-config, but LookseeCore can't assume. If a consumer enables the smoke-check but their app doesn't have scheduling enabled, the bean is silently a no-op. Document loudly in javadoc; maybe consider adding a `@PostConstruct` that warns once if the scheduler isn't running. Out of scope for now — the failure mode (zero-counter on dashboard) is visible if anyone's looking.
 
