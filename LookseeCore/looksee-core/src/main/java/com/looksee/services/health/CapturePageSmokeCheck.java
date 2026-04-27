@@ -15,6 +15,7 @@ import javax.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 
@@ -57,6 +58,7 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @ConditionalOnProperty(name = "looksee.browsing.smoke-check.enabled", havingValue = "true")
+@ConditionalOnBean(BrowserService.class)
 public class CapturePageSmokeCheck {
 
     private static final Logger log = LoggerFactory.getLogger(CapturePageSmokeCheck.class);
@@ -80,11 +82,16 @@ public class CapturePageSmokeCheck {
 
     @PostConstruct
     void start() {
-        long intervalMs = props.getSmokeCheck().getInterval().toMillis();
+        java.time.Duration interval = props.getSmokeCheck().getInterval();
+        if (interval == null) {
+            throw new IllegalStateException(
+                "looksee.browsing.smoke-check.interval must be set to a positive duration");
+        }
+        long intervalMs = interval.toMillis();
         if (intervalMs <= 0) {
             throw new IllegalStateException(
                 "looksee.browsing.smoke-check.interval must be a positive duration; got "
-                    + props.getSmokeCheck().getInterval());
+                    + interval);
         }
         try {
             this.targetUrl = new URL(props.getSmokeCheck().getTargetUrl());

@@ -173,6 +173,18 @@ class CapturePageSmokeCheckTest {
     }
 
     @Test
+    void start_failsFastOnNullInterval() {
+        LookseeBrowsingProperties bad = new LookseeBrowsingProperties();
+        bad.getSmokeCheck().setTargetUrl("https://example.com");
+        bad.getSmokeCheck().setInterval(null);
+        CapturePageSmokeCheck c = new CapturePageSmokeCheck(browserService, bad, registryProvider);
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, c::start);
+        assertTrue(ex.getMessage().contains("interval"),
+            "error message should reference the offending property: " + ex.getMessage());
+    }
+
+    @Test
     void start_failsFastOnNonPositiveInterval() {
         LookseeBrowsingProperties bad = new LookseeBrowsingProperties();
         bad.getSmokeCheck().setTargetUrl("https://example.com");
