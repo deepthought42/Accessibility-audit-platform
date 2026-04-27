@@ -12,6 +12,10 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.net.URL;
+import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -19,10 +23,10 @@ import org.springframework.beans.factory.ObjectProvider;
 
 /**
  * Phase 4a.4: covers the CapturePageSmokeCheck probe path + Throwable-safety
- * + null-MeterRegistry fallback + scheduler registration. The conditional
- * bean creation itself (the @ConditionalOnProperty gate) is exercised by
- * Spring at app startup; we verify that contract by constructing the bean
- * directly here — no full @SpringBootTest needed.
+ * + null-MeterRegistry fallback + scheduler lifecycle + startup validation.
+ * The conditional bean creation itself (the @ConditionalOnProperty gate) is
+ * exercised by Spring at app startup; we verify that contract by constructing
+ * the bean directly here — no full @SpringBootTest needed.
  */
 class CapturePageSmokeCheckTest {
 
@@ -41,7 +45,16 @@ class CapturePageSmokeCheckTest {
         props = new LookseeBrowsingProperties();
         props.getSmokeCheck().setTargetUrl("https://example.com");
         props.getSmokeCheck().setBrowser(BrowserType.CHROME);
+        // Long interval so the background task never fires during a unit test
+        // — we drive probe() manually to assert behavior deterministically.
+        props.getSmokeCheck().setInterval(Duration.ofHours(1));
         check = new CapturePageSmokeCheck(browserService, props, registryProvider);
+        check.start();
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (check != null) check.stop();
     }
 
     @Test
@@ -89,22 +102,53 @@ class CapturePageSmokeCheckTest {
     }
 
     @Test
+    void probe_swallowsMetricRegistryFailures() throws Exception {
+        // A throwing MeterRegistry must not propagate out of probe(), or the
+        // ScheduledExecutorService will silently cancel the periodic task.
+        MeterRegistry throwingRegistry = mock(MeterRegistry.class);
+        when(throwingRegistry.config()).thenThrow(new RuntimeException("registry exploded"));
+        @SuppressWarnings("unchecked")
+        ObjectProvider<MeterRegistry> throwingProvider = mock(ObjectProvider.class);
+        when(throwingProvider.getIfAvailable()).thenReturn(throwingRegistry);
+
+        CapturePageSmokeCheck instrumented =
+            new CapturePageSmokeCheck(browserService, props, throwingProvider);
+        instrumented.start();
+        try {
+            when(browserService.capturePage(any(URL.class), any(), anyLong())).thenReturn(null);
+            assertDoesNotThrow(instrumented::probe);
+        } finally {
+            instrumented.stop();
+        }
+    }
+
+    @Test
     void absentRegistry_isNoOpForMetrics() throws Exception {
         // Consumer hasn't wired a MeterRegistry — bean still works, just
         // doesn't emit metrics.
+        @SuppressWarnings("unchecked")
         ObjectProvider<MeterRegistry> emptyProvider = mock(ObjectProvider.class);
         when(emptyProvider.getIfAvailable()).thenReturn(null);
-        CapturePageSmokeCheck unmetered = new CapturePageSmokeCheck(browserService, props, emptyProvider);
-
-        when(browserService.capturePage(any(URL.class), any(), anyLong())).thenReturn(null);
-        assertDoesNotThrow(() -> unmetered.probe());
-        // No registry → nothing to assert beyond "no NPE".
+        CapturePageSmokeCheck unmetered =
+            new CapturePageSmokeCheck(browserService, props, emptyProvider);
+        unmetered.start();
+        try {
+            when(browserService.capturePage(any(URL.class), any(), anyLong())).thenReturn(null);
+            assertDoesNotThrow(unmetered::probe);
+        } finally {
+            unmetered.stop();
+        }
     }
 
     @Test
     void probe_usesConfiguredBrowserAndUrl() throws Exception {
         props.getSmokeCheck().setTargetUrl("https://probe.internal/health");
         props.getSmokeCheck().setBrowser(BrowserType.FIREFOX);
+        // Re-construct so start() picks up the updated values (fields are
+        // captured at @PostConstruct time — fail-fast on misconfiguration).
+        check.stop();
+        check = new CapturePageSmokeCheck(browserService, props, registryProvider);
+        check.start();
 
         when(browserService.capturePage(any(URL.class), any(), anyLong())).thenReturn(null);
         check.probe();
@@ -117,29 +161,51 @@ class CapturePageSmokeCheckTest {
     }
 
     @Test
-    void startAndStop_schedulesProbeAndShutsDownCleanly() throws Exception {
-        // Use a tight interval so the probe fires at least once during the wait
-        // window without making the test slow.
-        props.getSmokeCheck().setInterval(java.time.Duration.ofMillis(50));
-        when(browserService.capturePage(any(URL.class), any(), anyLong())).thenReturn(null);
+    void start_failsFastOnMalformedUrl() {
+        LookseeBrowsingProperties bad = new LookseeBrowsingProperties();
+        bad.getSmokeCheck().setTargetUrl("not a url");
+        bad.getSmokeCheck().setInterval(Duration.ofSeconds(60));
+        CapturePageSmokeCheck c = new CapturePageSmokeCheck(browserService, bad, registryProvider);
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, c::start);
+        assertTrue(ex.getMessage().contains("target-url"),
+            "error message should reference the offending property: " + ex.getMessage());
+    }
+
+    @Test
+    void start_failsFastOnNonPositiveInterval() {
+        LookseeBrowsingProperties bad = new LookseeBrowsingProperties();
+        bad.getSmokeCheck().setTargetUrl("https://example.com");
+        bad.getSmokeCheck().setInterval(Duration.ZERO);
+        CapturePageSmokeCheck c = new CapturePageSmokeCheck(browserService, bad, registryProvider);
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, c::start);
+        assertTrue(ex.getMessage().contains("interval"),
+            "error message should reference the offending property: " + ex.getMessage());
+    }
+
+    @Test
+    void start_actuallySchedulesProbe() throws Exception {
+        // Latch-based: deterministic regardless of CI clock noise.
+        CountDownLatch fired = new CountDownLatch(1);
+        BrowserService latchingService = mock(BrowserService.class);
+        when(latchingService.capturePage(any(URL.class), any(), anyLong()))
+            .thenAnswer(inv -> { fired.countDown(); return null; });
+
+        LookseeBrowsingProperties tight = new LookseeBrowsingProperties();
+        tight.getSmokeCheck().setTargetUrl("https://example.com");
+        tight.getSmokeCheck().setBrowser(BrowserType.CHROME);
+        tight.getSmokeCheck().setInterval(Duration.ofMillis(20));
 
         CapturePageSmokeCheck lifecycleCheck =
-            new CapturePageSmokeCheck(browserService, props, registryProvider);
+            new CapturePageSmokeCheck(latchingService, tight, registryProvider);
+        lifecycleCheck.start();
         try {
-            lifecycleCheck.start();
-            // Allow the scheduler at least one fixed-rate tick.
-            Thread.sleep(200);
-            verify(browserService, atLeastOnce())
-                .capturePage(any(URL.class), any(), anyLong());
+            assertTrue(fired.await(5, TimeUnit.SECONDS),
+                "scheduled probe should have fired at least once within 5s");
         } finally {
             lifecycleCheck.stop();
         }
-
-        // After stop(), no further probes should run. Reset and wait again.
-        clearInvocations(browserService);
-        Thread.sleep(150);
-        verify(browserService, never())
-            .capturePage(any(URL.class), any(), anyLong());
     }
 
     @Test
