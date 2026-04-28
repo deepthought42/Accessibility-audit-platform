@@ -249,6 +249,50 @@ variable "information_architecture_audit_image" {
 }
 
 #########################
+# LookseeCore browsing (phase-4 cutover to brandonkindred/browser-service)
+#########################
+# Single-source-of-truth for all browser-using consumers' mode. Rolling back
+# the phase-4 cutover is one variable edit, not a coordinated change across
+# every consumer module. See browser-service/phase-4-consumer-cutover.md.
+
+variable "looksee_browsing_mode" {
+  description = "looksee.browsing.mode for all browser-using consumers. 'local' = in-process Selenium (current default); 'remote' = route through browser-service."
+  type        = string
+  default     = "local"
+  validation {
+    condition     = contains(["local", "remote"], var.looksee_browsing_mode)
+    error_message = "looksee_browsing_mode must be 'local' or 'remote'."
+  }
+}
+
+variable "looksee_browsing_service_url" {
+  description = "Endpoint for browser-service when looksee_browsing_mode = 'remote'. Empty when mode = 'local'."
+  type        = string
+  default     = ""
+}
+
+# Smoke-check is per-consumer to allow staged rollout — each consumer's
+# 48-hour burn-in is observed independently. See phase-4a5 plan doc.
+
+variable "page_builder_smoke_check_enabled" {
+  description = "Enables the CapturePageSmokeCheck watchdog in PageBuilder."
+  type        = bool
+  default     = false
+}
+
+variable "looksee_browsing_smoke_check_interval" {
+  description = "Smoke-check probe interval (Spring Duration string, e.g. '60s', '5m')."
+  type        = string
+  default     = "60s"
+}
+
+variable "looksee_browsing_smoke_check_target_url" {
+  description = "Smoke-check target URL. The metric measures the BrowsingClient round-trip, not the page itself."
+  type        = string
+  default     = "https://example.com"
+}
+
+#########################
 # VPC
 #########################
 

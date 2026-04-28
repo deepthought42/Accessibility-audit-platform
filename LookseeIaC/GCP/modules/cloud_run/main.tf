@@ -51,6 +51,15 @@ resource "google_cloud_run_service" "service" {
           }
         }
 
+        # Plain (non-secret) environment variables
+        dynamic "env" {
+          for_each = var.plain_environment_variables
+          content {
+            name  = env.key
+            value = env.value
+          }
+        }
+
         # ----------------------------------------------------------------
         # Observability defaults (Wave 2 of architecture review)
         # Enable Stackdriver metric export and OpenTelemetry tracing for

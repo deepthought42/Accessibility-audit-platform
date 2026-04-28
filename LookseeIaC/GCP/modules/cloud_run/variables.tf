@@ -81,8 +81,14 @@ variable "cpu_limit" {
 }
 
 variable "environment_variables" {
-  description = "Map of environment variables to set"
+  description = "Map of environment variables sourced from Secret Manager. Value is [secret_name, version]."
   type        = map(list(string))
+  default     = {}
+}
+
+variable "plain_environment_variables" {
+  description = "Map of plain (non-secret) environment variables. Use environment_variables for secret references."
+  type        = map(string)
   default     = {}
 }
 
