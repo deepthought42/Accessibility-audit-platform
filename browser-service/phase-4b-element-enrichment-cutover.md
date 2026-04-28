@@ -28,7 +28,7 @@ Both are already remote-compatible after phase-3b (PR #38 merged), so 4b is **de
 
 | Area | Decision |
 |---|---|
-| Mode knob | Reuse the shared `looksee_browsing_mode` tfvar shipped in 4a.5. One variable governs every consumer. A 4a/4b combined rollback is one edit. |
+| Mode knob | **Per-consumer override on top of the shared default.** Add `element_enrichment_browsing_mode` (string, default `"local"`). The cloud_run module passes `coalesce(var.element_enrichment_browsing_mode, var.looksee_browsing_mode)` to `LOOKSEE_BROWSING_MODE`. Result: setting the global to `"remote"` (from 4a.5) does **not** flip element-enrichment until its own per-consumer override is also set to `"remote"` in 3a/3b. This preserves the staged-flip gate that the shared-knob design would have bypassed (the new module would inherit `mode=remote` from staging the moment Commit 2 lands), and gives the surgical-rollback path that the original "shared knob" decision in 4a.5 deferred to "if needed". 4a/page-builder retains a `page_builder_browsing_mode` override on the same pattern (default `"local"`, set to `"remote"` in 4a.5/4a.6 staging+prod tfvars retroactively if not already), so the two consumers are independent post-flip. |
 | Smoke-check enable | Per-consumer `element_enrichment_smoke_check_enabled` tfvar (default false). Independent burn-in observation per consumer, identical to the `page_builder_smoke_check_enabled` pattern. |
 | Smoke-check target URL / interval / browser | Reuse the existing shared tfvars (`looksee_browsing_smoke_check_target_url`, `_interval`). Keep the surface flat — these aren't consumer-specific. |
 | Burn-in window | 48 hours staging (umbrella §4b.2 inherits §4a.5). 1 hour prod observation + 7-day calm before 4c. |
@@ -82,11 +82,12 @@ PR title: **"feat(config): wire looksee browsing env vars for phase-4b cutover"*
 
 **Contingent on resolving the open question above.** If element-enrichment has no Cloud Run module today, this commit creates one mirroring `module "page_builder_cloud_run"` (same pattern, adjusted for element-enrichment's resource sizing, pubsub topics, and image variable). Plus:
 
+- New tfvar `element_enrichment_browsing_mode` (string, default `"local"`). **Default is `"local"`, not the global `var.looksee_browsing_mode`, so this commit lands inert in every environment** — including staging where `var.looksee_browsing_mode=remote` from 4a.5. The actual flip happens in 3a/3b.
 - New tfvar `element_enrichment_smoke_check_enabled` (bool, default `false`).
 - New tfvar `element_enrichment_image` (string, default `"docker.io/deepthought42/element-enrichment:latest"` — adjust to actual image name).
-- Wire `LOOKSEE_BROWSING_*` via `plain_environment_variables` exactly as 4a.5 did for page-builder.
+- Wire `LOOKSEE_BROWSING_*` via `plain_environment_variables`. The mode env var is `coalesce(var.element_enrichment_browsing_mode, var.looksee_browsing_mode)` — explicit per-consumer override wins; otherwise inherit the global.
 
-If element-enrichment is deployed via a different mechanism, this commit goes wherever that lives. Either way, the substantive constraint is identical: the same `looksee_browsing_mode` tfvar from 4a.5 governs both consumers.
+If element-enrichment is deployed via a different mechanism, this commit goes wherever that lives. The substantive constraint stays identical: per-consumer mode override defaults to `"local"` so Commit 2 cannot flip the consumer just by landing.
 
 PR title: **"feat(element-enrichment): cutover env vars (phase-4b)"**.
 
@@ -100,25 +101,38 @@ Once Commit 2 has landed and browser-service-staging is reachable:
 
 ```hcl
 # Staging tfvars override
+element_enrichment_browsing_mode       = "remote"
 element_enrichment_smoke_check_enabled = true
-# looksee_browsing_mode and looksee_browsing_service_url are already
-# set in staging from 4a.5 — no change needed there. Both consumers
-# will share mode=remote against the staging browser-service URL.
+# looksee_browsing_service_url is already set in staging from 4a.5 —
+# no change needed there. Element-enrichment's per-consumer mode
+# override (above) is what actually flips this consumer to remote;
+# the shared looksee_browsing_mode from 4a.5 is unrelated to this
+# consumer's revision since the module reads its own override first.
 ```
 
 Apply via the staging Terraform workflow. Cloud Run rolling redeploy; observation begins.
 
-48-hour burn-in pass criteria (umbrella §4a.5, identical):
-- Error rate <1% averaged over any 15-minute window (`browser_service_calls{outcome="failure",consumer="element-enrichment"}`).
-- p95 latency within 2× the local-mode baseline for element-enrichment specifically (capture from the 24 hours pre-flip).
+48-hour burn-in pass criteria (umbrella §4a.5, identical). All metric expressions reference the timer's exported Prometheus series (`browser_service_calls_seconds_count` / `_sum` / `_max`) per the umbrella §Observability prereqs metric contract — bare `browser_service_calls{...}` is not a real series:
+- **Error rate <1%** averaged over any 15-minute window:
+  ```
+  sum(rate(browser_service_calls_seconds_count{consumer="element-enrichment", outcome="failure"}[15m]))
+    /
+  sum(rate(browser_service_calls_seconds_count{consumer="element-enrichment"}[15m]))
+  ```
+- **p95 latency within 2× the local-mode baseline** for element-enrichment (capture baseline from 24 hours pre-flip):
+  ```
+  histogram_quantile(0.95, sum by (le) (rate(browser_service_calls_seconds_bucket{consumer="element-enrichment"}[5m])))
+  ```
+  (Requires the timer to publish a percentile histogram. If the registry config doesn't, fall back to `browser_service_calls_seconds_max` as a coarse upper bound and document that limitation in the dashboard panel.)
 - No new Sentry regressions tagged `service:element-enrichment`.
-- Smoke-check failure rate <1%.
-- **Cross-consumer guardrail:** `consumer=page-builder` metrics stay green throughout — bringing on a second consumer must not destabilize the first.
+- Smoke-check failure rate <1%: `sum(rate(browser_service_smoke_checks_total{consumer="element-enrichment", outcome="failure"}[15m])) / sum(rate(browser_service_smoke_checks_total{consumer="element-enrichment"}[15m]))`. (Counters export with `_total` suffix in Prometheus, same convention as the timer's `_seconds_*` series.)
+- **Cross-consumer guardrail:** `consumer=page-builder` metrics (same expressions, swapped tag) stay green throughout — bringing on a second consumer must not destabilize the first.
 
 #### Commit 3b — prod tfvars (gated on 3a 48h green + the same human gates as 4a.6)
 
 ```hcl
 # Prod tfvars override
+element_enrichment_browsing_mode       = "remote"
 element_enrichment_smoke_check_enabled = true
 ```
 
@@ -143,13 +157,18 @@ PR titles: **"chore(staging): flip element-enrichment to remote browsing (phase-
 - Boot log shows `CapturePageSmokeCheck started: interval=60000ms target=https://example.com`.
 - First probe fires immediately (initial-delay 0 from the 4a.4 fix).
 - Dashboard renders `browser_service_smoke_checks{outcome=success,consumer=element-enrichment}` ticking once per 60s.
-- Real element-enrichment traffic produces `browser_service_calls{outcome=success,consumer=element-enrichment}` increasing in step with `removeDriftChat` + `enrichElementStates` invocations.
+- Real element-enrichment traffic produces `rate(browser_service_calls_seconds_count{outcome="success",consumer="element-enrichment"}[1m]) > 0` in step with `removeDriftChat` + `enrichElementStates` invocations. (Bare `browser_service_calls` is not a real series — see the metric contract in the umbrella §Observability prereqs.)
 
 ## Rollback playbook
 
-Identical shape to 4a.5/4a.6: edit the relevant tfvar override (set `element_enrichment_smoke_check_enabled=false` and/or `looksee_browsing_mode=local`), `terraform apply`, ≤10-minute Cloud Run rolling redeploy reverts.
+Identical shape to 4a.5/4a.6: edit the relevant tfvar override, `terraform apply`, ≤10-minute Cloud Run rolling redeploy reverts.
 
-**Important:** since `looksee_browsing_mode` is shared across consumers, flipping it to `local` rolls back **both** PageBuilder and element-enrichment simultaneously. If only element-enrichment needs to roll back (page-builder is healthy), flip `element_enrichment_smoke_check_enabled=false` to silence the watchdog and remove the consumer's env-var override more surgically — or split `looksee_browsing_mode` into per-consumer variables before doing element-enrichment-only rollbacks. The latter is a meaningful design choice; defer until needed.
+Two granularities, both one-edit:
+
+- **Surgical (default)**: set `element_enrichment_browsing_mode = "local"` in the affected environment's tfvars. Page-builder is unaffected because it reads its own `page_builder_browsing_mode` override. Optionally also set `element_enrichment_smoke_check_enabled = false` to silence watchdog noise during the post-mortem.
+- **Coarse / multi-consumer**: set the global `looksee_browsing_mode = "local"`. Any consumer that did **not** explicitly override its mode falls back to local; consumers that pinned themselves to `"remote"` via their per-consumer override are unaffected. (The `coalesce(per_consumer, global)` ordering means per-consumer pins win — coarse rollback only catches consumers that opted into inheritance.) Use this only when an issue is plausibly cross-consumer (e.g., browser-service prod is degraded).
+
+Per-consumer overrides being the default means the surgical case is the everyday path; the coarse path is the emergency button.
 
 ## Critical files
 
