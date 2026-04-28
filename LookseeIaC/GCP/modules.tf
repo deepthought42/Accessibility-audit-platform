@@ -242,6 +242,17 @@ module "page_builder_cloud_run" {
     } : {},
   )
 
+  # Phase-4 cutover env vars (plain, not from Secret Manager). Defaults keep
+  # mode=local + smoke-check off, so this block is inert until the staging
+  # tfvars flip mode=remote. See browser-service/phase-4a5-pagebuilder-staging-cutover.md.
+  plain_environment_variables = {
+    "LOOKSEE_BROWSING_MODE"                   = var.looksee_browsing_mode
+    "LOOKSEE_BROWSING_SERVICE_URL"            = var.looksee_browsing_service_url
+    "LOOKSEE_BROWSING_SMOKE_CHECK_ENABLED"    = tostring(var.page_builder_smoke_check_enabled)
+    "LOOKSEE_BROWSING_SMOKE_CHECK_INTERVAL"   = var.looksee_browsing_smoke_check_interval
+    "LOOKSEE_BROWSING_SMOKE_CHECK_TARGET_URL" = var.looksee_browsing_smoke_check_target_url
+  }
+
   vpc_connector_name = module.vpc.vpc_connector_name
   vpc_egress         = "private-ranges-only"
   selenium_urls      = local.selenium_urls

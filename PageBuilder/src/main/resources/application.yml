@@ -68,3 +68,8 @@ looksee:
         service-url: ${LOOKSEE_BROWSING_SERVICE_URL:}
         connect-timeout: ${LOOKSEE_BROWSING_CONNECT_TIMEOUT:5s}
         read-timeout: ${LOOKSEE_BROWSING_READ_TIMEOUT:120s}
+        smoke-check:
+            enabled: ${LOOKSEE_BROWSING_SMOKE_CHECK_ENABLED:false}
+            interval: ${LOOKSEE_BROWSING_SMOKE_CHECK_INTERVAL:60s}
+            target-url: ${LOOKSEE_BROWSING_SMOKE_CHECK_TARGET_URL:https://example.com}
+            browser: ${LOOKSEE_BROWSING_SMOKE_CHECK_BROWSER:CHROME}
