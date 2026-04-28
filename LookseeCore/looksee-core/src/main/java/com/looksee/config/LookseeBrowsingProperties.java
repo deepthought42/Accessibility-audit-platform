@@ -1,7 +1,9 @@
 package com.looksee.config;
 
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.convert.DurationUnit;
 
 /**
  * Config binding for {@code looksee.browsing.*}.
@@ -44,6 +46,12 @@ public class LookseeBrowsingProperties {
      */
     public static class SmokeCheck {
         private boolean enabled = false;
+        // @DurationUnit makes unitless values bind as seconds — operators
+        // commonly write `interval=60` expecting seconds, but Spring Boot's
+        // default for unannotated Duration is millis, which would schedule a
+        // probe every 60ms and flood browser-service. Suffixed values
+        // (`60s`, `5m`) still parse correctly.
+        @DurationUnit(ChronoUnit.SECONDS)
         private Duration interval = Duration.ofSeconds(60);
         private String targetUrl = "https://example.com";
         private com.looksee.browser.enums.BrowserType browser = com.looksee.browser.enums.BrowserType.CHROME;
