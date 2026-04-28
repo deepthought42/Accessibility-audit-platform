@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.8.2] - 2026-04-26
+
+### Added
+- **`CapturePageSmokeCheck` Spring bean** in `LookseeCore/looksee-core/src/main/java/com/looksee/services/health/`. Periodically calls `browserService.capturePage` against the configured target URL and reports outcome via Micrometer counter `browser_service_smoke_checks{outcome=success|failure}` per the phase-4 metric contract. Doubles as a watchdog during phase-4 staging burn-in (4a.5) and prod cutover (4a.6).
+  - Disabled by default. Opt in per-consumer with `looksee.browsing.smoke-check.enabled=true`. The bean isn't even instantiated when off — zero runtime overhead.
+  - Implements `SchedulingConfigurer` + `PeriodicTrigger` rather than using `@Scheduled(fixedRateString=...)`. PR #56 review caught that an `@Scheduled` SpEL bean reference would fail to resolve at startup against the `@EnableConfigurationProperties`-bound `LookseeBrowsingProperties` bean (which has a non-camelCase name) — the SchedulingConfigurer pattern reads the bound `Duration` directly via constructor injection.
+  - Catches `Throwable` in the probe so a transient failure can't poison the scheduler thread.
+  - `MeterRegistry` is optional via `ObjectProvider.getIfAvailable()` — consumers without a registry see no-op metrics, no NPE.
+- **`LookseeBrowsingProperties.smokeCheck`** sub-properties: `enabled` (default false), `interval` (default 60s `Duration`), `target-url` (default `https://example.com`), `browser` (default `CHROME`).
+
+### Changed
+- No behavior change for opted-out consumers (the default).
+
+### State of phase-4 prep
+**The LookseeCore-side preparation for phase-4 cutover is complete.** Every executable LookseeCore deliverable from `browser-service/phase-4-consumer-cutover.md` has shipped:
+- 4a.1 — `BrowsingClient` Micrometer instrumentation (0.6.1)
+- 4a.3 — `looksee.browsing.*` env-var plumbing (0.6.1)
+- 4a.4 — `CapturePageSmokeCheck` watchdog bean (this release)
+- The entire 3-series remote-compat work (3 → 3b → 3c → 3d → 3e → 3f) that was a phase-4 prerequisite.
+
+The remaining phase-4 work — 4a.5 staging flip, 4a.6 prod flip, 4b element-enrichment cutover, 4c journeyExecutor cutover — is gated entirely on **browser-service deployment** + the infra-repo dashboard / alert rules. Both live outside this repo. Recommend pausing LookseeCore-side phase work and pivoting to those external blockers.
+
 ## [0.8.1] - 2026-04-25
 
 ### Added

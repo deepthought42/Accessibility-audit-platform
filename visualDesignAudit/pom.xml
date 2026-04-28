@@ -14,7 +14,7 @@
         <java.version>17</java.version>
 	    <springboot.version>2.6.13</springboot.version>
 		<lombok.version>1.18.36</lombok.version>
-		<core.version>0.8.1</core.version>
+		<core.version>0.8.2</core.version>
     </properties>
 
     <dependencyManagement>
