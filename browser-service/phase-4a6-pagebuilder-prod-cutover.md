@@ -47,7 +47,7 @@ Once those are in place, prod cutover is a config flip. Phase 4a.6 is intentiona
 - [ ] **Rollback dry-run within last 7 days.** Run the rollback procedure end-to-end against staging: edit staging tfvar `looksee_browsing_mode=local`, `terraform apply`, observe Cloud Run revision rollout, confirm metrics show local Selenium back in path. Restore the staging flip after the dry-run completes. Document the dry-run timestamp in the tracking issue.
 - [ ] **Cost alert armed.** Per umbrella §14.8 — cost alert on browser-service request volume + Cloud Run egress. The alert exists; this gate is "verify it's still firing on test events" (not "set it up").
 - [ ] **Browser-service prod reachable.** Curl `https://browser-service-prod.internal/v1/health` (or equivalent endpoint) returns 200 from the page-builder Cloud Run service account's network. If this fails, the cutover would produce 100% smoke-check failures on the first probe.
-- [ ] **Dashboard rendering prod consumer tag.** `browser_service_calls{consumer=page-builder}` and `browser_service_smoke_checks{consumer=page-builder}` panels render data from the prod environment. (Same dashboard as staging; just confirm prod-tagged metrics show up.)
+- [ ] **Dashboard rendering prod consumer tag.** Panels driven off `browser_service_calls_seconds_count{consumer="page-builder"}` and `browser_service_smoke_checks_total{consumer="page-builder"}` (the timer + counter exported series per umbrella §Observability prereqs) render data from the prod environment. Same dashboard as staging; just confirm prod-tagged metrics show up.
 
 If any prerequisite is not GO, **do not flip**. Each gate exists because of an incident class the umbrella doc anticipates.
 
@@ -73,10 +73,10 @@ PR title: **"chore(prod): flip page-builder to remote browsing (phase-4a.6)"**. 
 
 ### Watching for
 
-- `browser_service_calls{outcome=success,consumer=page-builder}` increasing on the dashboard.
-- `browser_service_smoke_checks{outcome=success,consumer=page-builder}` ticking once per 60s with no failures (first probe fires immediately on revision boot per the 4a.4 initial-delay-0 fix).
-- `browser_service_calls{outcome=failure}` rate stays <1% averaged over 5-minute windows.
-- p95 latency on `browser_service_calls` stays within 2× the prod local-mode baseline (capture the baseline from the 24 hours immediately before the flip, same approach as 4a.5).
+- `rate(browser_service_calls_seconds_count{outcome="success",consumer="page-builder"}[1m]) > 0` increasing on the dashboard.
+- `rate(browser_service_smoke_checks_total{outcome="success",consumer="page-builder"}[1m])` ticking once per 60s with no failures (first probe fires immediately on revision boot per the 4a.4 initial-delay-0 fix).
+- Error rate stays <1% averaged over 5-minute windows: `sum(rate(browser_service_calls_seconds_count{consumer="page-builder",outcome="failure"}[5m])) / sum(rate(browser_service_calls_seconds_count{consumer="page-builder"}[5m]))`.
+- p95 latency stays within 2× the prod local-mode baseline: `histogram_quantile(0.95, sum by (le) (rate(browser_service_calls_seconds_bucket{consumer="page-builder"}[5m])))`. Capture the baseline from the 24 hours immediately before the flip, same approach as 4a.5.
 - Sentry: no new error fingerprints tagged `service:page-builder` or `consumer:page-builder`.
 - Cloud Run revision health: error rate <1%, no instance crashes.
 
@@ -95,9 +95,14 @@ If all pass: declare 4a stable. Start the 7-day calm window.
 
 **Triggers (any of):** error rate >5% for >2 minutes, p95 >3× baseline, any new Sentry regression tagged `service:page-builder`, browser-service returning sustained 5xx, oncall page from cost alert.
 
-1. Edit prod tfvar: `looksee_browsing_mode = "local"`. Optionally also set `page_builder_smoke_check_enabled = false` to silence noise during the post-mortem.
+1. Edit prod tfvars **— set both at once**:
+   ```hcl
+   looksee_browsing_mode            = "local"
+   page_builder_smoke_check_enabled = false
+   ```
+   Both are required: `CapturePageSmokeCheck.prepare()` throws `IllegalStateException` on startup if `smoke-check.enabled=true` while `mode!=remote` (the mode-gate added in 4a.4 to prevent false-green metrics from a local-mode probe). Flipping mode without disabling the watchdog will crash-loop the next Cloud Run revision and turn rollback into an outage.
 2. `terraform apply` against prod. Cloud Run rolling redeploy completes in ≤10 minutes; concurrent requests drain on the old revision.
-3. Confirm via dashboard: `browser_service_calls` rate drops to zero (no remote traffic), local Selenium driver loads on next page-builder request.
+3. Confirm via dashboard: `rate(browser_service_calls_seconds_count{consumer="page-builder"}[1m])` drops to zero (no remote traffic), local Selenium driver loads on next page-builder request. (Bare `browser_service_calls` is not a real series — see umbrella §Observability prereqs.)
 4. Page browser-service oncall if the trigger was browser-service-shaped (5xx, latency).
 5. File an incident note with the specific failure mode + dashboard screenshots covering the 5 minutes pre-rollback. Do not re-flip until root cause is understood and fixed in either browser-service, LookseeCore, or PageBuilder.
 6. Re-flipping prod requires another 48-hour staging burn-in with the fix applied, then re-running this phase from the prerequisite gates.
