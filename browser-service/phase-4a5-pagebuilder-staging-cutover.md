@@ -81,23 +81,41 @@ PR title: **"feat(config): wire smoke-check env vars for phase-4a.5 staging cuto
 
 ### Commit 2 (LookseeIaC) — `feat(page-builder): add looksee browsing env vars`
 
-Edit `LookseeIaC/GCP/modules.tf` (`module "page_builder_cloud_run"`):
+> **Note:** the `modules/cloud_run` module's existing `environment_variables` parameter is `map(list(string))` and renders every entry through `value_from.secret_key_ref` — i.e. it's for Secret Manager references only. Plain key/value env vars need a separate path. The implementation introduces a new `plain_environment_variables = map(string)` parameter on the module (with a corresponding `dynamic "env"` block in `main.tf`) and routes the `LOOKSEE_BROWSING_*` vars through it. The existing `environment_variables` block is left untouched.
+
+Edit `LookseeIaC/GCP/modules/cloud_run/variables.tf` — add the new parameter:
 
 ```hcl
-environment_variables = merge(
-  {
-    "spring.data.neo4j.database" : [module.secrets.neo4j_db_name_secret_name, "latest"],
-    # ...existing entries...
-  },
-  var.gcp_api_key != "" ? { "gcp.api.key" : [...] } : {},
-  {
-    "LOOKSEE_BROWSING_MODE"                         = var.looksee_browsing_mode
-    "LOOKSEE_BROWSING_SERVICE_URL"                  = var.looksee_browsing_service_url
-    "LOOKSEE_BROWSING_SMOKE_CHECK_ENABLED"          = tostring(var.page_builder_smoke_check_enabled)
-    "LOOKSEE_BROWSING_SMOKE_CHECK_INTERVAL"         = var.looksee_browsing_smoke_check_interval
-    "LOOKSEE_BROWSING_SMOKE_CHECK_TARGET_URL"       = var.looksee_browsing_smoke_check_target_url
-  },
-)
+variable "plain_environment_variables" {
+  description = "Map of plain (non-secret) environment variables. Use environment_variables for secret references."
+  type        = map(string)
+  default     = {}
+}
+```
+
+Edit `LookseeIaC/GCP/modules/cloud_run/main.tf` — render the new map alongside the existing secret block:
+
+```hcl
+# Plain (non-secret) environment variables
+dynamic "env" {
+  for_each = var.plain_environment_variables
+  content {
+    name  = env.key
+    value = env.value
+  }
+}
+```
+
+Edit `LookseeIaC/GCP/modules.tf` (`module "page_builder_cloud_run"`) — add a sibling `plain_environment_variables` argument; **leave `environment_variables` unchanged**:
+
+```hcl
+plain_environment_variables = {
+  "LOOKSEE_BROWSING_MODE"                   = var.looksee_browsing_mode
+  "LOOKSEE_BROWSING_SERVICE_URL"            = var.looksee_browsing_service_url
+  "LOOKSEE_BROWSING_SMOKE_CHECK_ENABLED"    = tostring(var.page_builder_smoke_check_enabled)
+  "LOOKSEE_BROWSING_SMOKE_CHECK_INTERVAL"   = var.looksee_browsing_smoke_check_interval
+  "LOOKSEE_BROWSING_SMOKE_CHECK_TARGET_URL" = var.looksee_browsing_smoke_check_target_url
+}
 ```
 
 Edit `LookseeIaC/GCP/variables.tf` — add (defaults preserve current behavior):
@@ -176,26 +194,38 @@ PR title: **"chore(staging): flip page-builder to remote browsing (phase-4a.5)"*
 
 ### Burn-in pass criteria (umbrella doc §4a.5)
 
-48 hours green:
-- Error rate <1% averaged over any 15-minute window. Compute as `sum(browser_service_calls{outcome="failure"}) / sum(browser_service_calls)`.
-- p95 latency within 2× the local-mode baseline. Capture the local baseline from the 24 hours immediately before the flip.
+48 hours green. All metric expressions reference the timer's exported Prometheus series (`browser_service_calls_seconds_count` / `_sum` / `_max`) per the umbrella §Observability prereqs metric contract — bare `browser_service_calls{...}` is not a real series.
+- **Error rate <1%** averaged over any 15-minute window:
+  ```
+  sum(rate(browser_service_calls_seconds_count{consumer="page-builder", outcome="failure"}[15m]))
+    /
+  sum(rate(browser_service_calls_seconds_count{consumer="page-builder"}[15m]))
+  ```
+- **p95 latency within 2× the local-mode baseline**: `histogram_quantile(0.95, sum by (le) (rate(browser_service_calls_seconds_bucket{consumer="page-builder"}[5m])))`. Capture the local baseline from the 24 hours immediately before the flip.
 - No new Sentry regressions tagged `service:page-builder`.
-- Smoke-check failure rate <1% — small steady-state failures from genuine browser-service hiccups are expected and acceptable; sustained failure means rollback.
+- Smoke-check failure rate <1%: `sum(rate(browser_service_smoke_checks_total{consumer="page-builder", outcome="failure"}[15m])) / sum(rate(browser_service_smoke_checks_total{consumer="page-builder"}[15m]))`. Small steady-state failures from genuine browser-service hiccups are acceptable; sustained failure means rollback.
 
 ### Burn-in fail → rollback
 
 Any of: error rate >5% for >2 minutes, p95 >3× baseline, any Sentry new-regression in PageBuilder, browser-service returning 5xx.
 
-1. Edit staging tfvars: `looksee_browsing_mode = "local"`. Optionally set `page_builder_smoke_check_enabled = false` to silence noise during the post-mortem.
+1. Edit staging tfvars **— set both at once**:
+   ```hcl
+   looksee_browsing_mode            = "local"
+   page_builder_smoke_check_enabled = false
+   ```
+   Both are required: `CapturePageSmokeCheck.prepare()` throws `IllegalStateException` on startup if `smoke-check.enabled=true` while `mode!=remote` (the mode-gate added in 4a.4 to prevent false-green metrics from a local-mode probe). Flipping mode without disabling the watchdog will crash-loop the next Cloud Run revision and turn the rollback into an outage.
 2. `terraform apply` against staging.
 3. Cloud Run rolling redeploy completes in ≤10 minutes.
-4. Confirm via dashboard: `browser_service_calls` rate drops to zero (no remote traffic), local Selenium driver loads on next page-builder request.
+4. Confirm via dashboard: `rate(browser_service_calls_seconds_count{consumer="page-builder"}[1m])` drops to zero (no remote traffic), local Selenium driver loads on next page-builder request.
 5. File an incident note. Do not re-flip until root cause is understood and fixed in either browser-service, LookseeCore, or PageBuilder. Restart the 48-hour burn-in clock.
 
 ## Critical files
 
 - `PageBuilder/src/main/resources/application.yml` — add smoke-check property bindings (Commit 1)
-- `LookseeIaC/GCP/modules.tf` — `page_builder_cloud_run` `environment_variables` block (Commit 2)
+- `LookseeIaC/GCP/modules/cloud_run/variables.tf` — new `plain_environment_variables` parameter (Commit 2)
+- `LookseeIaC/GCP/modules/cloud_run/main.tf` — new `dynamic "env"` block rendering plain key/value vars (Commit 2)
+- `LookseeIaC/GCP/modules.tf` — `page_builder_cloud_run` block, add a sibling `plain_environment_variables` argument (Commit 2)
 - `LookseeIaC/GCP/variables.tf` — five new tfvars (Commit 2)
 - `LookseeIaC/GCP/<staging tfvars>` — three value overrides (Commit 3)
 
