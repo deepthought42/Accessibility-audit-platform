@@ -28,7 +28,7 @@ Both are already remote-compatible after phase-3b (PR #38 merged), so 4b is **de
 
 | Area | Decision |
 |---|---|
-| Mode knob | **Per-consumer override on top of the shared default.** Add `element_enrichment_browsing_mode` (string, default `"local"`). The cloud_run module passes `coalesce(var.element_enrichment_browsing_mode, var.looksee_browsing_mode)` to `LOOKSEE_BROWSING_MODE`. Result: setting the global to `"remote"` (from 4a.5) does **not** flip element-enrichment until its own per-consumer override is also set to `"remote"` in 3a/3b. This preserves the staged-flip gate that the shared-knob design would have bypassed (the new module would inherit `mode=remote` from staging the moment Commit 2 lands), and gives the surgical-rollback path that the original "shared knob" decision in 4a.5 deferred to "if needed". 4a/page-builder retains a `page_builder_browsing_mode` override on the same pattern (default `"local"`, set to `"remote"` in 4a.5/4a.6 staging+prod tfvars retroactively if not already), so the two consumers are independent post-flip. |
+| Mode knob | **Per-consumer pin, not an inheritance overlay.** Add `element_enrichment_browsing_mode` (string, default `"local"`). The cloud_run module reads `var.element_enrichment_browsing_mode` **directly** (no `coalesce` against the global). Default `"local"` keeps Commit 2 inert in every environment — including staging where 4a.5 already set `looksee_browsing_mode="remote"` — preserving the staged-flip gate that the shared-knob design would have bypassed. The shared `looksee_browsing_mode` remains in tfvars but is read only by consumers that haven't yet adopted a per-consumer override (today, only page-builder pre-retrofit). Coarse "flip everything" via the global only affects unadopted consumers; surgical pinning is the everyday path. (Earlier drafts of this plan documented `coalesce(per_consumer, global)` for inheritance, but with default `"local"` the per-consumer var is never null so coalesce never falls through — Codex flagged the same misleading framing on the 4c plan in PR #65; corrected here for consistency.) |
 | Smoke-check enable | Per-consumer `element_enrichment_smoke_check_enabled` tfvar (default false). Independent burn-in observation per consumer, identical to the `page_builder_smoke_check_enabled` pattern. |
 | Smoke-check target URL / interval / browser | Reuse the existing shared tfvars (`looksee_browsing_smoke_check_target_url`, `_interval`). Keep the surface flat — these aren't consumer-specific. |
 | Burn-in window | 48 hours staging (umbrella §4b.2 inherits §4a.5). 1 hour prod observation + 7-day calm before 4c. |
@@ -85,7 +85,7 @@ PR title: **"feat(config): wire looksee browsing env vars for phase-4b cutover"*
 - New tfvar `element_enrichment_browsing_mode` (string, default `"local"`). **Default is `"local"`, not the global `var.looksee_browsing_mode`, so this commit lands inert in every environment** — including staging where `var.looksee_browsing_mode=remote` from 4a.5. The actual flip happens in 3a/3b.
 - New tfvar `element_enrichment_smoke_check_enabled` (bool, default `false`).
 - New tfvar `element_enrichment_image` (string, default `"docker.io/deepthought42/element-enrichment:latest"` — adjust to actual image name).
-- Wire `LOOKSEE_BROWSING_*` via `plain_environment_variables`. The mode env var is `coalesce(var.element_enrichment_browsing_mode, var.looksee_browsing_mode)` — explicit per-consumer override wins; otherwise inherit the global.
+- Wire `LOOKSEE_BROWSING_*` via `plain_environment_variables`. The mode env var reads `var.element_enrichment_browsing_mode` directly — no `coalesce` against the global. Per-consumer pin is the design; the global knob does not affect this consumer once the per-consumer override exists.
 
 If element-enrichment is deployed via a different mechanism, this commit goes wherever that lives. The substantive constraint stays identical: per-consumer mode override defaults to `"local"` so Commit 2 cannot flip the consumer just by landing.
 
@@ -107,7 +107,7 @@ element_enrichment_smoke_check_enabled = true
 # no change needed there. Element-enrichment's per-consumer mode
 # override (above) is what actually flips this consumer to remote;
 # the shared looksee_browsing_mode from 4a.5 is unrelated to this
-# consumer's revision since the module reads its own override first.
+# consumer's revision since the module reads its own override directly.
 ```
 
 Apply via the staging Terraform workflow. Cloud Run rolling redeploy; observation begins.
@@ -171,7 +171,7 @@ Two granularities, both one-edit:
   element_enrichment_smoke_check_enabled = false
   ```
   Both are required: `CapturePageSmokeCheck.prepare()` throws `IllegalStateException` on startup if `smoke-check.enabled=true` while `mode!=remote` (the mode-gate added in 4a.4 to prevent false-green metrics from a local-mode probe). Flipping mode without disabling the watchdog crash-loops the next Cloud Run revision and turns rollback into an outage. Page-builder is unaffected because it reads its own `page_builder_browsing_mode` override.
-- **Coarse / multi-consumer**: set the global `looksee_browsing_mode = "local"`. Any consumer that did **not** explicitly override its mode falls back to local; consumers that pinned themselves to `"remote"` via their per-consumer override are unaffected. (The `coalesce(per_consumer, global)` ordering means per-consumer pins win — coarse rollback only catches consumers that opted into inheritance.) For each affected consumer that inherits, also set `<consumer>_smoke_check_enabled = false` if its watchdog was on, for the same crash-loop reason. Use this granularity only when an issue is plausibly cross-consumer (e.g., browser-service prod is degraded).
+- **Coarse / multi-consumer**: only useful for consumers that haven't adopted a per-consumer pin (today, page-builder pre-retrofit). Setting `looksee_browsing_mode = "local"` flips those; consumers with their own `<consumer>_browsing_mode` pin are unaffected because their cloud_run module reads the per-consumer variable directly (no inheritance via `coalesce`). To roll back multiple per-consumer-pinned consumers at once, edit each consumer's pin individually — there is no shared rollback knob in this design. Trade-off accepted to preserve the staged-flip gate. For each consumer being rolled back with its watchdog on, also flip its `<consumer>_smoke_check_enabled = false` for the mode-gate crash-loop reason.
 
 Per-consumer overrides being the default means the surgical case is the everyday path; the coarse path is the emergency button.
 
