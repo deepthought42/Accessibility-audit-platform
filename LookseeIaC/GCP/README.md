@@ -80,7 +80,6 @@ These have sensible defaults. Override only if needed.
 | `region` | `us-central1` | GCP region for all resources |
 | `environment` | `dev` | Environment name (dev, prod, etc.) |
 | `credentials_file` | `null` | Path to GCP SA JSON key file. Leave null to use ADC or Workload Identity Federation |
-| `selenium_instance_count` | `1` | Number of Selenium Chrome browser instances to deploy |
 
 ---
 
@@ -99,7 +98,6 @@ All container image variables have defaults pointing to Docker Hub. Override to 
 | `content_audit_image` | `docker.io/deepthought42/content-audit:latest` |
 | `visual_design_audit_image` | `docker.io/deepthought42/visual-design-audit:latest` |
 | `information_architecture_audit_image` | `docker.io/deepthought42/information-architecture-audit:latest` |
-| `selenium_image` | `docker.io/selenium/standalone-chrome:3.141.59` |
 
 ---
 
@@ -213,7 +211,6 @@ These are injected into Cloud Run containers as environment variables or Secret 
 | `pusher.cluster` | Secret Manager reference (audit-service only) |
 | `pusher.secret` | Secret Manager reference (audit-service only) |
 | `pubsub.*` topics | Environment variables from Pub/Sub module outputs |
-| `SELENIUM_URLS` | Environment variable from Selenium module outputs |
 
 ---
 

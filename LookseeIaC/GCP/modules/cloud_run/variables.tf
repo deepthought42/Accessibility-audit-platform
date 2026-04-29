@@ -98,12 +98,6 @@ variable "vpc_egress" {
   default     = "all-traffic"
 }
 
-variable "selenium_urls" {
-  description = "List of Selenium instance URLs"
-  type        = list(string)
-  default     = []
-}
-
 variable "max_instances" {
   description = "Maximum number of Cloud Run instances"
   type        = number
