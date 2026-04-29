@@ -165,8 +165,13 @@ Identical shape to 4a.5/4a.6: edit the relevant tfvar override, `terraform apply
 
 Two granularities, both one-edit:
 
-- **Surgical (default)**: set `element_enrichment_browsing_mode = "local"` in the affected environment's tfvars. Page-builder is unaffected because it reads its own `page_builder_browsing_mode` override. Optionally also set `element_enrichment_smoke_check_enabled = false` to silence watchdog noise during the post-mortem.
-- **Coarse / multi-consumer**: set the global `looksee_browsing_mode = "local"`. Any consumer that did **not** explicitly override its mode falls back to local; consumers that pinned themselves to `"remote"` via their per-consumer override are unaffected. (The `coalesce(per_consumer, global)` ordering means per-consumer pins win — coarse rollback only catches consumers that opted into inheritance.) Use this only when an issue is plausibly cross-consumer (e.g., browser-service prod is degraded).
+- **Surgical (default)**: set both at once in the affected environment's tfvars:
+  ```hcl
+  element_enrichment_browsing_mode       = "local"
+  element_enrichment_smoke_check_enabled = false
+  ```
+  Both are required: `CapturePageSmokeCheck.prepare()` throws `IllegalStateException` on startup if `smoke-check.enabled=true` while `mode!=remote` (the mode-gate added in 4a.4 to prevent false-green metrics from a local-mode probe). Flipping mode without disabling the watchdog crash-loops the next Cloud Run revision and turns rollback into an outage. Page-builder is unaffected because it reads its own `page_builder_browsing_mode` override.
+- **Coarse / multi-consumer**: set the global `looksee_browsing_mode = "local"`. Any consumer that did **not** explicitly override its mode falls back to local; consumers that pinned themselves to `"remote"` via their per-consumer override are unaffected. (The `coalesce(per_consumer, global)` ordering means per-consumer pins win — coarse rollback only catches consumers that opted into inheritance.) For each affected consumer that inherits, also set `<consumer>_smoke_check_enabled = false` if its watchdog was on, for the same crash-loop reason. Use this granularity only when an issue is plausibly cross-consumer (e.g., browser-service prod is degraded).
 
 Per-consumer overrides being the default means the surgical case is the everyday path; the coarse path is the emergency button.
 
