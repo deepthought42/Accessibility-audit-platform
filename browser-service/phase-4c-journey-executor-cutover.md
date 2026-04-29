@@ -36,7 +36,7 @@ Codex's review of an earlier draft of this plan caught the issue. This plan supe
 | Prod calm-window | **Skipped.** Project not yet in production, so 7-day prod-stability gates from the umbrella are aspirational. Reinstate before the first real prod traffic. |
 | Call-site migration | **None.** The `buildPageState(browser, ...)` path captures from the live post-journey session via `RemoteBrowser`'s phase-3b implementation of `getSource`/`getViewportScreenshot`/`getFullPageScreenshotShutterbug`/`removeDriftChat`/`removeGDPRmodals`. Migrating to `capturePage` would silently lose journey state and produce an xpath/element mismatch. journeyExecutor's structural difference from PageBuilder (capture-after-stateful-journey vs. capture-fresh) requires keeping the in-session capture. |
 | Metrics common-tag wiring | New `BrowsingClientMetricsConfig` in `journeyExecutor/src/main/java/com/looksee/journeyExecutor/config/`, copy of PageBuilder's, with `consumer=journey-executor`. `@ConditionalOnBean(MeterRegistry.class)` so deployments without a registry still work. |
-| Metrics export path | journeyExecutor must depend on `io.micrometer:micrometer-registry-stackdriver` so Spring Boot's `MANAGEMENT_METRICS_STACKDRIVER_ENABLED=true` (set unconditionally by the cloud_run module at `modules/cloud_run/main.tf:62`) actually auto-configures a `StackdriverMeterRegistry`. Without an exporter on the classpath the property is a no-op and `MeterFilter.commonTags(...)` attaches to a `CompositeMeterRegistry` with no children — burn-in queries against `browser_service_calls_seconds_*` would return zero results even when remote browsing is healthy. The exporter is version-managed in `A11yParent` (`<dependencyManagement>`) but not currently declared in any consumer's `<dependencies>`. **PageBuilder has the same gap** and is also currently emitting metrics into a non-exporting registry — flagged as a follow-up; not in 4c scope. |
+| Metrics export path | journeyExecutor must explicitly depend on **both** `spring-boot-starter-actuator` (drives Spring Boot's `MetricsAutoConfiguration` + the `management.metrics.export.stackdriver.*` property binding) **and** `io.micrometer:micrometer-registry-stackdriver` (so the auto-config can actually instantiate a `StackdriverMeterRegistry`). With both on the classpath plus `MANAGEMENT_METRICS_STACKDRIVER_ENABLED=true` (set by the cloud_run module's observability defaults) plus `gcp.project-id` (also set by the module via `SPRING_CLOUD_GCP_PROJECT_ID`), Spring Boot wires the registry into the `CompositeMeterRegistry` and `browser_service_calls_seconds_*` reaches Stackdriver. Without either dep, the `MeterFilter.commonTags(...)` attaches to whatever falls back — most likely the `SimpleMeterRegistry` registered by `looksee-messaging`'s `MessagingObservabilityAutoConfiguration` (`@ConditionalOnMissingBean`) — and burn-in queries return zero results even when remote browsing is healthy. **PageBuilder has the same gap** (declares actuator but not stackdriver-registry) — flagged as a follow-up; not in 4c scope. |
 
 ## Authoritative design references
 
@@ -58,18 +58,26 @@ Codex's review of an earlier draft of this plan caught the issue. This plan supe
 
 **No call-site refactor.** This commit is config-only: a Micrometer registry-exporter dependency, a common-tag config, and an `application.yml` env-var binding.
 
-**Add to `journeyExecutor/pom.xml` `<dependencies>`** (version comes from `A11yParent`'s `<dependencyManagement>` — no version literal here):
+**Add to `journeyExecutor/pom.xml` `<dependencies>`** (versions come from `A11yParent`'s `<dependencyManagement>` — no version literals here):
 
 ```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
 <dependency>
     <groupId>io.micrometer</groupId>
     <artifactId>micrometer-registry-stackdriver</artifactId>
 </dependency>
 ```
 
-This is what makes `MANAGEMENT_METRICS_STACKDRIVER_ENABLED=true` (set by the cloud_run module's observability defaults at `modules/cloud_run/main.tf:62`) actually wire up a `StackdriverMeterRegistry`. Without it, the property is a no-op, the `MeterFilter` below attaches to a registry with no exporter, and the burn-in queries return empty.
+Both are required:
+- **`spring-boot-starter-actuator`** — explicitly declare it (currently inherited transitively, which is fragile). Drives Spring Boot's `MetricsAutoConfiguration`, which registers a `CompositeMeterRegistry` and binds `management.metrics.export.stackdriver.*` properties.
+- **`micrometer-registry-stackdriver`** — without this on the classpath, `MANAGEMENT_METRICS_STACKDRIVER_ENABLED=true` (set by the cloud_run module's observability defaults at `modules/cloud_run/main.tf:62`) is a no-op. The `StackdriverMeterRegistry` auto-config requires the dep + the property + a `gcp.project-id` (the latter is already set by the module's `SPRING_CLOUD_GCP_PROJECT_ID` env var).
 
-> **Cross-consumer note:** PageBuilder has the same gap today and is also missing the registry-exporter dependency. A retroactive PR should add it — not 4c scope, but tracking it in §Follow-ups below so 4a's burn-in criteria become observable too.
+> **`MessagingObservabilityAutoConfiguration` fallback note:** `looksee-messaging` registers a `SimpleMeterRegistry` via `@Bean @ConditionalOnMissingBean` (`looksee-messaging/.../observability/MessagingObservabilityAutoConfiguration.java:33–36`) so consumers without their own registry still get one. With actuator + stackdriver-registry on classpath in prod, Spring Boot's auto-config registers the `CompositeMeterRegistry` first and the fallback's `@ConditionalOnMissingBean` doesn't fire. In tests where neither auto-config kicks in (slim context), the fallback wins — that's expected and correct test isolation.
+
+> **Cross-consumer note:** PageBuilder has the same gap today (missing both deps explicitly; only `spring-boot-starter-actuator` is declared, no stackdriver registry). A retroactive PR should add `micrometer-registry-stackdriver` — not 4c scope, but tracked in §Follow-ups below so 4a's burn-in criteria become observable too.
 
 Create `journeyExecutor/src/main/java/com/looksee/journeyExecutor/config/BrowsingClientMetricsConfig.java` — direct copy of `PageBuilder/src/main/java/com/looksee/pageBuilder/config/BrowsingClientMetricsConfig.java`, with the package adjusted and the tag value changed to `consumer=journey-executor`:
 
@@ -170,20 +178,30 @@ Once Commit 2 has landed and browser-service-staging is reachable:
 # Staging tfvars override
 journey_executor_browsing_mode       = "remote"
 journey_executor_smoke_check_enabled = true
+
+# Pre-flight check: looksee_browsing_service_url MUST be non-blank in this
+# environment. LookseeCore's BrowsingClientConfig throws on a blank URL when
+# mode=remote, which would fail consumer startup. 4a.5 set this in staging
+# tfvars; if executing 4c against a fresh environment, set it explicitly:
+# looksee_browsing_service_url = "https://browser-service-staging.internal/v1"
 ```
 
-Apply via the staging Terraform workflow. Cloud Run rolling redeploy of the journey-executor revision picks up the new env vars.
+Apply via the staging Terraform workflow. Cloud Run rolling redeploy of the journey-executor revision picks up the new env vars. Verify `looksee_browsing_service_url` resolves to a non-blank value via `terraform output` before applying.
 
-48-hour burn-in pass criteria (umbrella §4a.5, identical to 4b — all expressions reference the timer's exported Prometheus series per umbrella §Observability prereqs):
+48-hour burn-in pass criteria (umbrella §4a.5, identical to 4b). The `BrowsingClient` facade timer is built with `.publishPercentileHistogram()` (verified at `LookseeCore/looksee-browsing-client/src/main/java/com/looksee/browsing/client/BrowsingClient.java:414`), so `browser_service_calls_seconds_bucket` is available alongside the contractual `_count`/`_sum`/`_max` series — burn-in queries can use real percentiles, not just `_max`.
+- **Minimum-traffic guard.** All gates below are evaluated only when `sum(rate(browser_service_calls_seconds_count{consumer="journey-executor"}[5m])) >= 0.5` (≥1 call every 2 seconds, smoothed over 5 minutes). At lower throughput, dashboard panels show "insufficient traffic"; signed-off staging burn-in requires the guard to hold for ≥40 of the 48 hours so we're not certifying a quiet period.
 - **Error rate <1%** averaged over any 15-minute window:
   ```
   sum(rate(browser_service_calls_seconds_count{consumer="journey-executor", outcome="failure"}[15m]))
     /
   sum(rate(browser_service_calls_seconds_count{consumer="journey-executor"}[15m]))
   ```
-- **Latency within 2× the local-mode baseline** for journey-executor. Per the umbrella metric contract (§Observability prereqs), the timer guarantees `_seconds_count` / `_seconds_sum` / `_seconds_max` series; histogram buckets require explicitly enabling `publishPercentileHistogram()` on the timer builder, which the contract does **not** mandate. So:
-  - **Default (contractual):** track `max(browser_service_calls_seconds_max{consumer="journey-executor"})` over the 5-minute rolling window. Coarser than p95 but contractually available without registry changes.
-  - **Optional upgrade (only if histogram is enabled):** `histogram_quantile(0.95, sum by (le) (rate(browser_service_calls_seconds_bucket{consumer="journey-executor"}[5m])))`. Verify `..._seconds_bucket` series exists in the prod Prometheus before relying on this for sign-off.
+- **p95 latency within 2× the local-mode baseline** for journey-executor:
+  ```
+  histogram_quantile(0.95, sum by (le) (rate(browser_service_calls_seconds_bucket{consumer="journey-executor"}[5m])))
+  ```
+  Capture the local-mode baseline from the same expression evaluated against the 24 hours immediately before the staging flip.
+- **Mean latency check (cross-validation):** `sum(rate(browser_service_calls_seconds_sum{consumer="journey-executor"}[5m])) / sum(rate(browser_service_calls_seconds_count{consumer="journey-executor"}[5m]))` should track within 2× of its pre-flip baseline. Using `sum/count` instead of `_max` avoids the trap where Micrometer's window-scoped `_max` resets on quiet samples and looks artificially healthy at low traffic.
 - No new Sentry regressions tagged `service:journey-executor`.
 - Smoke-check failure rate <1%: `sum(rate(browser_service_smoke_checks_total{consumer="journey-executor", outcome="failure"}[15m])) / sum(rate(browser_service_smoke_checks_total{consumer="journey-executor"}[15m]))`.
 - **Cross-consumer guardrail:** `consumer=page-builder` and `consumer=element-enrichment` metrics stay green throughout — bringing on the third consumer must not destabilize the first two.
@@ -194,6 +212,13 @@ Apply via the staging Terraform workflow. Cloud Run rolling redeploy of the jour
 # Prod tfvars override
 journey_executor_browsing_mode       = "remote"
 journey_executor_smoke_check_enabled = true
+
+# Pre-flight: same service-url precondition as staging. 4a.6 prod flip set
+# looksee_browsing_service_url for prod; verify via `terraform output` before
+# applying. If unset, flipping will crash-loop the next Cloud Run revision
+# because BrowsingClientConfig rejects a blank service URL when mode=remote.
+# To set it explicitly in this commit:
+# looksee_browsing_service_url = "https://browser-service-prod.internal/v1"
 ```
 
 Same six prereqs as 4a.6: staging burn-in signed off, oncall scheduled, rollback dry-run within 7 days, cost alert armed, browser-service prod reachable, dashboard renders prod `consumer=journey-executor` tag.
@@ -206,7 +231,7 @@ PR titles: **"chore(staging): flip journey-executor to remote browsing (phase-4c
 
 ### Per-commit
 
-- Commit 1: `cd journeyExecutor && mvn verify`. Use `verify`, not `test`: journeyExecutor binds JaCoCo coverage enforcement to the `verify` phase, so `mvn test` can pass while CI's coverage gate fails later. `verify` runs both. Compile alone is insufficient anyway — it doesn't start a Spring context. The existing journeyExecutor `@SpringBootTest`-style integration tests boot the application context during `test`/`verify` and exercise component-scanning of the new `BrowsingClientMetricsConfig` + the new `micrometer-registry-stackdriver` dep; if no such test currently covers the `config/` package, add a minimal `@SpringBootTest(classes = Application.class)` smoke test that asserts the `MeterRegistry` bean is present, the `consumer=journey-executor` common tag is registered, and (with default `application.yml`) is a `StackdriverMeterRegistry` (or composite containing one). `application.yml` defaults preserve current behavior (mode=local, smoke-check off), so no runtime probe is triggered during test.
+- Commit 1: `cd journeyExecutor && mvn verify`. Use `verify`, not `test`: journeyExecutor binds JaCoCo coverage enforcement to the `verify` phase, so `mvn test` can pass while CI's coverage gate fails later. `verify` runs both. Compile alone is insufficient — it doesn't start a Spring context. The existing journeyExecutor `@SpringBootTest`-style integration tests boot the application context during `test`/`verify` and exercise component-scanning of the new `BrowsingClientMetricsConfig`. If no such test currently covers the `config/` package, add a minimal `@SpringBootTest(classes = Application.class)` smoke test that asserts: (1) a `MeterRegistry` bean is present (will be the messaging-fallback `SimpleMeterRegistry` in the test slice — that's correct, see note below); (2) the `consumer=journey-executor` common tag is registered (verifiable by recording any timer and reading it back). **Do not assert** the bean type is `StackdriverMeterRegistry`: default `application.yml` resolves `MANAGEMENT_METRICS_STACKDRIVER_ENABLED:false` from the env var, so Stackdriver auto-config is intentionally off in tests, and asserting the prod-only bean type would force test-only divergent config. Production observability is verified at deploy time (boot-log inspection + Stackdriver "Metrics Explorer" rendering `consumer=journey-executor` series), not in unit tests. `application.yml` defaults preserve current runtime behavior (mode=local, smoke-check off), so no probe fires during test.
 - Commit 2: `terraform plan` — shows new env vars added to journey-executor revision; non-staging environments unchanged because per-consumer mode override defaults to `"local"`.
 - Commit 3a/3b: `terraform plan` against the target environment shows `LOOKSEE_BROWSING_MODE` flipping `local → remote` and `LOOKSEE_BROWSING_SMOKE_CHECK_ENABLED=true`.
 
