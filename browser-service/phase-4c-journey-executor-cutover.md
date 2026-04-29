@@ -30,7 +30,7 @@ Codex's review of an earlier draft of this plan caught the issue. This plan supe
 
 | Area | Decision |
 |---|---|
-| Mode knob | Per-consumer override on top of the shared default, identical pattern to 4b. Add `journey_executor_browsing_mode` (string, default `"local"`); `journey_executor_cloud_run` reads `coalesce(var.journey_executor_browsing_mode, var.looksee_browsing_mode)`. Default `"local"` keeps the IaC commit inert until staging tfvars explicitly flip the per-consumer override to `"remote"`. |
+| Mode knob | Per-consumer pin, **not** an inheritance overlay. Add `journey_executor_browsing_mode` (string, default `"local"`); `journey_executor_cloud_run` reads `var.journey_executor_browsing_mode` **directly** (no `coalesce` against the global). Default `"local"` keeps Commit 2 inert in every environment — including staging where 4a.5 set `looksee_browsing_mode="remote"` — and is the deliberate fix Codex flagged on the original 4b plan (PR #62) where landing the IaC commit auto-flipped a new consumer via the global knob. The shared `looksee_browsing_mode` remains in tfvars but is read only by consumers that haven't yet adopted a per-consumer override (today, only page-builder until the 4b plan's retroactive note is acted on). Coarse "flip everything" via the global knob therefore only affects unadopted consumers; surgical pinning is the everyday path. |
 | Smoke-check enable | Per-consumer `journey_executor_smoke_check_enabled` tfvar (default false). Independent burn-in observation per consumer, matching the page_builder + element_enrichment pattern. |
 | Smoke-check target URL / interval / browser | Reuse the shared tfvars (`looksee_browsing_smoke_check_target_url`, `_interval`). |
 | Prod calm-window | **Skipped.** Project not yet in production, so 7-day prod-stability gates from the umbrella are aspirational. Reinstate before the first real prod traffic. |
@@ -45,13 +45,13 @@ Codex's review of an earlier draft of this plan caught the issue. This plan supe
 
 ## Prerequisites — must be GO before execution
 
-- [x] Phase-3b code merged to main (PR #38, commit `748d42a`). Without it, `step_executor.execute(browser, step)` and the element-state extraction branch throw on remote. Confirmed; same prereq satisfied 4b shipped against.
+- [x] Phase-3b code merged to main (PR #38, commit `748d42a`). Without it, `step_executor.execute(browser, step)` and the element-state extraction branch throw on remote.
 - [x] journeyExecutor pinned to LookseeCore 0.8.2 (`journeyExecutor/pom.xml:15`: `<core.version>0.8.2</core.version>`).
 - [x] `journey_executor_cloud_run` module exists in `LookseeIaC/GCP/modules.tf:318`.
 - [x] `plain_environment_variables` parameter exists on `modules/cloud_run` (shipped in 4a.5 PR #60). No module-level work needed in 4c.
 - [ ] Phase 4b consumer-side wiring + IaC merged (Commit 1 + Commit 2 of 4b plan executed). The shared `looksee_browsing_mode` knob and the per-consumer mode-override pattern need to exist in IaC before 4c reuses them. Once 4b's Commit 2 lands, 4c's IaC commit is additive and small.
 
-## Execution plan — 3 commits across 2 repos
+## Execution plan — 3 logical commits, 4 PRs (Commit 3 splits into 3a/3b)
 
 ### Commit 1 (journeyExecutor) — `feat(config): consumer=journey-executor metrics common-tag + browsing env vars`
 
@@ -112,7 +112,7 @@ Edit `LookseeIaC/GCP/variables.tf` — add two new tfvars at the end of the exis
 
 ```hcl
 variable "journey_executor_browsing_mode" {
-  description = "Per-consumer override for journey-executor's looksee.browsing.mode. Defaults to 'local' so this commit lands inert; staging/prod tfvars set 'remote' explicitly."
+  description = "Per-consumer pin for journey-executor's looksee.browsing.mode. Defaults to 'local' so this commit lands inert in every environment regardless of var.looksee_browsing_mode; staging/prod tfvars set 'remote' explicitly to flip this consumer."
   type        = string
   default     = "local"
   validation {
@@ -132,7 +132,7 @@ Edit `LookseeIaC/GCP/modules.tf` (`module "journey_executor_cloud_run"`) — add
 
 ```hcl
 plain_environment_variables = {
-  "LOOKSEE_BROWSING_MODE"                   = coalesce(var.journey_executor_browsing_mode, var.looksee_browsing_mode)
+  "LOOKSEE_BROWSING_MODE"                   = var.journey_executor_browsing_mode
   "LOOKSEE_BROWSING_SERVICE_URL"            = var.looksee_browsing_service_url
   "LOOKSEE_BROWSING_SMOKE_CHECK_ENABLED"    = tostring(var.journey_executor_smoke_check_enabled)
   "LOOKSEE_BROWSING_SMOKE_CHECK_INTERVAL"   = var.looksee_browsing_smoke_check_interval
@@ -140,7 +140,7 @@ plain_environment_variables = {
 }
 ```
 
-The `coalesce(per_consumer, global)` ordering matches the 4b pattern: explicit per-consumer override wins; otherwise inherit the global. Default `"local"` on the per-consumer override means this commit lands inert in every environment, including staging where `var.looksee_browsing_mode=remote` from 4a.5.
+Reading `var.journey_executor_browsing_mode` directly (no `coalesce` against the global) means this commit lands inert at `"local"` in every environment — including staging where `var.looksee_browsing_mode="remote"` from 4a.5. The staged 3a/3b flips set the per-consumer pin to `"remote"` explicitly. Page-builder / element-enrichment rollback decisions don't drag journey-executor along, and journey-executor's flips don't drag them.
 
 PR title: **"feat(journey-executor): cutover env vars (phase-4c)"**.
 
@@ -167,11 +167,9 @@ Apply via the staging Terraform workflow. Cloud Run rolling redeploy of the jour
     /
   sum(rate(browser_service_calls_seconds_count{consumer="journey-executor"}[15m]))
   ```
-- **p95 latency within 2× the local-mode baseline** for journey-executor:
-  ```
-  histogram_quantile(0.95, sum by (le) (rate(browser_service_calls_seconds_bucket{consumer="journey-executor"}[5m])))
-  ```
-  (Falls back to `browser_service_calls_seconds_max` if the registry doesn't publish a percentile histogram.)
+- **Latency within 2× the local-mode baseline** for journey-executor. Per the umbrella metric contract (§Observability prereqs), the timer guarantees `_seconds_count` / `_seconds_sum` / `_seconds_max` series; histogram buckets require explicitly enabling `publishPercentileHistogram()` on the timer builder, which the contract does **not** mandate. So:
+  - **Default (contractual):** track `max(browser_service_calls_seconds_max{consumer="journey-executor"})` over the 5-minute rolling window. Coarser than p95 but contractually available without registry changes.
+  - **Optional upgrade (only if histogram is enabled):** `histogram_quantile(0.95, sum by (le) (rate(browser_service_calls_seconds_bucket{consumer="journey-executor"}[5m])))`. Verify `..._seconds_bucket` series exists in the prod Prometheus before relying on this for sign-off.
 - No new Sentry regressions tagged `service:journey-executor`.
 - Smoke-check failure rate <1%: `sum(rate(browser_service_smoke_checks_total{consumer="journey-executor", outcome="failure"}[15m])) / sum(rate(browser_service_smoke_checks_total{consumer="journey-executor"}[15m]))`.
 - **Cross-consumer guardrail:** `consumer=page-builder` and `consumer=element-enrichment` metrics stay green throughout — bringing on the third consumer must not destabilize the first two.
@@ -194,7 +192,7 @@ PR titles: **"chore(staging): flip journey-executor to remote browsing (phase-4c
 
 ### Per-commit
 
-- Commit 1: `cd journeyExecutor && mvn compile`. The new `BrowsingClientMetricsConfig` should pass component-scan; `application.yml` is a resource file, no behavior change with default env vars.
+- Commit 1: `cd journeyExecutor && mvn test` — compile is necessary but not sufficient (it doesn't start a Spring context). The existing journeyExecutor `@SpringBootTest`-style integration tests will boot the application context and exercise component-scanning of the new `BrowsingClientMetricsConfig`; if no such test exists yet, add a minimal `@SpringBootTest(classes = Application.class)` smoke test under `src/test/java/.../config/` that asserts the bean is present and the `consumer=journey-executor` common tag is registered. `application.yml` defaults preserve current behavior (mode=local, smoke-check off), so no runtime probe is triggered during test.
 - Commit 2: `terraform plan` — shows new env vars added to journey-executor revision; non-staging environments unchanged because per-consumer mode override defaults to `"local"`.
 - Commit 3a/3b: `terraform plan` against the target environment shows `LOOKSEE_BROWSING_MODE` flipping `local → remote` and `LOOKSEE_BROWSING_SMOKE_CHECK_ENABLED=true`.
 
@@ -216,7 +214,7 @@ Identical shape to 4b: edit the relevant tfvar override, `terraform apply`, ≤1
   journey_executor_smoke_check_enabled = false
   ```
   Both are required: `CapturePageSmokeCheck.prepare()` throws `IllegalStateException` on startup if `smoke-check.enabled=true` while `mode!=remote` (the mode-gate added in 4a.4 to prevent false-green metrics from a local-mode probe). Flipping mode without disabling the watchdog crash-loops the next Cloud Run revision and turns rollback into an outage. PageBuilder + element-enrichment are unaffected because each reads its own per-consumer override.
-- **Coarse / multi-consumer**: set the global `looksee_browsing_mode = "local"`. Any consumer that did **not** explicitly override its mode falls back to local; consumers pinned via per-consumer override are unaffected. For each affected consumer that inherits the global and has its watchdog on, also flip its `<consumer>_smoke_check_enabled = false` for the same crash-loop reason.
+- **Coarse / multi-consumer**: only useful for consumers that haven't adopted a per-consumer pin (today, page-builder pre-retrofit). Setting `looksee_browsing_mode = "local"` flips those; consumers with their own `<consumer>_browsing_mode` pin (element-enrichment after 4b ships, journey-executor after this phase) are unaffected. To roll back multiple per-consumer-pinned consumers at once, edit each consumer's pin individually — there is no shared rollback knob in this design. Trade-off accepted to preserve the staged-flip gate. For each consumer being rolled back with its watchdog on, also flip its `<consumer>_smoke_check_enabled = false` for the mode-gate crash-loop reason.
 
 ## Critical files
 
@@ -234,12 +232,12 @@ One tracking issue covering all three commits, since the burn-in is the unit of 
 
 ## Definition of done
 
-- [x] Commit 1 merged (metrics common-tag config + application.yml env-var bindings).
-- [x] Commit 2 merged (LookseeIaC tfvars + module wiring).
-- [x] Commit 3a merged + applied (staging flip).
-- [x] 48 consecutive hours of green staging burn-in.
-- [x] Commit 3b merged + applied (prod flip).
-- [x] 60 consecutive minutes of green prod observation.
-- [x] No rollback executed at any point.
+- [ ] Commit 1 merged (metrics common-tag config + application.yml env-var bindings).
+- [ ] Commit 2 merged (LookseeIaC tfvars + module wiring).
+- [ ] Commit 3a merged + applied (staging flip).
+- [ ] 48 consecutive hours of green staging burn-in.
+- [ ] Commit 3b merged + applied (prod flip).
+- [ ] 60 consecutive minutes of green prod observation.
+- [ ] No rollback executed at any point.
 
-When all eight boxes check out, **phase 4c is done — and phase 4 is complete.** Every browser-using consumer in the umbrella's census runs against browser-service. Mention in the next LookseeCore release CHANGELOG. The 7-day calm window from the umbrella applies before declaring "done done" once production traffic is real, but is currently aspirational per the project's not-yet-in-prod posture.
+When all seven boxes check out, **phase 4c is done — and phase 4 is complete.** Every browser-using consumer in the umbrella's census runs against browser-service. Mention in the next LookseeCore release CHANGELOG. The 7-day calm window from the umbrella applies before declaring "done done" once production traffic is real, but is currently aspirational per the project's not-yet-in-prod posture.
