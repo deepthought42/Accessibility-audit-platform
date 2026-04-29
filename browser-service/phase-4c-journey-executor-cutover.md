@@ -32,10 +32,11 @@ Codex's review of an earlier draft of this plan caught the issue. This plan supe
 |---|---|
 | Mode knob | Per-consumer pin, **not** an inheritance overlay. Add `journey_executor_browsing_mode` (string, default `"local"`); `journey_executor_cloud_run` reads `var.journey_executor_browsing_mode` **directly** (no `coalesce` against the global). Default `"local"` keeps Commit 2 inert in every environment — including staging where 4a.5 set `looksee_browsing_mode="remote"` — and is the deliberate fix Codex flagged on the original 4b plan (PR #62) where landing the IaC commit auto-flipped a new consumer via the global knob. The shared `looksee_browsing_mode` remains in tfvars but is read only by consumers that haven't yet adopted a per-consumer override (today, only page-builder until the 4b plan's retroactive note is acted on). Coarse "flip everything" via the global knob therefore only affects unadopted consumers; surgical pinning is the everyday path. |
 | Smoke-check enable | Per-consumer `journey_executor_smoke_check_enabled` tfvar (default false). Independent burn-in observation per consumer, matching the page_builder + element_enrichment pattern. |
-| Smoke-check target URL / interval / browser | Reuse the shared tfvars (`looksee_browsing_smoke_check_target_url`, `_interval`). |
+| Smoke-check target URL / interval | Reuse the existing shared tfvars (`looksee_browsing_smoke_check_target_url`, `looksee_browsing_smoke_check_interval`). The smoke-check **browser** is intentionally not terraformed: the LookseeCore property and `application.yml` both default to `CHROME`, every current consumer wants Chrome, and adding a tfvar for a value no one varies is surface clutter. If a future consumer needs a non-Chrome probe, add a shared tfvar at that point. |
 | Prod calm-window | **Skipped.** Project not yet in production, so 7-day prod-stability gates from the umbrella are aspirational. Reinstate before the first real prod traffic. |
 | Call-site migration | **None.** The `buildPageState(browser, ...)` path captures from the live post-journey session via `RemoteBrowser`'s phase-3b implementation of `getSource`/`getViewportScreenshot`/`getFullPageScreenshotShutterbug`/`removeDriftChat`/`removeGDPRmodals`. Migrating to `capturePage` would silently lose journey state and produce an xpath/element mismatch. journeyExecutor's structural difference from PageBuilder (capture-after-stateful-journey vs. capture-fresh) requires keeping the in-session capture. |
 | Metrics common-tag wiring | New `BrowsingClientMetricsConfig` in `journeyExecutor/src/main/java/com/looksee/journeyExecutor/config/`, copy of PageBuilder's, with `consumer=journey-executor`. `@ConditionalOnBean(MeterRegistry.class)` so deployments without a registry still work. |
+| Metrics export path | journeyExecutor must depend on `io.micrometer:micrometer-registry-stackdriver` so Spring Boot's `MANAGEMENT_METRICS_STACKDRIVER_ENABLED=true` (set unconditionally by the cloud_run module at `modules/cloud_run/main.tf:62`) actually auto-configures a `StackdriverMeterRegistry`. Without an exporter on the classpath the property is a no-op and `MeterFilter.commonTags(...)` attaches to a `CompositeMeterRegistry` with no children — burn-in queries against `browser_service_calls_seconds_*` would return zero results even when remote browsing is healthy. The exporter is version-managed in `A11yParent` (`<dependencyManagement>`) but not currently declared in any consumer's `<dependencies>`. **PageBuilder has the same gap** and is also currently emitting metrics into a non-exporting registry — flagged as a follow-up; not in 4c scope. |
 
 ## Authoritative design references
 
@@ -55,7 +56,20 @@ Codex's review of an earlier draft of this plan caught the issue. This plan supe
 
 ### Commit 1 (journeyExecutor) — `feat(config): consumer=journey-executor metrics common-tag + browsing env vars`
 
-**No call-site refactor.** This commit is config-only: a Micrometer common-tag config and an `application.yml` env-var binding.
+**No call-site refactor.** This commit is config-only: a Micrometer registry-exporter dependency, a common-tag config, and an `application.yml` env-var binding.
+
+**Add to `journeyExecutor/pom.xml` `<dependencies>`** (version comes from `A11yParent`'s `<dependencyManagement>` — no version literal here):
+
+```xml
+<dependency>
+    <groupId>io.micrometer</groupId>
+    <artifactId>micrometer-registry-stackdriver</artifactId>
+</dependency>
+```
+
+This is what makes `MANAGEMENT_METRICS_STACKDRIVER_ENABLED=true` (set by the cloud_run module's observability defaults at `modules/cloud_run/main.tf:62`) actually wire up a `StackdriverMeterRegistry`. Without it, the property is a no-op, the `MeterFilter` below attaches to a registry with no exporter, and the burn-in queries return empty.
+
+> **Cross-consumer note:** PageBuilder has the same gap today and is also missing the registry-exporter dependency. A retroactive PR should add it — not 4c scope, but tracking it in §Follow-ups below so 4a's burn-in criteria become observable too.
 
 Create `journeyExecutor/src/main/java/com/looksee/journeyExecutor/config/BrowsingClientMetricsConfig.java` — direct copy of `PageBuilder/src/main/java/com/looksee/pageBuilder/config/BrowsingClientMetricsConfig.java`, with the package adjusted and the tag value changed to `consumer=journey-executor`:
 
@@ -192,7 +206,7 @@ PR titles: **"chore(staging): flip journey-executor to remote browsing (phase-4c
 
 ### Per-commit
 
-- Commit 1: `cd journeyExecutor && mvn test` — compile is necessary but not sufficient (it doesn't start a Spring context). The existing journeyExecutor `@SpringBootTest`-style integration tests will boot the application context and exercise component-scanning of the new `BrowsingClientMetricsConfig`; if no such test exists yet, add a minimal `@SpringBootTest(classes = Application.class)` smoke test under `src/test/java/.../config/` that asserts the bean is present and the `consumer=journey-executor` common tag is registered. `application.yml` defaults preserve current behavior (mode=local, smoke-check off), so no runtime probe is triggered during test.
+- Commit 1: `cd journeyExecutor && mvn verify`. Use `verify`, not `test`: journeyExecutor binds JaCoCo coverage enforcement to the `verify` phase, so `mvn test` can pass while CI's coverage gate fails later. `verify` runs both. Compile alone is insufficient anyway — it doesn't start a Spring context. The existing journeyExecutor `@SpringBootTest`-style integration tests boot the application context during `test`/`verify` and exercise component-scanning of the new `BrowsingClientMetricsConfig` + the new `micrometer-registry-stackdriver` dep; if no such test currently covers the `config/` package, add a minimal `@SpringBootTest(classes = Application.class)` smoke test that asserts the `MeterRegistry` bean is present, the `consumer=journey-executor` common tag is registered, and (with default `application.yml`) is a `StackdriverMeterRegistry` (or composite containing one). `application.yml` defaults preserve current behavior (mode=local, smoke-check off), so no runtime probe is triggered during test.
 - Commit 2: `terraform plan` — shows new env vars added to journey-executor revision; non-staging environments unchanged because per-consumer mode override defaults to `"local"`.
 - Commit 3a/3b: `terraform plan` against the target environment shows `LOOKSEE_BROWSING_MODE` flipping `local → remote` and `LOOKSEE_BROWSING_SMOKE_CHECK_ENABLED=true`.
 
@@ -218,6 +232,7 @@ Identical shape to 4b: edit the relevant tfvar override, `terraform apply`, ≤1
 
 ## Critical files
 
+- `journeyExecutor/pom.xml` — Commit 1 (add `micrometer-registry-stackdriver` dependency)
 - `journeyExecutor/src/main/java/com/looksee/journeyExecutor/config/BrowsingClientMetricsConfig.java` — Commit 1 (new file)
 - `journeyExecutor/src/main/resources/application.yml` — Commit 1
 - `LookseeIaC/GCP/variables.tf` — Commit 2 (two new tfvars)
@@ -229,6 +244,10 @@ Identical shape to 4b: edit the relevant tfvar override, `terraform apply`, ≤1
 ## Issue + PRs
 
 One tracking issue covering all three commits, since the burn-in is the unit of completion. Each PR body links to this plan doc. Closing the tracking issue happens on Commit 3b merge + 1-hour observation green.
+
+## Follow-ups (out of 4c scope)
+
+- **PageBuilder missing `micrometer-registry-stackdriver` dependency.** Same gap as journeyExecutor; PageBuilder's pom inherits the dep from `<dependencyManagement>` but doesn't declare it under `<dependencies>`, so `MANAGEMENT_METRICS_STACKDRIVER_ENABLED=true` (set unconditionally by the cloud_run module) currently does nothing in PageBuilder either. Phase 4a's burn-in/observation criteria implicitly assume the metrics are reaching Stackdriver — they aren't, today. A retroactive single-line pom edit + redeploy fixes it. Open a separate PR; not part of 4c so 4c isn't gated on PageBuilder's redeploy. Without this fix in place before the 4c staging flip, the phase-4c burn-in queries would also be evaluated against an empty Stackdriver, so the fix should land on PageBuilder *and* journeyExecutor before Commit 3a is applied.
 
 ## Definition of done
 
