@@ -60,7 +60,7 @@ Codex's review of an earlier draft of this plan caught the issue. This plan supe
 
 **No call-site refactor.** This commit is config-only: a Micrometer registry-exporter dependency, a common-tag config, and an `application.yml` env-var binding.
 
-**Add to `journeyExecutor/pom.xml` `<dependencies>`** (versions come from `A11yParent`'s `<dependencyManagement>` — no version literals here):
+**Add to `journeyExecutor/pom.xml` `<dependencies>`** (versions come from journeyExecutor's own `<dependencyManagement>` block, which imports the `spring-boot-dependencies`, `spring-cloud-dependencies`, and `spring-cloud-gcp-dependencies` BOMs directly — note that journeyExecutor does **not** inherit from an `A11yParent` POM, unlike some sibling consumers, so no version literals are needed here because Spring Boot's BOM manages all `io.micrometer:micrometer-*` and `org.springframework.boot:spring-boot-starter-*` artifacts):
 
 ```xml
 <dependency>
@@ -188,15 +188,16 @@ journey_executor_smoke_check_enabled = true
 # looksee_browsing_service_url = "https://browser-service-staging.internal/v1"
 ```
 
-Apply via the staging Terraform workflow. Cloud Run rolling redeploy of the journey-executor revision picks up the new env vars. **Service-URL preflight:** `LookseeIaC/GCP` doesn't expose a root-module `output` for `looksee_browsing_service_url`, so `terraform output` won't print it. Verify the resolved value either via `terraform console` from the workspace root:
+Apply via the staging Terraform workflow. Cloud Run rolling redeploy of the journey-executor revision picks up the new env vars. **Service-URL preflight:** `LookseeIaC/GCP` doesn't expose a root-module `output` for `looksee_browsing_service_url`, so `terraform output` won't print it. Verify the resolved value via `terraform console` run **from `LookseeIaC/GCP/` (the Terraform configuration directory), not the repo root** — Terraform evaluates variables from the configuration in the current working directory, so from repo root `var.looksee_browsing_service_url` is out of scope and the console silently has nothing to evaluate. With the correct working directory and the staging tfvars loaded (`-var-file=staging.tfvars`):
 
 ```
-$ terraform console
+$ cd LookseeIaC/GCP
+$ terraform console -var-file=staging.tfvars
 > var.looksee_browsing_service_url
 "https://browser-service-staging.internal/v1"
 ```
 
-…or directly grep the staging tfvars file (`grep '^looksee_browsing_service_url' staging.tfvars`). Empty / unset → set it explicitly in this same flip commit.
+…or directly grep the staging tfvars file (`grep '^looksee_browsing_service_url' LookseeIaC/GCP/staging.tfvars`). Empty / unset → set it explicitly in this same flip commit.
 
 48-hour burn-in pass criteria (umbrella §4a.5, identical to 4b). The `BrowsingClient` facade timer is built with `.publishPercentileHistogram()` (verified at `LookseeCore/looksee-browsing-client/src/main/java/com/looksee/browsing/client/BrowsingClient.java:414`), so `browser_service_calls_seconds_bucket` is available alongside the contractual `_count`/`_sum`/`_max` series — burn-in queries can use real percentiles, not just `_max`.
 - **Minimum-traffic guard.** All gates below are evaluated only when `sum(rate(browser_service_calls_seconds_count{consumer="journey-executor"}[5m])) >= 0.5` (≥1 call every 2 seconds, smoothed over 5 minutes). At lower throughput, dashboard panels show "insufficient traffic"; signed-off staging burn-in requires the guard to hold for ≥40 of the 48 hours so we're not certifying a quiet period.
@@ -224,9 +225,12 @@ journey_executor_browsing_mode       = "remote"
 journey_executor_smoke_check_enabled = true
 
 # Pre-flight: same service-url precondition as staging. 4a.6 prod flip set
-# looksee_browsing_service_url for prod; verify via `terraform console`
-# (`> var.looksee_browsing_service_url`) or `grep ^looksee_browsing_service_url
-# prod.tfvars` before applying — there's no root-module `output` for it.
+# looksee_browsing_service_url for prod; verify by running terraform from
+# the IaC module directory (NOT repo root, which is out of scope):
+#   $ cd LookseeIaC/GCP && terraform console -var-file=prod.tfvars
+#   > var.looksee_browsing_service_url
+# …or `grep '^looksee_browsing_service_url' LookseeIaC/GCP/prod.tfvars`
+# before applying — there's no root-module `output` for it.
 # If unset, flipping will crash-loop the next Cloud Run revision because
 # BrowsingClientConfig rejects a blank service URL when mode=remote.
 # To set it explicitly in this commit:
@@ -251,15 +255,15 @@ PR titles: **"chore(staging): flip journey-executor to remote browsing (phase-4c
   3. **Negative control** to prove the assertion above is meaningful: a second sub-test that constructs a fresh `SimpleMeterRegistry` outside the Spring context, registers the same un-tagged meter, and confirms `getTag("consumer")` is `null`. Without the negative control, an always-on common tag (e.g. one inadvertently added by some other auto-config) would make the positive assertion green for the wrong reason.
 
   **Do not assert** the bean type is `StackdriverMeterRegistry`: default `application.yml` resolves `MANAGEMENT_METRICS_STACKDRIVER_ENABLED:false` from the env var, so Stackdriver auto-config is intentionally off in tests, and asserting the prod-only bean type would force test-only divergent config. Production observability is verified at deploy time (boot-log inspection + Stackdriver Metrics Explorer rendering `consumer=journey-executor` series), not in unit tests. `application.yml` defaults preserve current runtime behavior (mode=local, smoke-check off), so no probe fires during test.
-- Commit 2: `terraform plan` — shows new env vars added to journey-executor revision; non-staging environments unchanged because per-consumer mode override defaults to `"local"`.
+- Commit 2: `terraform plan` against each environment — **expect a Cloud Run revision change in every environment**, not an empty plan in non-staging. Adding `plain_environment_variables` to the `journey_executor_cloud_run` module changes the Cloud Run service spec wherever this stack is applied (the `LOOKSEE_BROWSING_*` env vars become part of the revision template), so Terraform will plan a new revision and Cloud Run will roll one out on apply. The new vars' **values** are inert in non-staging — `LOOKSEE_BROWSING_MODE=local`, `LOOKSEE_BROWSING_SMOKE_CHECK_ENABLED=false` — so runtime behavior is unchanged, but the redeploy itself is real. Treat this as expected, not as a misconfiguration. The plan is "unchanged in behavior", not "unchanged in revisions". Coordinate the apply window with whoever owns each environment so the redeploy isn't a surprise.
 - Commit 3a/3b: `terraform plan` against the target environment shows `LOOKSEE_BROWSING_MODE` flipping `local → remote` and `LOOKSEE_BROWSING_SMOKE_CHECK_ENABLED=true`.
 
 ### Post-deploy (per environment)
 
 - Cloud Run journey-executor revision rolls out with new env vars.
-- Boot log shows `CapturePageSmokeCheck started: interval=<configured-interval>ms target=<configured-target-url>` (only when smoke-check enabled). The target URL and interval come from the shared `looksee_browsing_smoke_check_target_url` and `looksee_browsing_smoke_check_interval` tfvars (LookseeCore defaults: `https://example.com` / `60s`), so the literal logged value will differ per environment. Verify by resolving the configured value first (`terraform console` → `var.looksee_browsing_smoke_check_target_url`, or `grep ^looksee_browsing_smoke_check_target_url <env>.tfvars`) and grepping the boot log for that exact URL. Comparing against a hardcoded literal would cause false rollout failures whenever an environment overrides the default.
+- Boot log shows `CapturePageSmokeCheck started: interval=<configured-interval>ms target=<configured-target-url>` (only when smoke-check enabled). The target URL and interval come from the shared `looksee_browsing_smoke_check_target_url` and `looksee_browsing_smoke_check_interval` tfvars (LookseeCore defaults: `https://example.com` / `60s`), so the literal logged value will differ per environment. Verify by resolving the configured value first (`cd LookseeIaC/GCP && terraform console -var-file=<env>.tfvars` → `var.looksee_browsing_smoke_check_target_url`, or `grep '^looksee_browsing_smoke_check_target_url' LookseeIaC/GCP/<env>.tfvars`) and grepping the boot log for that exact URL. Comparing against a hardcoded literal would cause false rollout failures whenever an environment overrides the default.
 - First probe fires immediately (initial-delay 0 from the 4a.4 fix).
-- Dashboard renders `browser_service_smoke_checks_total{outcome="success",consumer="journey-executor"}` ticking once per 60s.
+- Dashboard renders `browser_service_smoke_checks_total{outcome="success",consumer="journey-executor"}` ticking at the **configured probe cadence** for that environment, not a hardcoded 60s. Resolve the configured interval first (`cd LookseeIaC/GCP && terraform console -var-file=<env>.tfvars` → `var.looksee_browsing_smoke_check_interval`, or `grep '^looksee_browsing_smoke_check_interval' <env>.tfvars`), and assert the counter advances by ≥1 per that interval, smoothed over a 5× window to absorb scheduler jitter. The LookseeCore default is `60s`; environments overriding the shared tfvar (e.g. `30s` for tighter staging observation) would log + tick at that overridden cadence, so checking against a 60s literal would false-fail those environments. Concretely: `increase(browser_service_smoke_checks_total{outcome="success",consumer="journey-executor"}[5m]) >= floor(300 / <configured-interval-seconds>) - 1` (one-probe slack for cold-start scheduling).
 - Real journey-executor traffic produces `rate(browser_service_calls_seconds_count{consumer="journey-executor"}[1m]) > 0` in step with journey-step execution + the in-session `buildPageState` capture path.
 
 ## Rollback playbook
