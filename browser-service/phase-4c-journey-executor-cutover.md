@@ -150,6 +150,26 @@ variable "journey_executor_smoke_check_enabled" {
   type        = bool
   default     = false
 }
+
+# The two BrowsingClient timeout variables are declared shared (not per-consumer)
+# because every consumer points at the same browser-service. They are NOT in
+# variables.tf today (verified against current main; the 4a.5 retroactive note
+# claimed otherwise but the vars never landed), so 4c declares them here.
+# Defaults match the LookseeCore application.yml fallbacks, so this commit is
+# inert until an Environment overrides via TF_VAR_LOOKSEE_BROWSING_CONNECT_TIMEOUT
+# / TF_VAR_LOOKSEE_BROWSING_READ_TIMEOUT.
+
+variable "looksee_browsing_connect_timeout" {
+  description = "BrowsingClient TCP connect timeout (Spring Duration string, e.g. '5s')."
+  type        = string
+  default     = "5s"
+}
+
+variable "looksee_browsing_read_timeout" {
+  description = "BrowsingClient socket read timeout (Spring Duration string, e.g. '120s'). Increase for environments running slow / heavy journeys."
+  type        = string
+  default     = "120s"
+}
 ```
 
 Edit `LookseeIaC/GCP/modules.tf` (`module "journey_executor_cloud_run"`) — add a sibling `plain_environment_variables` argument; **leave existing `environment_variables` untouched**:
@@ -261,13 +281,21 @@ Operation titles for tracking issue + audit log: **"chore(staging): flip journey
 - Cloud Run journey-executor revision rolls out with new env vars.
 - Boot log shows `CapturePageSmokeCheck started: interval=<configured-interval>ms target=<configured-target-url>` (only when smoke-check enabled). The target URL and interval come from the shared `TF_VAR_LOOKSEE_BROWSING_SMOKE_CHECK_TARGET_URL` and `TF_VAR_LOOKSEE_BROWSING_SMOKE_CHECK_INTERVAL` GitHub Actions Environment secrets (LookseeCore defaults: `https://example.com` / `60s`), so the literal logged value will differ per environment. Resolve the configured values from the `staging` / `production` GitHub Actions Environment (`gh secret list --env <env> | grep TF_VAR_LOOKSEE_BROWSING_SMOKE_CHECK_TARGET_URL` confirms presence; the value itself is masked in logs, so emit a non-secret length/hash check from a workflow step if you need to compare against the boot log mechanically). Then grep the boot log for the exact URL the workflow injected. Comparing against a hardcoded literal would cause false rollout failures whenever an environment overrides the default.
 - First probe fires immediately (initial-delay 0 from the 4a.4 fix).
-- Dashboard renders `browser_service_smoke_checks_total{outcome="success",consumer="journey-executor"}` ticking at the **configured probe cadence** for that environment, not a hardcoded 60s. Resolve the configured interval from the `TF_VAR_LOOKSEE_BROWSING_SMOKE_CHECK_INTERVAL` secret in the targeted GitHub Actions Environment (echo it from a workflow step that has the env's secrets bound), and assert the counter advances by ≥1 per that interval, with a sample window scaled to the cadence so the check stays meaningful for both fast and slow probes. The LookseeCore default is `60s`; environments overriding the shared secret (e.g. `30s` for tighter staging observation, or `10m` for cost-conservative prod) would log + tick at that overridden cadence, so checking against a 60s literal would false-fail those environments. Concretely, given `<I>` = configured interval in seconds, evaluate over a window of `max(5m, 5×<I>)` so the assertion always covers ≥5 expected probes:
+- Dashboard renders `browser_service_smoke_checks_total{outcome="success",consumer="journey-executor"}` ticking at the **configured probe cadence** for that environment, not a hardcoded 60s. Resolve the configured interval from the `TF_VAR_LOOKSEE_BROWSING_SMOKE_CHECK_INTERVAL` secret in the targeted GitHub Actions Environment (echo it from a workflow step that has the env's secrets bound), and assert the counter advances by ≥4 successful probes over a window scaled to the cadence so the check stays meaningful for both fast and slow probes. The LookseeCore default is `60s`; environments overriding the shared secret (e.g. `30s` for tighter staging observation, or `10m` for cost-conservative prod) would log + tick at that overridden cadence, so checking against a 60s literal would false-fail those environments.
 
-  ```
-  increase(browser_service_smoke_checks_total{outcome="success",consumer="journey-executor"}[max(5m, 5×<I>s)]) >= 4
-  ```
+  PromQL range selectors require a literal duration — `[5m]` works, `[max(5m, 5×<I>s)]` does **not**. So **the operator computes the window externally** (in the workflow step / dashboard alert template / eyeball calculation) and substitutes the resulting literal into the query. The window is `W = max(5 minutes, 5 × <I>)` rounded up to a duration Prometheus accepts (`s`, `m`, `h`).
 
-  The fixed `>= 4` floor (≥4 successful probes in the window, allowing one cold-start miss out of 5 expected) avoids the bug where `floor(300 / <I>) - 1` collapsed to `0` (vacuously true regardless of probe health) whenever the configured interval exceeded 5 minutes. With a 600s interval, the window stretches to 50 minutes and the gate still requires 4 healthy probes; with a 30s interval, the window is 5 minutes and the same gate fires off the same 10 expected ticks. The lower bound on the window (`max(5m, ...)`) keeps the check responsive at fast cadences without the fixed denominator going pathological at slow ones.
+  Worked examples — pick the row matching your environment's `TF_VAR_LOOKSEE_BROWSING_SMOKE_CHECK_INTERVAL`:
+
+  | Configured interval `<I>` | Window `W` | PromQL gate |
+  |---|---|---|
+  | `30s` | `5m` | `increase(browser_service_smoke_checks_total{outcome="success",consumer="journey-executor"}[5m]) >= 4` |
+  | `60s` | `5m` | `increase(browser_service_smoke_checks_total{outcome="success",consumer="journey-executor"}[5m]) >= 4` |
+  | `120s` | `10m` | `increase(browser_service_smoke_checks_total{outcome="success",consumer="journey-executor"}[10m]) >= 4` |
+  | `300s` | `25m` | `increase(browser_service_smoke_checks_total{outcome="success",consumer="journey-executor"}[25m]) >= 4` |
+  | `600s` | `50m` | `increase(browser_service_smoke_checks_total{outcome="success",consumer="journey-executor"}[50m]) >= 4` |
+
+  The fixed `>= 4` floor (≥4 successful probes per window, allowing one cold-start miss out of 5 expected) avoids the earlier bug where `floor(300 / <I>) - 1` collapsed to `0` (vacuously true regardless of probe health) whenever the configured interval exceeded 5 minutes. The lower bound on the window (`max(5m, ...)`) keeps the check responsive at fast cadences. **If the targeted environment uses an interval not in the table, compute `W` and substitute the literal yourself** — the formula is `W = max(5 minutes, 5 × <I>)`, expressed in the smallest Prometheus-acceptable unit (round up to whole seconds/minutes; e.g. `<I>=45s` → `W = 5m`, `<I>=200s` → `W = 1000s` or `17m`). The deploy workflow can codify this by reading `${TF_VAR_LOOKSEE_BROWSING_SMOKE_CHECK_INTERVAL}`, computing `W` in shell (`W=$(( <I> * 5 > 300 ? <I> * 5 : 300 ))s`), and templating it into the alert spec — that way the alert query the dashboard runs is a literal-duration query, even though the value is environment-derived.
 - Real journey-executor traffic produces `rate(browser_service_calls_seconds_count{consumer="journey-executor"}[1m]) > 0` in step with journey-step execution + the in-session `buildPageState` capture path.
 
 ## Rollback playbook
@@ -318,9 +346,9 @@ Each item below maps to a specific verifiable artifact — either a merged commi
 - [ ] **Commit 1 merged on `main`** — squash-merge SHA recorded in the tracking issue. Files: `journeyExecutor/pom.xml`, `…/config/BrowsingClientMetricsConfig.java`, `…/config/BrowsingClientMetricsConfigTest.java`, `…/resources/application.yml`. CI green: `mvn verify` on journeyExecutor passes including the new `@SpringBootTest`.
 - [ ] **Commit 2 merged on `main`** — squash-merge SHA recorded. Files: `LookseeIaC/GCP/variables.tf`, `LookseeIaC/GCP/modules.tf`. `terraform plan` against staging + production both show "Cloud Run revision change, env vars added, values inert" (the expected behavior; see §Verification).
 - [ ] **Commit 3a applied** — three GitHub Actions Environment secret updates against `staging` recorded in the tracking issue (secret names + timestamps), plus the deploy workflow run URL that picked them up, plus `gcloud run revisions describe` output showing `LOOKSEE_BROWSING_MODE=remote` on the live staging revision.
-- [ ] **48 consecutive hours of green staging burn-in** — Stackdriver dashboard screenshot or query timestamps appended to the tracking issue covering all six pass criteria (minimum-traffic guard, error rate, p95, mean, smoke-check failure rate, cross-consumer guardrail) over the burn-in window.
+- [ ] **48 consecutive hours of green staging burn-in** — Stackdriver dashboard screenshot or query timestamps appended to the tracking issue covering all **seven** pass criteria over the burn-in window: (1) minimum-traffic guard held ≥40 of 48 hours, (2) error rate <1%, (3) p95 latency within 2× pre-flip baseline, (4) mean latency within 2× pre-flip baseline, (5) smoke-check failure rate <1%, (6) cross-consumer guardrail (`consumer=page-builder` and `consumer=element-enrichment` stayed green throughout), and (7) **no new Sentry regressions tagged `service:journey-executor`** — verifiable by linking a Sentry issue search filtered to `service:journey-executor` over the burn-in window and confirming zero new issues attributable to the cutover. The Sentry gate is co-equal to the metrics gates: a metrics-green burn-in alongside new error-tracker regressions is not a passing burn-in.
 - [ ] **Commit 3b applied** — same shape as 3a but against the `production` Environment. Tracking-issue entry includes the secret-update record + workflow run + revision describe.
-- [ ] **60 consecutive minutes of green prod observation** — same dashboard-evidence convention as the staging entry, scoped to the prod observation window.
+- [ ] **60 consecutive minutes of green prod observation** — same seven-criteria dashboard-evidence convention as the staging entry, scoped to the prod observation window. The Sentry gate (criterion 7) is checked against `service:journey-executor` in the prod Sentry project over the 60-minute window.
 - [ ] **No rollback executed at any point** — verifiable by the tracking issue containing zero rollback-event entries (rollbacks would also produce their own secret-update records, so absence is auditable).
 
 When all seven boxes check out, **phase 4c is done — and phase 4 is complete.** Every browser-using consumer in the umbrella's census runs against browser-service. Mention in the next LookseeCore release CHANGELOG. The 7-day calm window from the umbrella applies before declaring "done done" once production traffic is real, but is currently aspirational per the project's not-yet-in-prod posture.
