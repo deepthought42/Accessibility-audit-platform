@@ -53,8 +53,11 @@ Codex's review of an earlier draft of this plan caught the issue. This plan supe
 - [ ] Phase 4b consumer-side wiring + IaC merged (Commit 1 + Commit 2 of 4b plan executed). The shared `looksee_browsing_mode` knob and the per-consumer mode-override pattern need to exist in IaC before 4c reuses them. Once 4b's Commit 2 lands, 4c's IaC commit is additive and small. **This is sufficient to unblock 4c Commits 1 and 2** (config code and IaC wiring) — both are inert at default `mode=local`, so 4b's flip status doesn't matter for them.
 - [ ] **Phase 4b staging flip applied + element-enrichment running on `mode=remote` in staging, with `consumer=element-enrichment` metrics actively reaching Stackdriver.** Hard gate on **4c Commit 3a** specifically (not on Commits 1/2). 4c's staging-burn-in cross-consumer guardrail asserts that `consumer=element-enrichment` metrics stay green throughout — that signal is unevaluable if 4b is still on `mode=local` (the BrowsingClient timer never fires) or if 4b's IaC commit shipped without the staging GitHub Actions Environment secret update applied (no remote traffic, no metrics). Verify before starting Commit 3a: Stackdriver Metrics Explorer must show non-zero `rate(browser_service_calls_seconds_count{consumer="element-enrichment"}[5m])` over the preceding 24 hours. If empty, block Commit 3a until 4b's staging flip is applied and producing metrics.
 - [ ] **PageBuilder `micrometer-registry-stackdriver` dependency added + redeployed.** Hard gate on 4c's Commit 3a: 4c's cross-consumer guardrail (`consumer=page-builder` metrics stay green during 4c's burn-in) requires real Stackdriver data from PageBuilder, which doesn't reach Stackdriver today (see §Follow-ups). Single-line pom edit + redeploy.
+- [ ] **A Terraform deploy workflow exists in `.github/workflows/` and binds the new `TF_VAR_*` secrets.** Hard gate on **Commit 3a**. Verified against current main: `.github/workflows/` contains only `base-image.yml`, `ci.yml`, and `e2e-pipeline.yml` — none of them runs `terraform apply` or sources `TF_VAR_*` from the staging/production GitHub Actions Environments, so today there is **no executable rollout path** for Commit 3a/3b. Setting the `TF_VAR_JOURNEY_EXECUTOR_*` secrets in an Environment is a no-op without a workflow that (a) targets that Environment via `environment: staging` / `environment: production`, (b) explicitly maps each `${{ secrets.TF_VAR_<NAME> }}` into a `TF_VAR_<lowercase>` env var on the `terraform apply` step (GitHub Actions doesn't auto-inject secrets as env vars; the workflow has to bind them), and (c) runs `cd LookseeIaC/GCP && terraform apply` against the right state backend. **This is a separate PR (not 4c code), but blocks Commit 3a:** ship the deploy workflow, smoke-run it against staging with `mode=local` (no behavior change, just confirms the pipeline applies cleanly), then proceed with the staging flip. A workflow sketch is given in §"Commit 3a — staging GitHub Actions secrets" below; it can be lifted as the starting point for the new workflow PR.
 
-## Execution plan — 3 logical commits, 4 PRs (Commit 3 splits into 3a/3b)
+## Execution plan — 3 logical commits + 2 GitHub Actions Environment secret-update operations
+
+Commits 1 and 2 land as conventional PRs against `main`. Commits 3a and 3b are **GitHub Actions Environment secret-update operations**, not PRs — see the Commit 3 banner for the variable-delivery model. Tracking is unified via a single tracking issue that records all five units (2 merged-PR SHAs + 3 secret-update + workflow-run records, since Commit 3a/3b each have a deploy-workflow-run artifact). "PR count" is therefore 2, not 4; the previous "3 commits, 4 PRs" framing inherited the misnomer from earlier 4a/4b plans before the variable-delivery model was correctly understood.
 
 ### Commit 1 (journeyExecutor) — `feat(config): consumer=journey-executor metrics common-tag + browsing env vars`
 
@@ -186,7 +189,7 @@ plain_environment_variables = {
 }
 ```
 
-`LOOKSEE_BROWSING_CONNECT_TIMEOUT` / `LOOKSEE_BROWSING_READ_TIMEOUT` are bound in `application.yml` (see Commit 1's yaml block, lines 122–123), so omitting them from `plain_environment_variables` would leave the LookseeCore defaults (`5s` / `120s`) hardcoded with no per-environment knob — fine until journey-executor needs longer reads in prod for slow journeys. The two shared `looksee_browsing_connect_timeout` / `looksee_browsing_read_timeout` Terraform variables already exist from 4a.5 (delivered via `TF_VAR_LOOKSEE_BROWSING_CONNECT_TIMEOUT` / `TF_VAR_LOOKSEE_BROWSING_READ_TIMEOUT` GitHub Actions Environment secrets); this just wires them through journey-executor's module so the env-var path is end-to-end terraform-able. Same shape PageBuilder uses.
+`LOOKSEE_BROWSING_CONNECT_TIMEOUT` / `LOOKSEE_BROWSING_READ_TIMEOUT` are bound in `application.yml` (see Commit 1's yaml block, lines 122–123), so omitting them from `plain_environment_variables` would leave the LookseeCore defaults (`5s` / `120s`) hardcoded with no per-environment knob — fine until journey-executor needs longer reads in prod for slow journeys. The two shared `looksee_browsing_connect_timeout` / `looksee_browsing_read_timeout` Terraform variables are **declared in this same Commit 2's `variables.tf` step above** (the prior plan revision claimed they existed from 4a.5, but verification against current `LookseeIaC/GCP/variables.tf` shows that's wrong — only `looksee_browsing_mode`, `looksee_browsing_service_url`, `looksee_browsing_smoke_check_interval`, and `looksee_browsing_smoke_check_target_url` are present today, so 4c is the phase that adds the timeout vars). At runtime they're delivered via `TF_VAR_LOOKSEE_BROWSING_CONNECT_TIMEOUT` / `TF_VAR_LOOKSEE_BROWSING_READ_TIMEOUT` GitHub Actions Environment secrets when an environment wants to override the defaults; this `plain_environment_variables` block wires them through journey-executor's module so the env-var path is end-to-end terraform-able from secret → variable → Cloud Run env var → `application.yml` placeholder → BrowsingClient timeout.
 
 Reading `var.journey_executor_browsing_mode` directly (no `coalesce` against the global) means this commit lands inert at `"local"` in every environment — including staging where `var.looksee_browsing_mode="remote"` from 4a.5. The staged 3a/3b flips set the per-consumer pin to `"remote"` explicitly. Page-builder / element-enrichment rollback decisions don't drag journey-executor along, and journey-executor's flips don't drag them.
 
@@ -208,7 +211,58 @@ Once Commit 2 has landed and browser-service-staging is reachable:
 | `TF_VAR_JOURNEY_EXECUTOR_SMOKE_CHECK_ENABLED` | `"true"` | Enable `CapturePageSmokeCheck` |
 | `TF_VAR_LOOKSEE_BROWSING_SERVICE_URL` | `"https://browser-service-staging.internal/v1"` (only if not already set from 4a.5) | **Hard precondition.** `BrowsingClientConfig` throws on blank URL when `mode=remote`, crash-looping the next Cloud Run revision. |
 
-Update each secret via repo Settings → Environments → `staging` → "Environment secrets" (or `gh secret set <NAME> --env staging --body "<value>"`). Then re-run the staging deploy workflow (`.github/workflows/<deploy-staging>.yml` or trigger via `gh workflow run …`) — the workflow's terraform-apply step picks up the new `TF_VAR_*` values and Cloud Run rolling-redeploys journey-executor. **Service-URL preflight (executable in CI, not locally):** there's no committed `staging.tfvars`, so the only authoritative read of `var.looksee_browsing_service_url` for the staging environment is from inside a workflow that has the staging environment's secrets bound. Two operationally usable options:
+Update each secret via repo Settings → Environments → `staging` → "Environment secrets" (or `gh secret set <NAME> --env staging --body "<value>"`). Then re-run the staging deploy workflow — but **note that no such workflow exists in `.github/workflows/` today** (`base-image.yml`, `ci.yml`, `e2e-pipeline.yml` are the current contents; none runs `terraform apply` or sources `TF_VAR_*` from a GitHub Actions Environment). The deploy-workflow prereq listed above must land first. The minimal shape it needs to take:
+
+```yaml
+name: Deploy LookseeIaC/GCP
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target Environment (staging | production)"
+        required: true
+        type: choice
+        options: [staging, production]
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}     # binds the Environment's secret set
+    defaults:
+      run:
+        working-directory: LookseeIaC/GCP
+    env:
+      # Each TF_VAR_* secret in the targeted Environment must be explicitly mapped.
+      # GitHub Actions does NOT auto-inject secrets as env vars; without these
+      # bindings, terraform falls back to variable defaults and the cutover is a no-op.
+      TF_VAR_journey_executor_browsing_mode:        ${{ secrets.TF_VAR_JOURNEY_EXECUTOR_BROWSING_MODE }}
+      TF_VAR_journey_executor_smoke_check_enabled:  ${{ secrets.TF_VAR_JOURNEY_EXECUTOR_SMOKE_CHECK_ENABLED }}
+      TF_VAR_looksee_browsing_mode:                 ${{ secrets.TF_VAR_LOOKSEE_BROWSING_MODE }}
+      TF_VAR_looksee_browsing_service_url:          ${{ secrets.TF_VAR_LOOKSEE_BROWSING_SERVICE_URL }}
+      TF_VAR_looksee_browsing_connect_timeout:      ${{ secrets.TF_VAR_LOOKSEE_BROWSING_CONNECT_TIMEOUT }}
+      TF_VAR_looksee_browsing_read_timeout:         ${{ secrets.TF_VAR_LOOKSEE_BROWSING_READ_TIMEOUT }}
+      TF_VAR_looksee_browsing_smoke_check_interval: ${{ secrets.TF_VAR_LOOKSEE_BROWSING_SMOKE_CHECK_INTERVAL }}
+      TF_VAR_looksee_browsing_smoke_check_target_url: ${{ secrets.TF_VAR_LOOKSEE_BROWSING_SMOKE_CHECK_TARGET_URL }}
+      # …plus all other required TF_VAR_* secrets per LookseeIaC/GCP/README.md
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform init
+      - run: terraform plan
+      - name: Service-URL preflight
+        run: |
+          test -n "${TF_VAR_looksee_browsing_service_url}" \
+            || { echo "::error::TF_VAR_LOOKSEE_BROWSING_SERVICE_URL is blank in the ${{ inputs.environment }} Environment"; exit 1; }
+      - run: terraform apply -auto-approve
+```
+
+Two specifics to call out, since they're easy to miss and either one being wrong silently turns the cutover into a no-op:
+
+1. **`environment: ${{ inputs.environment }}`** at the job level — this is what binds the targeted Environment's scoped secrets to the job. Without it, only repo-scoped secrets are visible and the per-environment overrides set in the `staging` / `production` Environments can't be read.
+2. **Explicit `TF_VAR_<lowercase_var_name>:` mapping** in the `env:` block for every variable consumed. GitHub Actions does **not** auto-expose secrets as environment variables — the workflow has to bind each one — and Terraform reads `TF_VAR_<lowercase_variable_name>` (matching the variable name in `variables.tf`), not the upper-case secret name. Mismatched casing or a missing entry means Terraform falls back to the variable's default (`local` / `false` / `""` for the 4c vars), and the secret update has no observable effect on the next `terraform apply`.
+
+Once the deploy workflow is in place: trigger via `gh workflow run <deploy-workflow>.yml -f environment=staging --ref main`. The job opens with the targeted Environment's secrets bound, runs the service-URL preflight, then `terraform apply` picks up the new `TF_VAR_*` values and Cloud Run rolling-redeploys journey-executor.
+
+**Service-URL preflight (executable in CI, not locally):** there's no committed `staging.tfvars`, so the only authoritative read of `var.looksee_browsing_service_url` for the staging environment is from inside a workflow that has the staging environment's secrets bound. The workflow above already includes that step; if running ad-hoc, two operationally usable options:
 
 1. **Inspect the GitHub Actions secret directly:** `gh secret list --env staging | grep TF_VAR_LOOKSEE_BROWSING_SERVICE_URL` — confirms the secret exists. Reading the *value* of a secret via the API isn't supported (by design), so to assert non-blankness, run a one-off staging-environment workflow with a step:
 
@@ -321,7 +375,7 @@ Tracked source artifacts in this repo (Commits 1 + 2):
 - `journeyExecutor/src/main/java/com/looksee/journeyExecutor/config/BrowsingClientMetricsConfig.java` — Commit 1 (new file)
 - `journeyExecutor/src/test/java/com/looksee/journeyExecutor/config/BrowsingClientMetricsConfigTest.java` — Commit 1 (new file, `@SpringBootTest` covering common-tag wiring with negative control)
 - `journeyExecutor/src/main/resources/application.yml` — Commit 1 (`looksee.browsing.*` env-var bindings)
-- `LookseeIaC/GCP/variables.tf` — Commit 2 (two new variables: `journey_executor_browsing_mode`, `journey_executor_smoke_check_enabled`)
+- `LookseeIaC/GCP/variables.tf` — Commit 2 (**four** new variables: `journey_executor_browsing_mode`, `journey_executor_smoke_check_enabled`, plus the two shared timeout vars `looksee_browsing_connect_timeout` and `looksee_browsing_read_timeout` that the prior plan revision incorrectly assumed already existed from 4a.5 — see the Commit 2 narrative above for the verification + correction)
 - `LookseeIaC/GCP/modules.tf` — Commit 2 (`journey_executor_cloud_run` block, add sibling `plain_environment_variables` with all seven `LOOKSEE_BROWSING_*` keys)
 
 Untracked-in-repo artifacts (Commits 3a + 3b — these are GitHub Actions Environment secret updates, not file edits, per `LookseeIaC/GCP/README.md` §GitHub Actions secrets reference):
