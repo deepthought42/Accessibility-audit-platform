@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Test-only logback config. The production logback-spring.xml references
+  net.logstash.logback.encoder.LogstashEncoder and OpenTelemetryAppender,
+  which aren't on the test classpath; without this override, any
+  @SpringBootTest fails during environment-prepared with a Logback
+  configuration error before reaching the test code. Phase-4c added the
+  first context-bringup test to this module, so this file is its precondition.
+-->
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="WARN">
+        <appender-ref ref="STDOUT"/>
+    </root>
+</configuration>
