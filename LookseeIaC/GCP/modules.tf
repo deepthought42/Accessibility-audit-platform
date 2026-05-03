@@ -342,6 +342,21 @@ module "journey_executor_cloud_run" {
     "spring.data.neo4j.uri" : [module.neo4j_db.neo4j_bolt_uri_secret_name, "latest"],
   }
 
+  # Phase-4c cutover env vars (plain, not from Secret Manager). Defaults keep
+  # mode=local + smoke-check off, so this block is inert in every environment
+  # until the staging GitHub Actions Environment sets
+  # TF_VAR_JOURNEY_EXECUTOR_BROWSING_MODE='remote'. See
+  # browser-service/phase-4c-journey-executor-cutover.md.
+  plain_environment_variables = {
+    "LOOKSEE_BROWSING_MODE"                   = var.journey_executor_browsing_mode
+    "LOOKSEE_BROWSING_SERVICE_URL"            = var.looksee_browsing_service_url
+    "LOOKSEE_BROWSING_CONNECT_TIMEOUT"        = var.looksee_browsing_connect_timeout
+    "LOOKSEE_BROWSING_READ_TIMEOUT"           = var.looksee_browsing_read_timeout
+    "LOOKSEE_BROWSING_SMOKE_CHECK_ENABLED"    = tostring(var.journey_executor_smoke_check_enabled)
+    "LOOKSEE_BROWSING_SMOKE_CHECK_INTERVAL"   = var.looksee_browsing_smoke_check_interval
+    "LOOKSEE_BROWSING_SMOKE_CHECK_TARGET_URL" = var.looksee_browsing_smoke_check_target_url
+  }
+
   vpc_connector_name = module.vpc.vpc_connector_name
 }
 

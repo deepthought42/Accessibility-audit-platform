@@ -292,6 +292,46 @@ variable "looksee_browsing_smoke_check_target_url" {
   default     = "https://example.com"
 }
 
+# Phase-4c: BrowsingClient timeout knobs. Declared shared (not per-consumer)
+# because every consumer points at the same browser-service. Defaults match the
+# LookseeCore application.yml fallbacks, so this is inert until an Environment
+# overrides via TF_VAR_LOOKSEE_BROWSING_CONNECT_TIMEOUT /
+# TF_VAR_LOOKSEE_BROWSING_READ_TIMEOUT. See
+# browser-service/phase-4c-journey-executor-cutover.md.
+
+variable "looksee_browsing_connect_timeout" {
+  description = "BrowsingClient TCP connect timeout (Spring Duration string, e.g. '5s')."
+  type        = string
+  default     = "5s"
+}
+
+variable "looksee_browsing_read_timeout" {
+  description = "BrowsingClient socket read timeout (Spring Duration string, e.g. '120s'). Increase for environments running slow / heavy journeys."
+  type        = string
+  default     = "120s"
+}
+
+# Phase-4c: per-consumer pin for journey-executor. Default 'local' keeps the
+# IaC commit inert in every environment regardless of var.looksee_browsing_mode;
+# staging / production GitHub Actions Environments override via
+# TF_VAR_JOURNEY_EXECUTOR_BROWSING_MODE='remote' to flip this consumer.
+
+variable "journey_executor_browsing_mode" {
+  description = "Per-consumer pin for journey-executor's looksee.browsing.mode. Default 'local' so non-flipped environments stay on local Selenium even when the shared looksee_browsing_mode is 'remote'."
+  type        = string
+  default     = "local"
+  validation {
+    condition     = contains(["local", "remote"], var.journey_executor_browsing_mode)
+    error_message = "journey_executor_browsing_mode must be 'local' or 'remote'."
+  }
+}
+
+variable "journey_executor_smoke_check_enabled" {
+  description = "Enables the CapturePageSmokeCheck watchdog in journey-executor. Independent burn-in observation per consumer."
+  type        = bool
+  default     = false
+}
+
 #########################
 # VPC
 #########################
