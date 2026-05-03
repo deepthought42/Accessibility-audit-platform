@@ -46,7 +46,25 @@
 	      <groupId>org.springframework.boot</groupId>
 	      <artifactId>spring-boot-starter-web</artifactId>
 	    </dependency>
-	    
+
+	    <!-- Phase-4c: drives Spring Boot's MetricsAutoConfiguration so the
+	         CompositeMeterRegistry + management.metrics.export.stackdriver.* binding
+	         exist. Required for the BrowsingClientMetricsConfig common tag to attach
+	         to a real registry rather than the looksee-messaging fallback
+	         SimpleMeterRegistry. -->
+	    <dependency>
+	      <groupId>org.springframework.boot</groupId>
+	      <artifactId>spring-boot-starter-actuator</artifactId>
+	    </dependency>
+
+	    <!-- Phase-4c: ships the StackdriverMeterRegistry implementation. Without
+	         this on the classpath, MANAGEMENT_METRICS_STACKDRIVER_ENABLED=true is
+	         a no-op and consumer=journey-executor metrics never reach Stackdriver. -->
+	    <dependency>
+	      <groupId>io.micrometer</groupId>
+	      <artifactId>micrometer-registry-stackdriver</artifactId>
+	    </dependency>
+
 	    <dependency>
 	      <groupId>org.springframework.boot</groupId>
 	      <artifactId>spring-boot-starter-test</artifactId>
