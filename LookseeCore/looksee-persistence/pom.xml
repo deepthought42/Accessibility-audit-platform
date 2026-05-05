@@ -37,6 +37,14 @@
 			<version>3.2.38</version>
 		</dependency>
 
+		<!-- Schema-versioned Cypher migrations. 1.x line is the latest
+		     compatible with Spring Boot 2.6 (2.x requires Boot 2.7+). -->
+		<dependency>
+			<groupId>eu.michael-simons.neo4j</groupId>
+			<artifactId>neo4j-migrations-spring-boot-starter</artifactId>
+			<version>1.16.0</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-aop</artifactId>
