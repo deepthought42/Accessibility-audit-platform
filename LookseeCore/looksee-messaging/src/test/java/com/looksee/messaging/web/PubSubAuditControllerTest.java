@@ -130,6 +130,43 @@ class PubSubAuditControllerTest {
         verify(idempotencyService, never()).release(anyString(), anyString());
     }
 
+    @Test
+    void invalidBase64Payload_acknowledges_andDoesNotReleaseClaim() {
+        when(idempotencyService.claim("msg-6", SERVICE)).thenReturn(true);
+
+        Body body = new Body();
+        Body.Message message = body.new Message("msg-6", "2026-05-06T00:00:00Z", "!!!not-base64!!!");
+        body.setMessage(message);
+
+        ResponseEntity<String> response = controller.receiveMessage(body);
+
+        // Poison: 200 so Pub/Sub stops redelivering. Claim is NOT released
+        // (no point retrying a payload that will never decode).
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().contains("Invalid payload"));
+        assertEquals(0, handleInvocations.get());
+        verify(pubSubMetrics, times(1)).recordError(eq(SERVICE), eq(TOPIC), any(Throwable.class));
+        verify(pubSubMetrics, never()).recordSuccess(anyString(), anyString());
+        verify(idempotencyService, never()).release(anyString(), anyString());
+    }
+
+    @Test
+    void invalidJsonPayload_acknowledges_andDoesNotReleaseClaim() {
+        when(idempotencyService.claim("msg-7", SERVICE)).thenReturn(true);
+
+        // Valid base64 but the bytes don't parse as TestPayload JSON.
+        ResponseEntity<String> response = controller.receiveMessage(
+            buildBody("msg-7", "this is not json at all"));
+
+        // Same poison contract as base64: 200 + no release.
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().contains("Invalid payload"));
+        assertEquals(0, handleInvocations.get());
+        verify(pubSubMetrics, times(1)).recordError(eq(SERVICE), eq(TOPIC), any(Throwable.class));
+        verify(pubSubMetrics, never()).recordSuccess(anyString(), anyString());
+        verify(idempotencyService, never()).release(anyString(), anyString());
+    }
+
     private static Body buildBody(String messageId, String json) {
         String encoded = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
         Body body = new Body();

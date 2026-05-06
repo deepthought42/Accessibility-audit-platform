@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.looksee.mapper.Body;
 import com.looksee.messaging.idempotency.IdempotencyGuard;
@@ -123,6 +124,16 @@ public abstract class PubSubAuditController<T> {
                 span.setStatus(StatusCode.ERROR, "invalid_base64");
                 pubSubMetrics.recordError(serviceName(), topicName(), e);
                 log.warn("invalid base64 payload in {}, acknowledging", serviceName(), e);
+                return ResponseEntity.ok("Invalid payload, acknowledged");
+            } catch (JsonProcessingException e) {
+                // Malformed or schema-incompatible JSON — re-delivery cannot
+                // succeed, so acknowledge as poison rather than loop forever.
+                // Especially important for dead-letter consumers (journeyErrors)
+                // where stale-schema payloads are routine.
+                span.recordException(e);
+                span.setStatus(StatusCode.ERROR, "invalid_json");
+                pubSubMetrics.recordError(serviceName(), topicName(), e);
+                log.warn("invalid json payload in {}, acknowledging", serviceName(), e);
                 return ResponseEntity.ok("Invalid payload, acknowledged");
             } catch (Exception e) {
                 span.recordException(e);
