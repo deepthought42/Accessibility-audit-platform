@@ -115,4 +115,48 @@ class IdempotencyServiceTest {
         idempotencyService.markProcessed("", "svc-j");
         verifyNoInteractions(processedMessageRepository);
     }
+
+    @Test
+    void claim_returnsTrueOnFirstCall() {
+        when(processedMessageRepository.claim("msg-claim-1", "svc-k")).thenReturn(true);
+
+        assertTrue(idempotencyService.claim("msg-claim-1", "svc-k"));
+        verify(processedMessageRepository).claim("msg-claim-1", "svc-k");
+    }
+
+    @Test
+    void claim_returnsFalseOnDuplicate() {
+        when(processedMessageRepository.claim("msg-claim-2", "svc-l")).thenReturn(false);
+
+        assertFalse(idempotencyService.claim("msg-claim-2", "svc-l"));
+        verify(processedMessageRepository).claim("msg-claim-2", "svc-l");
+    }
+
+    @Test
+    void claim_returnsTrueWhenRepositoryIsNull() {
+        IdempotencyService serviceWithNullRepo = new IdempotencyService();
+        // Fail-open: cannot dedupe → caller must process
+        assertTrue(serviceWithNullRepo.claim("msg-claim-3", "svc-m"));
+    }
+
+    @Test
+    void claim_returnsTrueForNullPubsubMessageId() {
+        assertTrue(idempotencyService.claim(null, "svc-n"));
+        verifyNoInteractions(processedMessageRepository);
+    }
+
+    @Test
+    void claim_returnsTrueForEmptyPubsubMessageId() {
+        assertTrue(idempotencyService.claim("", "svc-o"));
+        verifyNoInteractions(processedMessageRepository);
+    }
+
+    @Test
+    void claim_failsOpenOnRepositoryException() {
+        when(processedMessageRepository.claim(eq("msg-claim-4"), eq("svc-p")))
+                .thenThrow(new RuntimeException("Neo4j unreachable"));
+
+        // Fail-open: at-least-once is preferable to silently dropping the message
+        assertTrue(idempotencyService.claim("msg-claim-4", "svc-p"));
+    }
 }
