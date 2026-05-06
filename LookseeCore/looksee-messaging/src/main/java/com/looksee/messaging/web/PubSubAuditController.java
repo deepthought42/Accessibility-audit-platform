@@ -95,7 +95,7 @@ public abstract class PubSubAuditController<T> {
         }
 
         String messageId = body.getMessage().getMessageId();
-        if (idempotencyService.isAlreadyProcessed(messageId, serviceName())) {
+        if (!idempotencyService.claim(messageId, serviceName())) {
             pubSubMetrics.recordDuplicate(serviceName(), topicName());
             return ResponseEntity.ok("Duplicate message, already processed");
         }
@@ -115,7 +115,6 @@ public abstract class PubSubAuditController<T> {
                 byte[] decoded = Base64.getDecoder().decode(body.getMessage().getData());
                 T payload = objectMapper.readValue(decoded, payloadType());
                 handle(payload);
-                idempotencyService.markProcessed(messageId, serviceName());
                 pubSubMetrics.recordSuccess(serviceName(), topicName());
                 return ResponseEntity.ok("ok");
             } catch (IllegalArgumentException e) {
@@ -130,6 +129,10 @@ public abstract class PubSubAuditController<T> {
                 span.setStatus(StatusCode.ERROR, e.getClass().getSimpleName());
                 pubSubMetrics.recordError(serviceName(), topicName(), e);
                 log.error("processing error in {} for messageId={}", serviceName(), messageId, e);
+                // Release the eager claim so Pub/Sub's redelivery is allowed to
+                // re-run handle(); otherwise the next attempt would short-circuit
+                // as a duplicate and the message would be silently dropped.
+                idempotencyService.release(messageId, serviceName());
                 return new ResponseEntity<>(
                     "processing error: " + e.getClass().getSimpleName(),
                     HttpStatus.INTERNAL_SERVER_ERROR);
