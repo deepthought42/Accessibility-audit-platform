@@ -95,7 +95,7 @@ public abstract class PubSubAuditController<T> {
         }
 
         String messageId = body.getMessage().getMessageId();
-        if (idempotencyService.isAlreadyProcessed(messageId, serviceName())) {
+        if (!idempotencyService.claim(messageId, serviceName())) {
             pubSubMetrics.recordDuplicate(serviceName(), topicName());
             return ResponseEntity.ok("Duplicate message, already processed");
         }
@@ -115,7 +115,6 @@ public abstract class PubSubAuditController<T> {
                 byte[] decoded = Base64.getDecoder().decode(body.getMessage().getData());
                 T payload = objectMapper.readValue(decoded, payloadType());
                 handle(payload);
-                idempotencyService.markProcessed(messageId, serviceName());
                 pubSubMetrics.recordSuccess(serviceName(), topicName());
                 return ResponseEntity.ok("ok");
             } catch (IllegalArgumentException e) {
