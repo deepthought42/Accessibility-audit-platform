@@ -114,6 +114,30 @@ public class IdempotencyService implements IdempotencyGuard {
     }
 
     /**
+     * Deletes a previously-claimed {@code (pubsubMessageId, serviceName)}
+     * record so a subsequent Pub/Sub redelivery is allowed to re-run
+     * business logic.
+     *
+     * <p>Best-effort: a missing repository, null/empty messageId, or a
+     * thrown persistence exception are all logged and swallowed. A stuck
+     * claim is preferable to bubbling a release-failure up over the
+     * original handler error.
+     */
+    @Override
+    public void release(String pubsubMessageId, String serviceName) {
+        if (processedMessageRepository == null || pubsubMessageId == null || pubsubMessageId.isEmpty()) {
+            return;
+        }
+        try {
+            processedMessageRepository.release(pubsubMessageId, serviceName);
+            log.debug("Released claim: pubsubMessageId={} service={}", pubsubMessageId, serviceName);
+        } catch (Exception e) {
+            log.warn("Failed to release claim (non-fatal); message may be stuck as duplicate: pubsubMessageId={} service={}",
+                    pubsubMessageId, serviceName, e);
+        }
+    }
+
+    /**
      * Cleans up old processed message records. Runs daily at 3 AM.
      */
     @Scheduled(cron = "0 0 3 * * ?")

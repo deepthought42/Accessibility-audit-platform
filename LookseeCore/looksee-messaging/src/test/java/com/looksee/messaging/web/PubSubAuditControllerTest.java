@@ -95,7 +95,7 @@ class PubSubAuditControllerTest {
     }
 
     @Test
-    void transientFailure_returnsServerError_andRecordsError() {
+    void transientFailure_returnsServerError_recordsError_andReleasesClaim() {
         when(idempotencyService.claim("msg-3", SERVICE)).thenReturn(true);
         handleFailure = new RuntimeException("downstream blew up");
 
@@ -108,6 +108,26 @@ class PubSubAuditControllerTest {
         verify(pubSubMetrics, never()).recordSuccess(anyString(), anyString());
         verify(pubSubMetrics, times(1)).recordError(eq(SERVICE), eq(TOPIC), any(Throwable.class));
         verify(pubSubMetrics, times(1)).recordDuration(eq(SERVICE), eq(TOPIC), anyLong());
+        // Eager claim must be released so Pub/Sub redelivery can retry handle().
+        verify(idempotencyService, times(1)).release("msg-3", SERVICE);
+    }
+
+    @Test
+    void firstDelivery_doesNotReleaseClaim() {
+        when(idempotencyService.claim("msg-4", SERVICE)).thenReturn(true);
+
+        controller.receiveMessage(buildBody("msg-4", "{\"value\":\"ok\"}"));
+
+        verify(idempotencyService, never()).release(anyString(), anyString());
+    }
+
+    @Test
+    void duplicateDelivery_doesNotReleaseClaim() {
+        when(idempotencyService.claim("msg-5", SERVICE)).thenReturn(false);
+
+        controller.receiveMessage(buildBody("msg-5", "{\"value\":\"ignored\"}"));
+
+        verify(idempotencyService, never()).release(anyString(), anyString());
     }
 
     private static Body buildBody(String messageId, String json) {

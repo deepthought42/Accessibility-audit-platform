@@ -57,4 +57,21 @@ public interface ProcessedMessageRepository extends Neo4jRepository<ProcessedMes
     boolean claim(
         @Param("pubsubMessageId") String pubsubMessageId,
         @Param("serviceName") String serviceName);
+
+    /**
+     * Releases a previously-claimed {@code (pubsubMessageId, serviceName)}
+     * pair by deleting its {@code ProcessedMessage} node, so a subsequent
+     * Pub/Sub redelivery is allowed to re-run business logic.
+     *
+     * <p>Called from {@code IdempotencyService.release(...)} when a
+     * controller fails inside {@code handle(...)} and returns 500. The
+     * uniqueness constraint guarantees there is at most one node to remove.
+     */
+    @Query("""
+        MATCH (pm:ProcessedMessage {pubsubMessageId: $pubsubMessageId, serviceName: $serviceName})
+        DETACH DELETE pm
+        """)
+    void release(
+        @Param("pubsubMessageId") String pubsubMessageId,
+        @Param("serviceName") String serviceName);
 }

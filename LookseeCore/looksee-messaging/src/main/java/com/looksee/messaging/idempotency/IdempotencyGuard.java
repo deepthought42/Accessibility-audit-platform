@@ -60,4 +60,28 @@ public interface IdempotencyGuard {
         markProcessed(pubsubMessageId, serviceName);
         return true;
     }
+
+    /**
+     * Releases a previously-claimed messageId so a subsequent redelivery is
+     * allowed to re-run business logic.
+     *
+     * <p>Called from {@code PubSubAuditController} when {@code handle(...)}
+     * throws a transient error and the controller is about to return HTTP
+     * 500. Without this, an eager {@link #claim} would persist the row,
+     * Pub/Sub would redeliver, and the next claim would short-circuit as a
+     * duplicate — silently dropping the message instead of retrying.
+     *
+     * <p>Implementations must tolerate null/empty inputs and must not throw
+     * on persistence failures (release is best-effort; a stuck claim is
+     * preferable to a thrown exception masking the original handler error).
+     *
+     * <p>The default implementation is a no-op so any existing
+     * {@link IdempotencyGuard} implementor — particularly the in-memory
+     * doubles used in tests — keeps compiling. The production
+     * {@code IdempotencyService} overrides this with a single Cypher
+     * {@code MATCH ... DELETE} against the {@code ProcessedMessage} node.
+     */
+    default void release(String pubsubMessageId, String serviceName) {
+        // no-op by default
+    }
 }

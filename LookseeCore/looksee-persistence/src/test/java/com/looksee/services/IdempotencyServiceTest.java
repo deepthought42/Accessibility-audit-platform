@@ -159,4 +159,38 @@ class IdempotencyServiceTest {
         // Fail-open: at-least-once is preferable to silently dropping the message
         assertTrue(idempotencyService.claim("msg-claim-4", "svc-p"));
     }
+
+    @Test
+    void release_callsRepositoryDelete() {
+        idempotencyService.release("msg-rel-1", "svc-q");
+
+        verify(processedMessageRepository).release("msg-rel-1", "svc-q");
+    }
+
+    @Test
+    void release_doesNothingWhenRepositoryIsNull() {
+        IdempotencyService serviceWithNullRepo = new IdempotencyService();
+        assertDoesNotThrow(() -> serviceWithNullRepo.release("msg-rel-2", "svc-r"));
+    }
+
+    @Test
+    void release_doesNothingForNullPubsubMessageId() {
+        idempotencyService.release(null, "svc-s");
+        verifyNoInteractions(processedMessageRepository);
+    }
+
+    @Test
+    void release_doesNothingForEmptyPubsubMessageId() {
+        idempotencyService.release("", "svc-t");
+        verifyNoInteractions(processedMessageRepository);
+    }
+
+    @Test
+    void release_swallowsRepositoryException() {
+        doThrow(new RuntimeException("Neo4j unreachable"))
+                .when(processedMessageRepository).release("msg-rel-3", "svc-u");
+
+        // Best-effort: a stuck claim is preferable to masking the original handler error.
+        assertDoesNotThrow(() -> idempotencyService.release("msg-rel-3", "svc-u"));
+    }
 }
