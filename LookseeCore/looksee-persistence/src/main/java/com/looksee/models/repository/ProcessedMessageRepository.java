@@ -33,4 +33,28 @@ public interface ProcessedMessageRepository extends Neo4jRepository<ProcessedMes
      */
     @Query("MATCH (pm:ProcessedMessage) WHERE pm.processedAt < datetime() - duration({days: $days}) DETACH DELETE pm")
     void deleteOlderThan(@Param("days") int days);
+
+    /**
+     * Atomically claims a {@code (pubsubMessageId, serviceName)} pair via a
+     * single Cypher {@code MERGE}. Returns {@code true} iff this call created
+     * the node; {@code false} if it already existed.
+     *
+     * <p>Backed by the {@code processed_message_unique} constraint
+     * (migration {@code V002}) so two concurrent claims for the same key are
+     * physically serialized by Neo4j — there is no TOCTOU window the way
+     * {@link #existsByPubsubMessageIdAndServiceName} + {@code save(...)} had.
+     *
+     * @param pubsubMessageId the PubSub envelope message ID
+     * @param serviceName the name of the service claiming the message
+     * @return true if this call created the record, false if it already existed
+     */
+    @Query("""
+        MERGE (pm:ProcessedMessage {pubsubMessageId: $pubsubMessageId, serviceName: $serviceName})
+        ON CREATE SET pm.processedAt = datetime(), pm.status = 'PROCESSED', pm.justCreated = true
+        ON MATCH  SET pm.justCreated = false
+        RETURN pm.justCreated AS claimed
+        """)
+    boolean claim(
+        @Param("pubsubMessageId") String pubsubMessageId,
+        @Param("serviceName") String serviceName);
 }

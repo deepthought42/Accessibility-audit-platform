@@ -81,6 +81,39 @@ public class IdempotencyService implements IdempotencyGuard {
     }
 
     /**
+     * Atomically claims this {@code (pubsubMessageId, serviceName)} pair for processing.
+     *
+     * <p>Backed by a single Cypher {@code MERGE} against the {@code ProcessedMessage}
+     * uniqueness constraint (migration V002). Two concurrent calls with the same key
+     * are physically serialized by Neo4j; exactly one returns {@code true}.
+     *
+     * <p>Returns {@code true} when the caller should proceed with processing.
+     * In the fail-open paths (null repository, null/empty messageId) returns
+     * {@code true} as well so callers behave like before — same effect as the
+     * legacy {@link #isAlreadyProcessed} returning {@code false}.
+     */
+    @Override
+    public boolean claim(String pubsubMessageId, String serviceName) {
+        if (processedMessageRepository == null || pubsubMessageId == null || pubsubMessageId.isEmpty()) {
+            return true;
+        }
+
+        try {
+            boolean firstClaim = processedMessageRepository.claim(pubsubMessageId, serviceName);
+            if (!firstClaim) {
+                log.info("Duplicate message detected via claim(): pubsubMessageId={} service={}", pubsubMessageId, serviceName);
+            } else {
+                log.debug("Claimed message: pubsubMessageId={} service={}", pubsubMessageId, serviceName);
+            }
+            return firstClaim;
+        } catch (Exception e) {
+            log.warn("claim() failed; falling back to allow processing (at-least-once): pubsubMessageId={} service={}",
+                    pubsubMessageId, serviceName, e);
+            return true;
+        }
+    }
+
+    /**
      * Cleans up old processed message records. Runs daily at 3 AM.
      */
     @Scheduled(cron = "0 0 3 * * ?")

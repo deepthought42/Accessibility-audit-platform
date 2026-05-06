@@ -125,6 +125,32 @@ class ProcessedMessageRepositoryTest {
     }
 
     @Test
+    @DisplayName("claim returns true on first call and false on subsequent calls")
+    void claim_returnsTrueThenFalse() {
+        when(repository.claim(MSG_ID, SERVICE_NAME))
+                .thenReturn(true)
+                .thenReturn(false);
+
+        assertTrue(repository.claim(MSG_ID, SERVICE_NAME),
+                "First claim must return true (just created)");
+        assertFalse(repository.claim(MSG_ID, SERVICE_NAME),
+                "Second claim must return false (already exists)");
+        verify(repository, times(2)).claim(MSG_ID, SERVICE_NAME);
+    }
+
+    @Test
+    @DisplayName("claim differentiates by service name")
+    void claim_differentiatesByServiceName() {
+        when(repository.claim(MSG_ID, "page-builder")).thenReturn(true);
+        when(repository.claim(MSG_ID, SERVICE_NAME)).thenReturn(true);
+
+        assertTrue(repository.claim(MSG_ID, "page-builder"),
+                "Same messageId for a different service should still claim");
+        assertTrue(repository.claim(MSG_ID, SERVICE_NAME),
+                "Same messageId for this service first time should claim");
+    }
+
+    @Test
     @DisplayName("ProcessedMessage constructor sets fields correctly")
     void processedMessageConstructor_setsFieldsCorrectly() {
         LocalDateTime before = LocalDateTime.now();
