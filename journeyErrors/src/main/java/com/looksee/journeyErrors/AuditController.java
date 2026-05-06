@@ -3,7 +3,6 @@ package com.looksee.journeyErrors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.looksee.messaging.web.PubSubAuditController;
@@ -51,7 +50,6 @@ public class AuditController extends PubSubAuditController<JourneyCandidateMessa
 	}
 
 	@Override
-	@Transactional
 	protected void handle(JourneyCandidateMessage journey_msg) {
 		Journey journey = journey_msg.getJourney();
 		if (!JourneyStatus.CANDIDATE.equals(journey.getStatus())) {

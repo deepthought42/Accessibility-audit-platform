@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Journey service contains business logic for interacting with and managing 
@@ -202,6 +203,7 @@ public class JourneyService {
 	 */
 	@Synchronized
 	@Retryable
+	@Transactional
 	public Journey updateStatus(long journey_id, JourneyStatus status) {
 		assert journey_id > 0;
 		assert status != null;
