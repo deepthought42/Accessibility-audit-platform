@@ -167,6 +167,34 @@ class PubSubAuditControllerTest {
         verify(idempotencyService, never()).release(anyString(), anyString());
     }
 
+    @Test
+    void emptyEnvelope_acknowledges_andSkipsClaim() {
+        Body body = new Body();
+        Body.Message message = body.new Message("msg-8", "2026-05-06T00:00:00Z", "");
+        body.setMessage(message);
+
+        ResponseEntity<String> response = controller.receiveMessage(body);
+
+        // Acknowledge with 200 so Pub/Sub stops redelivering an envelope
+        // we can never act on. recordInvalid is called; claim is never
+        // attempted because there's no payload to dedupe.
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().contains("Invalid pubsub payload"));
+        verify(pubSubMetrics, times(1)).recordInvalid(SERVICE, TOPIC);
+        verify(idempotencyService, never()).claim(anyString(), anyString());
+        verify(idempotencyService, never()).release(anyString(), anyString());
+    }
+
+    @Test
+    void nullBody_acknowledges_andSkipsClaim() {
+        ResponseEntity<String> response = controller.receiveMessage(null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().contains("Invalid pubsub payload"));
+        verify(pubSubMetrics, times(1)).recordInvalid(SERVICE, TOPIC);
+        verify(idempotencyService, never()).claim(anyString(), anyString());
+    }
+
     private static Body buildBody(String messageId, String json) {
         String encoded = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
         Body body = new Body();
