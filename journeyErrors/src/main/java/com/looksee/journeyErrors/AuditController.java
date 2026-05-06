@@ -1,23 +1,11 @@
 package com.looksee.journeyErrors;
 
-import java.util.Base64;
-import java.util.Set;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.looksee.mapper.Body;
+import com.looksee.messaging.web.PubSubAuditController;
 import com.looksee.models.enums.JourneyStatus;
 import com.looksee.models.journeys.Journey;
 import com.looksee.models.message.JourneyCandidateMessage;
@@ -39,59 +27,36 @@ import com.looksee.services.JourneyService;
  * limitations under the License.
  */
 @RestController
-public class AuditController {
-	private static Logger log = LoggerFactory.getLogger(AuditController.class);
-	private static final Set<String> processedMessages = java.util.concurrent.ConcurrentHashMap.newKeySet();
+public class AuditController extends PubSubAuditController<JourneyCandidateMessage> {
+
+	private static final Logger log = LoggerFactory.getLogger(AuditController.class);
 
 	@Autowired
 	private JourneyService journey_service;
-	
-	@Transactional
-	@RequestMapping(value = "/", method = RequestMethod.POST)
-	public ResponseEntity<String> receiveMessage(@RequestBody Body body)
-			throws Exception
-	{
-		if(body == null || body.getMessage() == null || body.getMessage().getData() == null || body.getMessage().getData().isEmpty()) {
-			log.warn("Received empty Pub/Sub message payload");
-			return new ResponseEntity<String>("Empty message payload", HttpStatus.OK);
-		}
 
-		String pubsubMsgId = body.getMessage().getMessageId();
-		if (pubsubMsgId != null && !processedMessages.add(pubsubMsgId)) {
-			return ResponseEntity.ok("Duplicate");
-		}
-
-		Body.Message message = body.getMessage();
-		String data = message.getData();
-
-		String target;
-		JourneyCandidateMessage journey_msg;
-		try {
-			target = new String(Base64.getDecoder().decode(data));
-			log.warn("processing journey dead letter message = "+target);
-			ObjectMapper input_mapper = new ObjectMapper().registerModule(new JavaTimeModule()).configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-			journey_msg = input_mapper.readValue(target, JourneyCandidateMessage.class);
-		}
-		catch(Exception e) {
-			log.warn("Invalid Pub/Sub message payload. Unable to decode/deserialize: {}", e.getMessage());
-			return new ResponseEntity<String>("Invalid message payload", HttpStatus.OK);
-		}
-	    
-	    //JsonMapper mapper = JsonMapper.builder().addModule(new JavaTimeModule()).build();
-		Journey journey = journey_msg.getJourney();
-		
-		log.warn("processing journey with id = "+journey.getId()+"; with status = "+journey.getStatus());
-	    //CHECK IF JOURNEY WITH CANDIDATE KEY HAS ALREADY BEEN EVALUATED
-	    if(!JourneyStatus.CANDIDATE.equals(journey.getStatus())) {
-	    	log.warn("Journey has already been verified or discarded, or is being evaluated with status = "+journey.getStatus());
-	    	return new ResponseEntity<String>("Successfully generated journey expansions", HttpStatus.OK);
-	    }
-	    
-	    //update journey status to ERROR
-	    journey_service.updateStatus(journey.getId(), JourneyStatus.ERROR);
-		
-		return new ResponseEntity<String>("Successfully expanded journey", HttpStatus.OK);
-		
+	@Override
+	protected String serviceName() {
+		return "journey-errors";
 	}
 
+	@Override
+	protected String topicName() {
+		return "journey_candidate_dlq";
+	}
+
+	@Override
+	protected Class<JourneyCandidateMessage> payloadType() {
+		return JourneyCandidateMessage.class;
+	}
+
+	@Override
+	protected void handle(JourneyCandidateMessage journey_msg) {
+		Journey journey = journey_msg.getJourney();
+		if (!JourneyStatus.CANDIDATE.equals(journey.getStatus())) {
+			log.warn("Journey {} already non-CANDIDATE (status={}); skipping",
+				journey.getId(), journey.getStatus());
+			return;
+		}
+		journey_service.updateStatus(journey.getId(), JourneyStatus.ERROR);
+	}
 }
