@@ -3,8 +3,10 @@ package com.looksee.auditManager;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,165 +14,107 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.looksee.gcp.PubSubPageAuditPublisherImpl;
 import com.looksee.mapper.Body;
+import com.looksee.messaging.idempotency.IdempotencyGuard;
+import com.looksee.messaging.observability.PubSubMetrics;
 import com.looksee.models.PageState;
 import com.looksee.models.audit.AuditRecord;
 import com.looksee.models.audit.DomainAuditRecord;
+import com.looksee.models.audit.PageAuditRecord;
 import com.looksee.models.enums.AuditName;
 import com.looksee.services.AuditRecordService;
-import com.looksee.services.IdempotencyService;
 import com.looksee.services.PageStateService;
 
-@ExtendWith(MockitoExtension.class)
+/**
+ * Per-service tests for audit-manager after the migration to
+ * {@link com.looksee.messaging.web.PubSubAuditController}. Envelope
+ * validation, base64/JSON edge cases, idempotency claim/release, and metrics
+ * emission are owned by the base class and covered in
+ * {@code PubSubAuditControllerTest}; this file only exercises the
+ * eligibility + persistence business logic in {@code handle(...)}.
+ */
 class AuditControllerTest {
 
-	@Mock
-	private AuditRecordService auditRecordService;
-
-	@Mock
-	private PubSubPageAuditPublisherImpl auditRecordTopic;
-
-	@Mock
-	private PageStateService pageStateService;
-
-	@Mock
-	private IdempotencyService idempotencyService;
+	private static final String SERVICE = "audit-manager";
 
 	private AuditController controller;
+	private AuditRecordService auditRecordService;
+	private PubSubPageAuditPublisherImpl auditRecordTopic;
+	private PageStateService pageStateService;
+	private IdempotencyGuard idempotencyService;
+	private PubSubMetrics pubSubMetrics;
 
 	@BeforeEach
-	void setup() {
-		controller = new AuditController(auditRecordService, auditRecordTopic, pageStateService, idempotencyService);
-	}
+	void setUp() {
+		controller = new AuditController();
+		auditRecordService = mock(AuditRecordService.class);
+		auditRecordTopic = mock(PubSubPageAuditPublisherImpl.class);
+		pageStateService = mock(PageStateService.class);
+		idempotencyService = mock(IdempotencyGuard.class);
+		pubSubMetrics = mock(PubSubMetrics.class);
 
-	@Test
-	void shouldReturnBadRequestWhenBodyIsMissing() {
-		ResponseEntity<String> response = controller.receiveMessage(null);
+		ReflectionTestUtils.setField(controller, "auditRecordService", auditRecordService);
+		ReflectionTestUtils.setField(controller, "auditRecordTopic", auditRecordTopic);
+		ReflectionTestUtils.setField(controller, "pageStateService", pageStateService);
+		ReflectionTestUtils.setField(controller, "idempotencyService", idempotencyService);
+		ReflectionTestUtils.setField(controller, "objectMapper", new ObjectMapper());
+		ReflectionTestUtils.setField(controller, "pubSubMetrics", pubSubMetrics);
 
-		assertEquals(HttpStatus.OK, response.getStatusCode());
-		assertEquals("Acknowledged invalid Pub/Sub payload", response.getBody());
-	}
-
-	@Test
-	void shouldReturnBadRequestWhenMessageIsNull() {
-		Body body = mock(Body.class);
-		when(body.getMessage()).thenReturn(null);
-
-		ResponseEntity<String> response = controller.receiveMessage(body);
-
-		assertEquals(HttpStatus.OK, response.getStatusCode());
-		assertEquals("Acknowledged invalid Pub/Sub payload", response.getBody());
-	}
-
-	@Test
-	void shouldReturnBadRequestWhenMessageDataIsNull() {
-		Body body = mock(Body.class);
-		Body.Message message = mock(Body.Message.class);
-		when(body.getMessage()).thenReturn(message);
-		when(message.getData()).thenReturn(null);
-
-		ResponseEntity<String> response = controller.receiveMessage(body);
-
-		assertEquals(HttpStatus.OK, response.getStatusCode());
-		assertEquals("Acknowledged invalid Pub/Sub payload", response.getBody());
-	}
-
-	@Test
-	void shouldReturnBadRequestWhenMessageDataIsMissing() {
-		Body body = mock(Body.class);
-		Body.Message message = mock(Body.Message.class);
-		when(body.getMessage()).thenReturn(message);
-		when(message.getData()).thenReturn("");
-
-		ResponseEntity<String> response = controller.receiveMessage(body);
-
-		assertEquals(HttpStatus.OK, response.getStatusCode());
-		assertEquals("Acknowledged invalid Pub/Sub payload", response.getBody());
-	}
-
-	@Test
-	void shouldReturnBadRequestWhenMessageDataIsNotBase64() throws Exception {
-		Body body = mockBodyWithData("not-base64");
-
-		ResponseEntity<String> response = controller.receiveMessage(body);
-
-		assertEquals(HttpStatus.OK, response.getStatusCode());
-		assertEquals("Acknowledged invalid message encoding", response.getBody());
-		verify(auditRecordTopic, never()).publish(any());
-	}
-
-	@Test
-	void shouldReturnBadRequestWhenDecodedPayloadIsNotJson() throws Exception {
-		String encoded = Base64.getEncoder().encodeToString("invalid-json".getBytes(StandardCharsets.UTF_8));
-		Body body = mockBodyWithData(encoded);
-
-		ResponseEntity<String> response = controller.receiveMessage(body);
-
-		assertEquals(HttpStatus.OK, response.getStatusCode());
-		assertEquals("Acknowledged invalid message format", response.getBody());
-		verify(auditRecordTopic, never()).publish(any());
+		when(idempotencyService.claim(anyString(), anyString())).thenReturn(true);
 	}
 
 	@Test
 	void shouldSkipWhenPageAlreadyAudited() throws Exception {
-		Body body = createValidBody();
-
 		when(auditRecordService.wasPageAlreadyAudited(3L, 2L)).thenReturn(true);
 		when(pageStateService.isPageLandable(2L)).thenReturn(true);
 		when(pageStateService.findById(2L)).thenReturn(Optional.of(new PageState()));
 		when(auditRecordService.findById(3L)).thenReturn(Optional.empty());
 
-		ResponseEntity<String> response = controller.receiveMessage(body);
+		ResponseEntity<String> response = controller.receiveMessage(buildBody("msg-skip", validJson()));
 
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(auditRecordTopic, never()).publish(any());
+		verify(auditRecordTopic, never()).publish(anyString());
+		verify(auditRecordService, never()).save(any());
 	}
 
 	@Test
 	void shouldSkipWhenPageIsNotLandable() throws Exception {
-		Body body = createValidBody();
-
 		when(auditRecordService.wasPageAlreadyAudited(3L, 2L)).thenReturn(false);
 		when(pageStateService.isPageLandable(2L)).thenReturn(false);
 		when(pageStateService.findById(2L)).thenReturn(Optional.of(new PageState()));
 		when(auditRecordService.findById(3L)).thenReturn(Optional.empty());
 
-		ResponseEntity<String> response = controller.receiveMessage(body);
+		ResponseEntity<String> response = controller.receiveMessage(buildBody("msg-nonlandable", validJson()));
 
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(auditRecordTopic, never()).publish(any());
+		verify(auditRecordTopic, never()).publish(anyString());
 	}
 
 	@Test
 	void shouldSkipWhenPageStateMissing() throws Exception {
-		Body body = createValidBody();
-
 		when(auditRecordService.wasPageAlreadyAudited(3L, 2L)).thenReturn(false);
 		when(pageStateService.isPageLandable(2L)).thenReturn(true);
 		when(pageStateService.findById(2L)).thenReturn(Optional.empty());
 		when(auditRecordService.findById(3L)).thenReturn(Optional.empty());
 
-		ResponseEntity<String> response = controller.receiveMessage(body);
+		ResponseEntity<String> response = controller.receiveMessage(buildBody("msg-nostate", validJson()));
 
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(auditRecordTopic, never()).publish(any());
+		verify(auditRecordTopic, never()).publish(anyString());
 	}
 
 	@Test
 	void shouldPublishAuditWhenEligible() throws Exception {
-		Body body = createValidBody();
 		PageState pageState = new PageState();
 		AuditRecord savedRecord = mock(AuditRecord.class);
 
@@ -181,7 +125,7 @@ class AuditControllerTest {
 		when(auditRecordService.save(any())).thenReturn(savedRecord);
 		when(savedRecord.getId()).thenReturn(99L);
 
-		ResponseEntity<String> response = controller.receiveMessage(body);
+		ResponseEntity<String> response = controller.receiveMessage(buildBody("msg-go", validJson()));
 
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 		verify(auditRecordService).addPageAuditToDomainAudit(3L, 99L);
@@ -194,9 +138,8 @@ class AuditControllerTest {
 
 	@Test
 	void shouldUseDomainAuditLabelsWhenDomainRecordExists() throws Exception {
-		Body body = createValidBody();
 		PageState pageState = new PageState();
-		AuditRecord savedRecord = mock(AuditRecord.class);
+		PageAuditRecord savedRecord = mock(PageAuditRecord.class);
 		DomainAuditRecord domainRecord = mock(DomainAuditRecord.class);
 		Set<AuditName> labels = Set.of(AuditName.ALT_TEXT);
 
@@ -208,17 +151,15 @@ class AuditControllerTest {
 		when(auditRecordService.save(any())).thenReturn(savedRecord);
 		when(savedRecord.getId()).thenReturn(22L);
 
-		ResponseEntity<String> response = controller.receiveMessage(body);
+		ResponseEntity<String> response = controller.receiveMessage(buildBody("msg-labels", validJson()));
 
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(auditRecordService).save(any());
 		verify(domainRecord).getAuditLabels();
 		verify(auditRecordService).addPageAuditToDomainAudit(3L, 22L);
 	}
 
 	@Test
 	void shouldReturnInternalServerErrorWhenPublishingFails() throws Exception {
-		Body body = createValidBody();
 		PageState pageState = new PageState();
 		AuditRecord savedRecord = mock(AuditRecord.class);
 
@@ -228,65 +169,62 @@ class AuditControllerTest {
 		when(auditRecordService.findById(3L)).thenReturn(Optional.empty());
 		when(auditRecordService.save(any())).thenReturn(savedRecord);
 		when(savedRecord.getId()).thenReturn(88L);
-		doExecutionFailure();
+		org.mockito.Mockito.doThrow(new java.util.concurrent.ExecutionException(new RuntimeException("pubsub")))
+			.when(auditRecordTopic)
+			.publish(anyString());
 
-		ResponseEntity<String> response = controller.receiveMessage(body);
+		ResponseEntity<String> response = controller.receiveMessage(buildBody("msg-pub-fail", validJson()));
 
 		assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-		assertEquals("Failed to process message", response.getBody());
+		// Base class releases the eager claim so Pub/Sub redelivery can retry.
+		verify(idempotencyService).release("msg-pub-fail", SERVICE);
 	}
 
 	@Test
-	void shouldReturnInternalServerErrorWhenInterrupted() throws Exception {
-		Body body = createValidBody();
+	void redelivery_doesNotDoubleProcess_thePerIssue83Contract() throws Exception {
 		PageState pageState = new PageState();
 		AuditRecord savedRecord = mock(AuditRecord.class);
+
+		// Stateful claim: first call wins, every subsequent call sees the row.
+		when(idempotencyService.claim("dup-msg", SERVICE))
+			.thenReturn(true)
+			.thenReturn(false);
 
 		when(auditRecordService.wasPageAlreadyAudited(3L, 2L)).thenReturn(false);
 		when(pageStateService.isPageLandable(2L)).thenReturn(true);
 		when(pageStateService.findById(2L)).thenReturn(Optional.of(pageState));
 		when(auditRecordService.findById(3L)).thenReturn(Optional.empty());
 		when(auditRecordService.save(any())).thenReturn(savedRecord);
-		when(savedRecord.getId()).thenReturn(77L);
-		org.mockito.Mockito.doThrow(new InterruptedException("stop"))
-			.when(auditRecordTopic)
-			.publish(any(String.class));
+		when(savedRecord.getId()).thenReturn(42L);
 
-		ResponseEntity<String> response = controller.receiveMessage(body);
+		Body envelope = buildBody("dup-msg", validJson());
 
-		assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-		assertEquals("Audit processing interrupted", response.getBody());
+		ResponseEntity<String> first = controller.receiveMessage(envelope);
+		ResponseEntity<String> second = controller.receiveMessage(envelope);
+
+		assertEquals(HttpStatus.OK, first.getStatusCode());
+		assertEquals("ok", first.getBody());
+		assertEquals(HttpStatus.OK, second.getStatusCode());
+		assertTrue(second.getBody().contains("Duplicate"),
+			"second redelivery must short-circuit on duplicate, got: " + second.getBody());
+
+		// The audit must be persisted + published exactly once across redeliveries.
+		verify(auditRecordService, times(1)).save(any());
+		verify(auditRecordTopic, times(1)).publish(anyString());
+		verify(auditRecordService, times(1)).addPageAuditToDomainAudit(3L, 42L);
 	}
 
-	@Test
-	void shouldReturnInternalServerErrorForUnexpectedException() {
-		Body body = createValidBody();
-
-		when(auditRecordService.findById(3L)).thenThrow(new RuntimeException("boom"));
-
-		ResponseEntity<String> response = controller.receiveMessage(body);
-
-		assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-		assertEquals("Failed to process message", response.getBody());
+	private static String validJson() {
+		return "{\"accountId\":1,\"pageId\":2,\"auditRecordId\":3}";
 	}
 
-	private void doExecutionFailure() throws Exception {
-		org.mockito.Mockito.doThrow(new ExecutionException(new RuntimeException("pubsub")))
-			.when(auditRecordTopic)
-			.publish(any(String.class));
-	}
-
-	private Body createValidBody() {
-		String payload = "{\"accountId\":1,\"pageId\":2,\"auditRecordId\":3}";
-		String encoded = Base64.getEncoder().encodeToString(payload.getBytes(StandardCharsets.UTF_8));
-		return mockBodyWithData(encoded);
-	}
-
-	private Body mockBodyWithData(String data) {
-		Body body = mock(Body.class);
-		Body.Message message = mock(Body.Message.class);
-		when(body.getMessage()).thenReturn(message);
-		when(message.getData()).thenReturn(data);
+	private static Body buildBody(String messageId, String json) {
+		String encoded = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+		Body body = new Body();
+		Body.Message msg = body.new Message();
+		msg.setMessageId(messageId);
+		msg.setData(encoded);
+		body.setMessage(msg);
 		return body;
 	}
 }

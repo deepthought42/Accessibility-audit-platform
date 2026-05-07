@@ -1,9 +1,14 @@
 package com.looksee.auditManager;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -14,209 +19,118 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.looksee.gcp.PubSubPageAuditPublisherImpl;
 import com.looksee.mapper.Body;
+import com.looksee.messaging.idempotency.IdempotencyGuard;
+import com.looksee.messaging.observability.PubSubMetrics;
 import com.looksee.models.PageState;
 import com.looksee.models.audit.AuditRecord;
 import com.looksee.models.audit.DomainAuditRecord;
 import com.looksee.models.audit.PageAuditRecord;
 import com.looksee.models.enums.AuditName;
-import com.looksee.models.enums.ExecutionStatus;
 import com.looksee.services.AuditRecordService;
-import com.looksee.services.IdempotencyService;
 import com.looksee.services.PageStateService;
 
 /**
- * Unit tests for {@link AuditController} focusing on idempotency,
- * error handling, and message processing.
+ * Idempotency-focused tests for {@link AuditController}. The atomic
+ * {@code claim()} call lives in the {@link com.looksee.messaging.web.PubSubAuditController}
+ * base class, so these cases assert the contract from the audit-manager side:
+ * a duplicate claim returns 200 without doing any work, and the success path
+ * does not hit {@code release()}.
  */
 class AuditControllerIdempotencyTest {
 
-    private AuditController controller;
+	private static final String SERVICE = "audit-manager";
 
-    private AuditRecordService auditRecordService;
-    private PubSubPageAuditPublisherImpl auditRecordTopic;
-    private PageStateService pageStateService;
-    private IdempotencyService idempotencyService;
+	private AuditController controller;
+	private AuditRecordService auditRecordService;
+	private PubSubPageAuditPublisherImpl auditRecordTopic;
+	private PageStateService pageStateService;
+	private IdempotencyGuard idempotencyService;
+	private PubSubMetrics pubSubMetrics;
 
-    @BeforeEach
-    void setUp() {
-        auditRecordService = mock(AuditRecordService.class);
-        auditRecordTopic = mock(PubSubPageAuditPublisherImpl.class);
-        pageStateService = mock(PageStateService.class);
-        idempotencyService = mock(IdempotencyService.class);
+	@BeforeEach
+	void setUp() {
+		controller = new AuditController();
+		auditRecordService = mock(AuditRecordService.class);
+		auditRecordTopic = mock(PubSubPageAuditPublisherImpl.class);
+		pageStateService = mock(PageStateService.class);
+		idempotencyService = mock(IdempotencyGuard.class);
+		pubSubMetrics = mock(PubSubMetrics.class);
 
-        // Constructor injection
-        controller = new AuditController(
-            auditRecordService,
-            auditRecordTopic,
-            pageStateService,
-            idempotencyService
-        );
-    }
+		ReflectionTestUtils.setField(controller, "auditRecordService", auditRecordService);
+		ReflectionTestUtils.setField(controller, "auditRecordTopic", auditRecordTopic);
+		ReflectionTestUtils.setField(controller, "pageStateService", pageStateService);
+		ReflectionTestUtils.setField(controller, "idempotencyService", idempotencyService);
+		ReflectionTestUtils.setField(controller, "objectMapper", new ObjectMapper());
+		ReflectionTestUtils.setField(controller, "pubSubMetrics", pubSubMetrics);
+	}
 
-    // --- Idempotency tests ---
+	@Test
+	void duplicateClaim_shortCircuits_returns200() throws Exception {
+		when(idempotencyService.claim("dup-msg", SERVICE)).thenReturn(false);
 
-    @Test
-    void shouldReturnOkForDuplicateMessage() throws Exception {
-        String validPayload = "{\"accountId\":1,\"pageId\":10,\"auditRecordId\":100}";
-        Body body = createValidBody("test-msg-id", validPayload);
-        when(idempotencyService.isAlreadyProcessed("test-msg-id", "audit-manager")).thenReturn(true);
+		ResponseEntity<String> response = controller.receiveMessage(
+			buildBody("dup-msg", "{\"accountId\":1,\"pageId\":10,\"auditRecordId\":100}"));
 
-        ResponseEntity<String> response = controller.receiveMessage(body);
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		assertTrue(response.getBody().contains("Duplicate"));
+		verify(auditRecordTopic, never()).publish(anyString());
+		verify(auditRecordService, never()).save(any());
+		verify(idempotencyService, never()).release(anyString(), anyString());
+	}
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertTrue(response.getBody().contains("already processed"));
-        verify(auditRecordTopic, never()).publish(anyString());
-        verify(idempotencyService, never()).markProcessed(anyString(), anyString());
-    }
+	@Test
+	void successPath_doesNotReleaseTheClaim() throws Exception {
+		when(idempotencyService.claim("ok-msg", SERVICE)).thenReturn(true);
 
-    // --- Invalid payload tests (returns 200 not 400) ---
+		DomainAuditRecord domainRecord = mock(DomainAuditRecord.class);
+		HashSet<AuditName> labels = new HashSet<>();
+		labels.add(AuditName.ALT_TEXT);
+		when(domainRecord.getAuditLabels()).thenReturn(labels);
+		when(auditRecordService.findById(100L)).thenReturn(Optional.of(domainRecord));
+		when(auditRecordService.wasPageAlreadyAudited(100L, 10L)).thenReturn(false);
+		when(pageStateService.isPageLandable(10L)).thenReturn(true);
+		when(pageStateService.findById(10L)).thenReturn(Optional.of(new PageState()));
 
-    @Test
-    void shouldReturnOkForNullBody() throws Exception {
-        ResponseEntity<String> response = controller.receiveMessage(null);
+		PageAuditRecord savedRecord = mock(PageAuditRecord.class);
+		when(savedRecord.getId()).thenReturn(200L);
+		when(auditRecordService.save(any(AuditRecord.class))).thenReturn(savedRecord);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-    }
+		ResponseEntity<String> response = controller.receiveMessage(
+			buildBody("ok-msg", "{\"accountId\":1,\"pageId\":10,\"auditRecordId\":100}"));
 
-    @Test
-    void shouldReturnOkForNullMessage() throws Exception {
-        Body body = new Body();
-        body.setMessage(null);
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		verify(auditRecordTopic, times(1)).publish(anyString());
+		verify(idempotencyService, never()).release(anyString(), anyString());
+	}
 
-        ResponseEntity<String> response = controller.receiveMessage(body);
+	@Test
+	void skippedEligibility_doesNotReleaseTheClaim() throws Exception {
+		when(idempotencyService.claim("skip-msg", SERVICE)).thenReturn(true);
+		when(auditRecordService.findById(100L)).thenReturn(Optional.empty());
+		when(auditRecordService.wasPageAlreadyAudited(100L, 10L)).thenReturn(true);
+		when(pageStateService.isPageLandable(10L)).thenReturn(true);
+		when(pageStateService.findById(10L)).thenReturn(Optional.of(new PageState()));
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-    }
+		ResponseEntity<String> response = controller.receiveMessage(
+			buildBody("skip-msg", "{\"accountId\":1,\"pageId\":10,\"auditRecordId\":100}"));
 
-    @Test
-    void shouldReturnOkForNullData() throws Exception {
-        Body body = new Body();
-        Body.Message msg = body.new Message("msg-1", "2024-01-01T00:00:00Z", "placeholder");
-        // Use reflection to set data to null since constructor asserts non-null
-        try {
-            java.lang.reflect.Field dataField = Body.Message.class.getDeclaredField("data");
-            dataField.setAccessible(true);
-            dataField.set(msg, null);
-        } catch (Exception e) {
-            fail("Failed to set data field to null via reflection");
-        }
-        body.setMessage(msg);
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		verify(auditRecordTopic, never()).publish(anyString());
+		verify(idempotencyService, never()).release(anyString(), anyString());
+	}
 
-        ResponseEntity<String> response = controller.receiveMessage(body);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-    }
-
-    @Test
-    void shouldReturnOkForEmptyData() throws Exception {
-        Body body = new Body();
-        Body.Message msg = body.new Message("msg-2", "2024-01-01T00:00:00Z", "");
-        body.setMessage(msg);
-
-        ResponseEntity<String> response = controller.receiveMessage(body);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-    }
-
-    @Test
-    void shouldReturnOkForInvalidBase64Data() throws Exception {
-        Body body = new Body();
-        Body.Message msg = body.new Message("msg-3", "2024-01-01T00:00:00Z", "not-valid-base64!!!");
-        body.setMessage(msg);
-        when(idempotencyService.isAlreadyProcessed("msg-3", "audit-manager")).thenReturn(false);
-
-        ResponseEntity<String> response = controller.receiveMessage(body);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(auditRecordTopic, never()).publish(anyString());
-    }
-
-    @Test
-    void shouldReturnOkForInvalidJson() throws Exception {
-        String invalidJson = "this is not json";
-        Body body = createValidBody("msg-4", invalidJson);
-        when(idempotencyService.isAlreadyProcessed("msg-4", "audit-manager")).thenReturn(false);
-
-        ResponseEntity<String> response = controller.receiveMessage(body);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(auditRecordTopic, never()).publish(anyString());
-    }
-
-    // --- Successful processing tests ---
-
-    @Test
-    void shouldCreateAndPublishAuditForEligiblePage() throws Exception {
-        String payload = "{\"accountId\":1,\"pageId\":10,\"auditRecordId\":100}";
-        Body body = createValidBody("msg-5", payload);
-        when(idempotencyService.isAlreadyProcessed("msg-5", "audit-manager")).thenReturn(false);
-
-        // Set up audit record with labels
-        DomainAuditRecord domainRecord = mock(DomainAuditRecord.class);
-        HashSet<AuditName> labels = new HashSet<>();
-        labels.add(AuditName.ALT_TEXT);
-        when(domainRecord.getAuditLabels()).thenReturn(labels);
-        when(auditRecordService.findById(100L)).thenReturn(Optional.of(domainRecord));
-
-        when(auditRecordService.wasPageAlreadyAudited(100L, 10L)).thenReturn(false);
-        when(pageStateService.isPageLandable(10L)).thenReturn(true);
-
-        PageState pageState = new PageState();
-        when(pageStateService.findById(10L)).thenReturn(Optional.of(pageState));
-
-        PageAuditRecord savedRecord = mock(PageAuditRecord.class);
-        when(savedRecord.getId()).thenReturn(200L);
-        when(auditRecordService.save(any(AuditRecord.class))).thenReturn(savedRecord);
-
-        ResponseEntity<String> response = controller.receiveMessage(body);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(auditRecordTopic).publish(anyString());
-        verify(idempotencyService).markProcessed("msg-5", "audit-manager");
-    }
-
-    @Test
-    void shouldMarkProcessedWhenPageAlreadyAudited() throws Exception {
-        String payload = "{\"accountId\":1,\"pageId\":10,\"auditRecordId\":100}";
-        Body body = createValidBody("msg-6", payload);
-        when(idempotencyService.isAlreadyProcessed("msg-6", "audit-manager")).thenReturn(false);
-
-        when(auditRecordService.findById(100L)).thenReturn(Optional.empty());
-        when(auditRecordService.wasPageAlreadyAudited(100L, 10L)).thenReturn(true);
-        when(pageStateService.isPageLandable(10L)).thenReturn(true);
-        when(pageStateService.findById(10L)).thenReturn(Optional.of(new PageState()));
-
-        ResponseEntity<String> response = controller.receiveMessage(body);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(auditRecordTopic, never()).publish(anyString());
-        verify(idempotencyService).markProcessed("msg-6", "audit-manager");
-    }
-
-    // --- Error handling tests ---
-
-    @Test
-    void shouldNotCallMarkProcessedOnInvalidPayload() throws Exception {
-        Body body = new Body();
-        Body.Message msg = body.new Message("msg-7", "2024-01-01T00:00:00Z", "bad-base64!!!");
-        body.setMessage(msg);
-        when(idempotencyService.isAlreadyProcessed("msg-7", "audit-manager")).thenReturn(false);
-
-        controller.receiveMessage(body);
-
-        verify(idempotencyService, never()).markProcessed(anyString(), anyString());
-    }
-
-    // --- Helper ---
-
-    private Body createValidBody(String messageId, String jsonPayload) {
-        String encoded = Base64.getEncoder().encodeToString(jsonPayload.getBytes(StandardCharsets.UTF_8));
-        Body body = new Body();
-        Body.Message msg = body.new Message(messageId, "2024-01-01T00:00:00Z", encoded);
-        body.setMessage(msg);
-        return body;
-    }
+	private static Body buildBody(String messageId, String json) {
+		String encoded = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+		Body body = new Body();
+		Body.Message msg = body.new Message();
+		msg.setMessageId(messageId);
+		msg.setData(encoded);
+		body.setMessage(msg);
+		return body;
+	}
 }

@@ -114,6 +114,12 @@
             <artifactId>A11yCore</artifactId>
             <version>${core.version}</version>
         </dependency>
+
+		<dependency>
+            <groupId>com.looksee</groupId>
+            <artifactId>A11yMessaging</artifactId>
+            <version>${core.version}</version>
+        </dependency>
 	</dependencies>
 
 	<build>
