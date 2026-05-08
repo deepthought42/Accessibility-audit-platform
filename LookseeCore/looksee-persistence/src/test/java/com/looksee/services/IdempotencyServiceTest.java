@@ -93,9 +93,9 @@ class IdempotencyServiceTest {
     }
 
     @Test
-    void cleanupOldRecords_callsRepositoryDeleteOlderThan3() {
+    void cleanupOldRecords_callsRepositoryDeleteOlderThan8() {
         idempotencyService.cleanupOldRecords();
-        verify(processedMessageRepository).deleteOlderThan(3);
+        verify(processedMessageRepository).deleteOlderThan(8);
     }
 
     @Test

@@ -29,14 +29,15 @@ import com.looksee.models.repository.ProcessedMessageRepository;
  * idempotencyService.markProcessed(pubsubMsgId, "page-builder");
  * }</pre>
  *
- * <p>Processed message records are automatically cleaned up after 3 days
- * via a scheduled job (PubSub message retention is 7 days, so 3 days
- * provides adequate coverage with margin).
+ * <p>Processed message records are automatically cleaned up after 8 days
+ * via a scheduled job. Pub/Sub retains undelivered messages for 7 days,
+ * so 8 days ensures a service offline for the full Pub/Sub window still
+ * finds its dedupe record on recovery (with one day of margin).
  */
 @Service
 public class IdempotencyService implements IdempotencyGuard {
     private static final Logger log = LoggerFactory.getLogger(IdempotencyService.class);
-    private static final int RETENTION_DAYS = 3;
+    private static final int RETENTION_DAYS = 8;
 
     @Autowired(required = false)
     private ProcessedMessageRepository processedMessageRepository;
