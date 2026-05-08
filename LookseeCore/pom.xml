@@ -38,6 +38,11 @@
 		<opentelemetry.version>1.32.0</opentelemetry.version>
 		<opentelemetry-instrumentation.version>1.32.0-alpha</opentelemetry-instrumentation.version>
 		<logstash-encoder.version>7.4</logstash-encoder.version>
+		<!-- Test infra (Testcontainers + Awaitility) for migration & idempotency
+		     integration tests added in #87. Skipped automatically when Docker
+		     is unavailable via @Testcontainers(disabledWithoutDocker = true). -->
+		<testcontainers.version>1.19.8</testcontainers.version>
+		<awaitility.version>4.2.0</awaitility.version>
 	</properties>
 
 	<dependencyManagement>
@@ -165,6 +170,23 @@
 				<groupId>net.logstash.logback</groupId>
 				<artifactId>logstash-logback-encoder</artifactId>
 				<version>${logstash-encoder.version}</version>
+			</dependency>
+
+			<!-- ============================================================
+			     Test infra: Testcontainers BOM unifies all testcontainers-*
+			     artifact versions across the monorepo.
+			     ============================================================ -->
+			<dependency>
+				<groupId>org.testcontainers</groupId>
+				<artifactId>testcontainers-bom</artifactId>
+				<version>${testcontainers.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.awaitility</groupId>
+				<artifactId>awaitility</artifactId>
+				<version>${awaitility.version}</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
