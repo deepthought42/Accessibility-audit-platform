@@ -43,6 +43,11 @@
 		     is unavailable via @Testcontainers(disabledWithoutDocker = true). -->
 		<testcontainers.version>1.19.8</testcontainers.version>
 		<awaitility.version>4.2.0</awaitility.version>
+		<!-- Surefire tag filter. Default-skip the requires-docker tag so
+		     plain `mvn test` runs without Docker. Override on the CLI to
+		     opt in: `-DexcludedGroups=` (clear) plus
+		     `-Dgroups=requires-docker` (run only those tests). -->
+		<excludedGroups>requires-docker</excludedGroups>
 	</properties>
 
 	<dependencyManagement>
@@ -247,11 +252,17 @@
 							<exclude>**/Abstract*.java</exclude>
 						</excludes>
 						<!-- JUnit 5 tag-based filter. Tests tagged
-						     "requires-docker" run only when explicitly opted
-						     in via -Dgroups=requires-docker; the default
-						     surefire run skips them so CI does not depend on
-						     a Docker-in-Docker setup it cannot guarantee. -->
-						<excludedGroups>requires-docker</excludedGroups>
+						     "requires-docker" are excluded by default so
+						     plain `mvn test` works without Docker. The value
+						     is sourced from the `excludedGroups` POM property
+						     (default `requires-docker`); override on the CLI
+						     to opt in:
+						         mvn test -DexcludedGroups= -Dgroups=requires-docker
+						     The property indirection is required because a
+						     hardcoded `<excludedGroups>` in plugin
+						     `<configuration>` wins over `-DexcludedGroups=`,
+						     so the opt-in command would otherwise be a no-op. -->
+						<excludedGroups>${excludedGroups}</excludedGroups>
 					</configuration>
 				</plugin>
 				<plugin>
