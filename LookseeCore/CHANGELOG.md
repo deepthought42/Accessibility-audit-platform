@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Changed
+- `IdempotencyService` retention extended from 3 to 8 days; cleanup keys off `ProcessedMessage.processedAt`. Pub/Sub retains undelivered messages for 7 days, so 8 days ensures a service offline for the full window still finds its dedupe record on recovery. **Operational note:** if a service is down longer than 8 days, message replays may reprocess. (Refs #86, part of #28.)
+
 ## [0.8.2] - 2026-04-26
 
 ### Added

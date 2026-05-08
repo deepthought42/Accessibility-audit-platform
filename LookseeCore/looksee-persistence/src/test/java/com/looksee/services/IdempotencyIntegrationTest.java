@@ -139,22 +139,22 @@ class IdempotencyIntegrationTest {
     @Test
     @DisplayName("Cleanup removes old records via deleteOlderThan")
     void testCleanupRemovesOldRecords() {
-        doNothing().when(processedMessageRepository).deleteOlderThan(3);
+        doNothing().when(processedMessageRepository).deleteOlderThan(8);
 
         idempotencyService.cleanupOldRecords();
 
-        verify(processedMessageRepository).deleteOlderThan(3);
+        verify(processedMessageRepository).deleteOlderThan(8);
     }
 
     @Test
     @DisplayName("Cleanup handles repository exception gracefully")
     void testCleanupHandlesException() {
         doThrow(new RuntimeException("DB connection failed"))
-                .when(processedMessageRepository).deleteOlderThan(3);
+                .when(processedMessageRepository).deleteOlderThan(8);
 
         // Should not throw
         assertDoesNotThrow(() -> idempotencyService.cleanupOldRecords());
-        verify(processedMessageRepository).deleteOlderThan(3);
+        verify(processedMessageRepository).deleteOlderThan(8);
     }
 
     @Test
