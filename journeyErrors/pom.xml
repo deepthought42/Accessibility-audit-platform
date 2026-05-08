@@ -13,6 +13,10 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>17</java.version>
 	    <springboot.version>2.6.13</springboot.version>
+        <!-- Surefire tag filter. Default-skip the requires-docker tag so
+             plain `mvn test` works without Docker. Override on the CLI to
+             opt in: `-DexcludedGroups= -Dgroups=requires-docker`. -->
+        <excludedGroups>requires-docker</excludedGroups>
     </properties>
     <dependencyManagement>
 	    <dependencies>
@@ -38,6 +42,15 @@
 	           <type>pom</type>
 	           <scope>import</scope>
 	       </dependency>
+	      <!-- Testcontainers BOM for the redelivery integration test (#87).
+	           Aligned with the version pinned in LookseeCore parent pom. -->
+	      <dependency>
+	        <groupId>org.testcontainers</groupId>
+	        <artifactId>testcontainers-bom</artifactId>
+	        <version>1.19.8</version>
+	        <type>pom</type>
+	        <scope>import</scope>
+	      </dependency>
 	    </dependencies>
 	  </dependencyManagement>
 
@@ -62,11 +75,36 @@
 	      <artifactId>spring-boot-starter-test</artifactId>
 	      <scope>test</scope>
 	    </dependency>
-	    
+
 	    <dependency>
 	      <groupId>junit</groupId>
 	      <artifactId>junit</artifactId>
 	      <version>4.13.2</version>
+	      <scope>test</scope>
+	    </dependency>
+
+	    <!-- Testcontainers + Awaitility for the IdempotencyIntegrationTest
+	         (#87 step 8.2). Tagged @Testcontainers(disabledWithoutDocker = true)
+	         so the test skips on Docker-less local envs and runs on CI. -->
+	    <dependency>
+	      <groupId>org.testcontainers</groupId>
+	      <artifactId>testcontainers</artifactId>
+	      <scope>test</scope>
+	    </dependency>
+	    <dependency>
+	      <groupId>org.testcontainers</groupId>
+	      <artifactId>neo4j</artifactId>
+	      <scope>test</scope>
+	    </dependency>
+	    <dependency>
+	      <groupId>org.testcontainers</groupId>
+	      <artifactId>junit-jupiter</artifactId>
+	      <scope>test</scope>
+	    </dependency>
+	    <dependency>
+	      <groupId>org.awaitility</groupId>
+	      <artifactId>awaitility</artifactId>
+	      <version>4.2.0</version>
 	      <scope>test</scope>
 	    </dependency>
 	    
@@ -363,6 +401,24 @@
 
 	  <build>
 	    <plugins>
+	      <plugin>
+	        <groupId>org.apache.maven.plugins</groupId>
+	        <artifactId>maven-surefire-plugin</artifactId>
+	        <version>2.22.2</version>
+	        <configuration>
+	          <!-- Tests tagged "requires-docker" are excluded by default so
+	               plain `mvn test` works without Docker-in-Docker. Sourced
+	               from the `excludedGroups` POM property; override on the
+	               CLI to opt in:
+	                   mvn test -DexcludedGroups= -Dgroups=requires-docker
+	               The property indirection is required because a hardcoded
+	               `<excludedGroups>` in plugin `<configuration>` wins over
+	               `-DexcludedGroups=`, so the opt-in command would otherwise
+	               be a no-op. Surefire pinned to 2.22.2 for JUnit 5 tag
+	               support consistent with LookseeCore parent pom. -->
+	          <excludedGroups>${excludedGroups}</excludedGroups>
+	        </configuration>
+	      </plugin>
 	      <plugin>
 	        <groupId>org.springframework.boot</groupId>
 	        <artifactId>spring-boot-maven-plugin</artifactId>

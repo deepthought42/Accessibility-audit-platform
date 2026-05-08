@@ -38,6 +38,16 @@
 		<opentelemetry.version>1.32.0</opentelemetry.version>
 		<opentelemetry-instrumentation.version>1.32.0-alpha</opentelemetry-instrumentation.version>
 		<logstash-encoder.version>7.4</logstash-encoder.version>
+		<!-- Test infra (Testcontainers + Awaitility) for migration & idempotency
+		     integration tests added in #87. Skipped automatically when Docker
+		     is unavailable via @Testcontainers(disabledWithoutDocker = true). -->
+		<testcontainers.version>1.19.8</testcontainers.version>
+		<awaitility.version>4.2.0</awaitility.version>
+		<!-- Surefire tag filter. Default-skip the requires-docker tag so
+		     plain `mvn test` runs without Docker. Override on the CLI to
+		     opt in: `-DexcludedGroups=` (clear) plus
+		     `-Dgroups=requires-docker` (run only those tests). -->
+		<excludedGroups>requires-docker</excludedGroups>
 	</properties>
 
 	<dependencyManagement>
@@ -166,6 +176,23 @@
 				<artifactId>logstash-logback-encoder</artifactId>
 				<version>${logstash-encoder.version}</version>
 			</dependency>
+
+			<!-- ============================================================
+			     Test infra: Testcontainers BOM unifies all testcontainers-*
+			     artifact versions across the monorepo.
+			     ============================================================ -->
+			<dependency>
+				<groupId>org.testcontainers</groupId>
+				<artifactId>testcontainers-bom</artifactId>
+				<version>${testcontainers.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.awaitility</groupId>
+				<artifactId>awaitility</artifactId>
+				<version>${awaitility.version}</version>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 
@@ -224,6 +251,18 @@
 						<excludes>
 							<exclude>**/Abstract*.java</exclude>
 						</excludes>
+						<!-- JUnit 5 tag-based filter. Tests tagged
+						     "requires-docker" are excluded by default so
+						     plain `mvn test` works without Docker. The value
+						     is sourced from the `excludedGroups` POM property
+						     (default `requires-docker`); override on the CLI
+						     to opt in:
+						         mvn test -DexcludedGroups= -Dgroups=requires-docker
+						     The property indirection is required because a
+						     hardcoded `<excludedGroups>` in plugin
+						     `<configuration>` wins over `-DexcludedGroups=`,
+						     so the opt-in command would otherwise be a no-op. -->
+						<excludedGroups>${excludedGroups}</excludedGroups>
 					</configuration>
 				</plugin>
 				<plugin>
