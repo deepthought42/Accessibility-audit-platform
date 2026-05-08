@@ -22,8 +22,9 @@ import com.looksee.models.repository.ProcessedMessageRepository;
 
 /**
  * Integration tests for {@link IdempotencyService} validating the full
- * idempotency lifecycle, concurrency behavior, cleanup, and graceful
- * degradation when the repository is unavailable.
+ * idempotency lifecycle, concurrency behavior, and cleanup. A missing
+ * repository is now a fail-fast condition at startup (covered in
+ * {@link IdempotencyServiceTest}), not a graceful-degradation path.
  */
 @ExtendWith(MockitoExtension.class)
 class IdempotencyIntegrationTest {
@@ -157,20 +158,12 @@ class IdempotencyIntegrationTest {
     }
 
     @Test
-    @DisplayName("Graceful degradation when repository is null")
-    void testGracefulDegradation_repositoryNull() {
-        // Inject null repository
-        injectRepository(null);
-
-        // isAlreadyProcessed returns false when repo is null (allow processing)
-        assertFalse(idempotencyService.isAlreadyProcessed("any-msg", "any-service"),
-                "Should return false when repository is unavailable");
-
-        // markProcessed should not throw when repo is null
-        assertDoesNotThrow(() -> idempotencyService.markProcessed("any-msg", "any-service"));
-
-        // cleanupOldRecords should not throw when repo is null
-        assertDoesNotThrow(() -> idempotencyService.cleanupOldRecords());
+    @DisplayName("Startup fails fast when repository is null")
+    void testStartupFailsFast_repositoryNull() {
+        IdempotencyService bare = new IdempotencyService();
+        IllegalStateException ex = assertThrows(IllegalStateException.class, bare::requireRepository);
+        assertTrue(ex.getMessage().contains("ProcessedMessageRepository"),
+                "message should name the missing dependency, was: " + ex.getMessage());
     }
 
     @Test
