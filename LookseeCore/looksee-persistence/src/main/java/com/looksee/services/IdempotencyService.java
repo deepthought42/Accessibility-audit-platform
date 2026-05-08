@@ -1,5 +1,7 @@
 package com.looksee.services;
 
+import javax.annotation.PostConstruct;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +41,15 @@ public class IdempotencyService implements IdempotencyGuard {
     @Autowired(required = false)
     private ProcessedMessageRepository processedMessageRepository;
 
+    @PostConstruct
+    void requireRepository() {
+        if (processedMessageRepository == null) {
+            throw new IllegalStateException(
+                    "IdempotencyService requires ProcessedMessageRepository on the classpath. " +
+                    "Add a dependency on looksee-persistence or remove the IdempotencyGuard wiring.");
+        }
+    }
+
     /**
      * Checks if a PubSub message has already been processed by a service.
      *
@@ -48,7 +59,7 @@ public class IdempotencyService implements IdempotencyGuard {
      */
     @Override
     public boolean isAlreadyProcessed(String pubsubMessageId, String serviceName) {
-        if (processedMessageRepository == null || pubsubMessageId == null || pubsubMessageId.isEmpty()) {
+        if (pubsubMessageId == null || pubsubMessageId.isEmpty()) {
             return false;
         }
 
@@ -67,7 +78,7 @@ public class IdempotencyService implements IdempotencyGuard {
      */
     @Override
     public void markProcessed(String pubsubMessageId, String serviceName) {
-        if (processedMessageRepository == null || pubsubMessageId == null || pubsubMessageId.isEmpty()) {
+        if (pubsubMessageId == null || pubsubMessageId.isEmpty()) {
             return;
         }
 
@@ -88,13 +99,13 @@ public class IdempotencyService implements IdempotencyGuard {
      * are physically serialized by Neo4j; exactly one returns {@code true}.
      *
      * <p>Returns {@code true} when the caller should proceed with processing.
-     * In the fail-open paths (null repository, null/empty messageId) returns
-     * {@code true} as well so callers behave like before — same effect as the
-     * legacy {@link #isAlreadyProcessed} returning {@code false}.
+     * In the fail-open path (null/empty messageId) returns {@code true} so callers
+     * behave like before — same effect as the legacy {@link #isAlreadyProcessed}
+     * returning {@code false}.
      */
     @Override
     public boolean claim(String pubsubMessageId, String serviceName) {
-        if (processedMessageRepository == null || pubsubMessageId == null || pubsubMessageId.isEmpty()) {
+        if (pubsubMessageId == null || pubsubMessageId.isEmpty()) {
             return true;
         }
 
@@ -118,14 +129,13 @@ public class IdempotencyService implements IdempotencyGuard {
      * record so a subsequent Pub/Sub redelivery is allowed to re-run
      * business logic.
      *
-     * <p>Best-effort: a missing repository, null/empty messageId, or a
-     * thrown persistence exception are all logged and swallowed. A stuck
-     * claim is preferable to bubbling a release-failure up over the
-     * original handler error.
+     * <p>Best-effort: a null/empty messageId or a thrown persistence
+     * exception are logged and swallowed. A stuck claim is preferable
+     * to bubbling a release-failure up over the original handler error.
      */
     @Override
     public void release(String pubsubMessageId, String serviceName) {
-        if (processedMessageRepository == null || pubsubMessageId == null || pubsubMessageId.isEmpty()) {
+        if (pubsubMessageId == null || pubsubMessageId.isEmpty()) {
             return;
         }
         try {
@@ -142,9 +152,6 @@ public class IdempotencyService implements IdempotencyGuard {
      */
     @Scheduled(cron = "0 0 3 * * ?")
     public void cleanupOldRecords() {
-        if (processedMessageRepository == null) {
-            return;
-        }
         try {
             processedMessageRepository.deleteOlderThan(RETENTION_DAYS);
             log.info("Cleaned up processed message records older than {} days", RETENTION_DAYS);

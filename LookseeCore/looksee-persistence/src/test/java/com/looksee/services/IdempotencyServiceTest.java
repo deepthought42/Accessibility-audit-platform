@@ -58,17 +58,17 @@ class IdempotencyServiceTest {
     }
 
     @Test
-    void isAlreadyProcessed_returnsFalseWhenRepositoryIsNull() {
+    void requireRepository_throwsWhenRepositoryIsNull() {
         IdempotencyService serviceWithNullRepo = new IdempotencyService();
-        // processedMessageRepository is null by default (not injected)
-        assertFalse(serviceWithNullRepo.isAlreadyProcessed("msg-4", "svc-d"));
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                serviceWithNullRepo::requireRepository);
+        assertTrue(ex.getMessage().contains("ProcessedMessageRepository"),
+                "message should name the missing dependency, was: " + ex.getMessage());
     }
 
     @Test
-    void markProcessed_doesNothingWhenRepositoryIsNull() {
-        IdempotencyService serviceWithNullRepo = new IdempotencyService();
-        // Should not throw
-        assertDoesNotThrow(() -> serviceWithNullRepo.markProcessed("msg-5", "svc-e"));
+    void requireRepository_succeedsWhenRepositoryIsPresent() {
+        assertDoesNotThrow(idempotencyService::requireRepository);
     }
 
     @Test
@@ -96,12 +96,6 @@ class IdempotencyServiceTest {
     void cleanupOldRecords_callsRepositoryDeleteOlderThan3() {
         idempotencyService.cleanupOldRecords();
         verify(processedMessageRepository).deleteOlderThan(3);
-    }
-
-    @Test
-    void cleanupOldRecords_doesNothingWhenRepositoryIsNull() {
-        IdempotencyService serviceWithNullRepo = new IdempotencyService();
-        assertDoesNotThrow(serviceWithNullRepo::cleanupOldRecords);
     }
 
     @Test
@@ -133,13 +127,6 @@ class IdempotencyServiceTest {
     }
 
     @Test
-    void claim_returnsTrueWhenRepositoryIsNull() {
-        IdempotencyService serviceWithNullRepo = new IdempotencyService();
-        // Fail-open: cannot dedupe → caller must process
-        assertTrue(serviceWithNullRepo.claim("msg-claim-3", "svc-m"));
-    }
-
-    @Test
     void claim_returnsTrueForNullPubsubMessageId() {
         assertTrue(idempotencyService.claim(null, "svc-n"));
         verifyNoInteractions(processedMessageRepository);
@@ -165,12 +152,6 @@ class IdempotencyServiceTest {
         idempotencyService.release("msg-rel-1", "svc-q");
 
         verify(processedMessageRepository).release("msg-rel-1", "svc-q");
-    }
-
-    @Test
-    void release_doesNothingWhenRepositoryIsNull() {
-        IdempotencyService serviceWithNullRepo = new IdempotencyService();
-        assertDoesNotThrow(() -> serviceWithNullRepo.release("msg-rel-2", "svc-r"));
     }
 
     @Test
