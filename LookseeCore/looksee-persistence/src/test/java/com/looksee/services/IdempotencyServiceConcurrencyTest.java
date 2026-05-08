@@ -16,6 +16,7 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
@@ -53,6 +54,7 @@ import ac.simons.neo4j.migrations.core.MigrationsConfig;
  * <p>{@code IdempotencyServiceTest} continues to cover the wrapper's
  * fail-open / null-check semantics with Mockito.
  */
+@Tag("requires-docker")
 @Testcontainers(disabledWithoutDocker = true)
 class IdempotencyServiceConcurrencyTest {
 

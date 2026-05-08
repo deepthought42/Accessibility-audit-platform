@@ -8,6 +8,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
@@ -50,6 +51,7 @@ import ac.simons.neo4j.migrations.core.MigrationsConfig;
  * <p>Companion to {@link MigrationsResolveTest}, which only verifies
  * the migration files resolve on the classpath.
  */
+@Tag("requires-docker")
 @Testcontainers(disabledWithoutDocker = true)
 class MigrationsApplyIntegrationTest {
 

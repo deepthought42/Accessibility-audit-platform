@@ -246,6 +246,12 @@
 						<excludes>
 							<exclude>**/Abstract*.java</exclude>
 						</excludes>
+						<!-- JUnit 5 tag-based filter. Tests tagged
+						     "requires-docker" run only when explicitly opted
+						     in via -Dgroups=requires-docker; the default
+						     surefire run skips them so CI does not depend on
+						     a Docker-in-Docker setup it cannot guarantee. -->
+						<excludedGroups>requires-docker</excludedGroups>
 					</configuration>
 				</plugin>
 				<plugin>
