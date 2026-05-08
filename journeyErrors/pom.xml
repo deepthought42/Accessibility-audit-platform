@@ -400,10 +400,12 @@
 	      <plugin>
 	        <groupId>org.apache.maven.plugins</groupId>
 	        <artifactId>maven-surefire-plugin</artifactId>
+	        <version>2.22.2</version>
 	        <configuration>
 	          <!-- Tests tagged "requires-docker" run only when explicitly opted
 	               in via -Dgroups=requires-docker; the default mvn test run
-	               skips them so CI does not depend on Docker-in-Docker. -->
+	               skips them so CI does not depend on Docker-in-Docker.
+	               Pinned to 2.22.2 to match LookseeCore parent pom. -->
 	          <excludedGroups>requires-docker</excludedGroups>
 	        </configuration>
 	      </plugin>
