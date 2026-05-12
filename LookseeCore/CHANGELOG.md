@@ -6,8 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-05-12
+
+### Breaking changes
+
+- **`IdempotencyService` now fails startup if `ProcessedMessageRepository` is missing on the classpath** (PR #95, closes #85). The previous silent-fallback behavior — null repository → every dedupe call no-ops → at-least-once delivery with no upper bound — has been replaced with a `@PostConstruct` fail-fast throwing `IllegalStateException`. **Migration:** services that consume `IdempotencyService` or extend `PubSubAuditController` must depend on `looksee-persistence`. Any service that was relying on the silent disablement must either add the persistence module or remove its `IdempotencyGuard` wiring.
+
+### Added
+
+- **Atomic `IdempotencyService.claim()` via Cypher `MERGE`** (PR #91, closes #82). Collapses the prior `isAlreadyProcessed` + `markProcessed` pair into a single atomic operation backed by the new `processed_message_unique` constraint. Returns `true` to exactly one of N concurrent callers per `(pubsubMessageId, serviceName)` key.
+- **`neo4j-migrations` Spring Boot starter** (1.16.0, PR #90, closes #81). Schema changes now ship as versioned Cypher files under `looksee-persistence/src/main/resources/neo4j/migrations/`:
+  - `V001__dedupe_processed_message.cypher` — one-shot dedupe of pre-existing `(pubsubMessageId, serviceName)` collisions.
+  - `V002__processed_message_unique.cypher` — uniqueness constraint that enables the atomic `claim()`.
+- **`PubSubAuditController` wired through atomic `claim()`** (PR #92, closes #83). `IdempotencyGuard.claim()` replaces the two-step check-then-write in the base controller; `journeyErrors` (PR #93, closes #84) and `AuditManager` (PR #94) now extend `PubSubAuditController` and have dropped their in-memory `ConcurrentHashMap` deduplicators.
+
 ### Changed
-- `IdempotencyService` retention extended from 3 to 8 days; cleanup keys off `ProcessedMessage.processedAt`. Pub/Sub retains undelivered messages for 7 days, so 8 days ensures a service offline for the full window still finds its dedupe record on recovery. **Operational note:** if a service is down longer than 8 days, message replays may reprocess. (Refs #86, part of #28.)
+
+- `IdempotencyService` retention extended from 3 to 8 days; cleanup keys off `ProcessedMessage.processedAt` (PR #96, closes #86). Pub/Sub retains undelivered messages for 7 days, so 8 days ensures a service offline for the full window still finds its dedupe record on recovery. **Operational note:** services down longer than 8 days may reprocess messages.
+
+### Tests
+
+- 100-thread concurrency proof for `claim()` (`IdempotencyServiceConcurrencyTest`), two-replica redelivery integration test (`IdempotencyIntegrationTest`), and V001+V002 migration rehearsal (`MigrationsApplyIntegrationTest`) — all gated by the `requires-docker` JUnit tag so plain `mvn test` runs without Docker (PR #97, closes #87).
 
 ## [0.8.2] - 2026-04-26
 

@@ -13,7 +13,7 @@
         <java.version>17</java.version>
 		<springboot.version>2.6.13</springboot.version>
 		<lombok.version>1.18.34</lombok.version>
-		<looksee-core.version>0.8.2</looksee-core.version>
+		<looksee-core.version>1.0.0</looksee-core.version>
     </properties>
     
     <dependencyManagement>
