@@ -152,8 +152,11 @@ class MigrationsApplyIntegrationTest {
                     .as("Neo4j must reject a duplicate (id, svc) insert with "
                             + "ConstraintValidationFailed — this is the invariant the "
                             + "atomic claim() relies on.")
-                    .isInstanceOf(ClientException.class)
-                    .hasMessageContaining("ConstraintValidationFailed");
+                    .isInstanceOfSatisfying(ClientException.class, e ->
+                            assertThat(e.code())
+                                    .as("Stable Neo4j status code, not message text "
+                                            + "(Neo4j 5.x no longer embeds the code in the message).")
+                                    .contains("ConstraintValidationFailed"));
         }
     }
 }
