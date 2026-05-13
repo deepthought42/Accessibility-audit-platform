@@ -2,6 +2,7 @@ package com.looksee.services;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Service;
 
 import com.looksee.messaging.poison.PoisonMessagePublisher;
@@ -30,8 +31,16 @@ import com.looksee.models.repository.OutboxEventRepository;
  * every call and fails closed when it is not, so the controller sees a
  * 500 and Pub/Sub redelivers instead of silently dropping a poison
  * message.
+ *
+ * <p>The {@link ConditionalOnMissingBean} guard scopes registration to
+ * the port type rather than the concrete class. Several services
+ * component-scan {@code com.looksee*}, which would otherwise register
+ * this default alongside a test- or profile-supplied
+ * {@link PoisonMessagePublisher} and make the controller's autowire
+ * ambiguous.
  */
 @Service
+@ConditionalOnMissingBean(PoisonMessagePublisher.class)
 public class OutboxPoisonMessagePublisher implements PoisonMessagePublisher {
 
     private final OutboxPublishingGateway outboxGateway;
