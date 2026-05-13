@@ -32,7 +32,7 @@
 		<springboot.version>2.6.13</springboot.version>
 		<lombok.version>1.18.30</lombok.version>
 		<spring-cloud-gcp.version>3.9.5</spring-cloud-gcp.version>
-		<looksee.version>1.0.0</looksee.version>
+		<looksee.version>1.1.0</looksee.version>
 		<!-- Observability stack (Wave 2 of architecture review) -->
 		<micrometer.version>1.10.13</micrometer.version>
 		<opentelemetry.version>1.32.0</opentelemetry.version>
