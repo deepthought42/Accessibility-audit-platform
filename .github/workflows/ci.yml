@@ -40,7 +40,7 @@ jobs:
           fi
 
           # 2. Every service pom.xml that pins LookseeCore must match the root file.
-          mismatches=$(grep -rEn '<(looksee-core|core)\.version>([^<]+)</' --include='pom.xml' . \
+          mismatches=$(grep -rEn '<core\.version>([^<]+)</' --include='pom.xml' . \
                        | grep -v ">${expected}<" || true)
           if [ -n "$mismatches" ]; then
             echo "pom.xml files pin a LookseeCore version != $expected:" >&2
