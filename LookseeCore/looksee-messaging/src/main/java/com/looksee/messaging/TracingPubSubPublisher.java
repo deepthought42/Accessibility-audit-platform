@@ -12,6 +12,9 @@ import org.springframework.util.concurrent.ListenableFuture;
 import com.google.cloud.spring.pubsub.core.PubSubTemplate;
 import com.looksee.messaging.observability.TraceContextPropagation;
 
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.Scope;
+
 /**
  * Thin wrapper around {@link PubSubTemplate} that automatically injects the
  * active OpenTelemetry context as Pub/Sub message attributes.
@@ -96,6 +99,29 @@ public class TracingPubSubPublisher {
             throw new IllegalStateException("interrupted publishing to " + topic, e);
         } catch (ExecutionException e) {
             throw new IllegalStateException("failed to publish to " + topic, e.getCause());
+        }
+    }
+
+    /**
+     * Publish a payload with an explicit W3C {@code traceparent} as the
+     * propagated parent. Used by the {@code OutboxEventPublisher} so that
+     * the trace stored on an {@code OutboxEvent} at write time is what
+     * downstream consumers join — not the (unrelated) trace of the
+     * scheduled poller thread.
+     *
+     * <p>When {@code w3cTraceparent} is {@code null} or syntactically
+     * invalid, behaviour falls back to {@link #publish(String, String)}.</p>
+     */
+    public ListenableFuture<String> publishWithCorrelation(
+            String topic, String payload, String w3cTraceparent) {
+        if (!TraceContextPropagation.isValidTraceparent(w3cTraceparent)) {
+            return publish(topic, payload);
+        }
+        Map<String, String> carrier = new HashMap<>();
+        carrier.put(TraceContextPropagation.TRACEPARENT, w3cTraceparent);
+        Context parent = TraceContextPropagation.extract(carrier);
+        try (Scope scope = parent.makeCurrent()) {
+            return publish(topic, payload);
         }
     }
 

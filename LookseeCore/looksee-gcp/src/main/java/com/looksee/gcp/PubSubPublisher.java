@@ -21,6 +21,17 @@ public abstract class PubSubPublisher {
 
     protected abstract String topic();
 
+    /**
+     * Public accessor for the configured topic. Migrated outbox call sites
+     * read this rather than hardcoding the topic string, so the
+     * config-driven {@code pubsub.*} property remains the single source of
+     * truth even after the underlying {@code publish(...)} call is routed
+     * through the outbox gateway.
+     */
+    public String getTopic() {
+        return topic();
+    }
+
     public void publish(String message) throws ExecutionException, InterruptedException {
         assert message != null;
         assert !message.isEmpty();

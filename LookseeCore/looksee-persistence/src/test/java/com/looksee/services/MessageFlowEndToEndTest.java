@@ -184,4 +184,16 @@ class MessageFlowEndToEndTest {
         assertEquals(5, event.getRetryCount());
         assertNull(event.getProcessedAt());
     }
+
+    @Test
+    @DisplayName("OutboxEvent stamped with correlationId carries it through serialization-equivalent flows")
+    void testOutboxEventCorrelationIdPropagated() {
+        String traceparent = "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01";
+        OutboxEvent event = new OutboxEvent("projects/test/topics/page-built", "{\"pageId\":1}", traceparent);
+
+        assertEquals(traceparent, event.getCorrelationId());
+        assertEquals("PENDING", event.getStatus());
+        assertEquals(event.getCreatedAt(), event.getNextAttemptAt(),
+            "nextAttemptAt defaults to createdAt so the first scheduler tick picks it up");
+    }
 }

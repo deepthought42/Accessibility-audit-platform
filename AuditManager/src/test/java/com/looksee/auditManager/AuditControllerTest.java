@@ -32,7 +32,9 @@ import com.looksee.models.audit.AuditRecord;
 import com.looksee.models.audit.DomainAuditRecord;
 import com.looksee.models.audit.PageAuditRecord;
 import com.looksee.models.enums.AuditName;
+import com.looksee.models.message.PageAuditMessage;
 import com.looksee.services.AuditRecordService;
+import com.looksee.services.OutboxPublishingGateway;
 import com.looksee.services.PageStateService;
 
 /**
@@ -53,6 +55,7 @@ class AuditControllerTest {
 	private PageStateService pageStateService;
 	private IdempotencyGuard idempotencyService;
 	private PubSubMetrics pubSubMetrics;
+	private OutboxPublishingGateway outboxGateway;
 
 	@BeforeEach
 	void setUp() {
@@ -62,6 +65,7 @@ class AuditControllerTest {
 		pageStateService = mock(PageStateService.class);
 		idempotencyService = mock(IdempotencyGuard.class);
 		pubSubMetrics = mock(PubSubMetrics.class);
+		outboxGateway = mock(OutboxPublishingGateway.class);
 
 		ReflectionTestUtils.setField(controller, "auditRecordService", auditRecordService);
 		ReflectionTestUtils.setField(controller, "auditRecordTopic", auditRecordTopic);
@@ -69,6 +73,7 @@ class AuditControllerTest {
 		ReflectionTestUtils.setField(controller, "idempotencyService", idempotencyService);
 		ReflectionTestUtils.setField(controller, "objectMapper", new ObjectMapper());
 		ReflectionTestUtils.setField(controller, "pubSubMetrics", pubSubMetrics);
+		ReflectionTestUtils.setField(controller, "outboxGateway", outboxGateway);
 
 		when(idempotencyService.claim(anyString(), anyString())).thenReturn(true);
 	}
@@ -83,7 +88,7 @@ class AuditControllerTest {
 		ResponseEntity<String> response = controller.receiveMessage(buildBody("msg-skip", validJson()));
 
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(auditRecordTopic, never()).publish(anyString());
+		verify(outboxGateway, never()).enqueue(any(), any(), any());
 		verify(auditRecordService, never()).save(any());
 	}
 
@@ -97,7 +102,7 @@ class AuditControllerTest {
 		ResponseEntity<String> response = controller.receiveMessage(buildBody("msg-nonlandable", validJson()));
 
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(auditRecordTopic, never()).publish(anyString());
+		verify(outboxGateway, never()).enqueue(any(), any(), any());
 	}
 
 	@Test
@@ -110,7 +115,7 @@ class AuditControllerTest {
 		ResponseEntity<String> response = controller.receiveMessage(buildBody("msg-nostate", validJson()));
 
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(auditRecordTopic, never()).publish(anyString());
+		verify(outboxGateway, never()).enqueue(any(), any(), any());
 	}
 
 	@Test
@@ -130,10 +135,10 @@ class AuditControllerTest {
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 		verify(auditRecordService).addPageAuditToDomainAudit(3L, 99L);
 		verify(auditRecordService).addPageToAuditRecord(99L, 2L);
-		ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
-		verify(auditRecordTopic).publish(payloadCaptor.capture());
-		assertTrue(payloadCaptor.getValue().contains("\"accountId\":1"));
-		assertTrue(payloadCaptor.getValue().contains("\"pageAuditId\":99"));
+		ArgumentCaptor<PageAuditMessage> payloadCaptor = ArgumentCaptor.forClass(PageAuditMessage.class);
+		verify(outboxGateway).enqueue(any(), payloadCaptor.capture(), any());
+		assertEquals(1L, payloadCaptor.getValue().getAccountId());
+		assertEquals(99L, payloadCaptor.getValue().getPageAuditId());
 	}
 
 	@Test
@@ -159,7 +164,12 @@ class AuditControllerTest {
 	}
 
 	@Test
-	void shouldReturnInternalServerErrorWhenPublishingFails() throws Exception {
+	void shouldReturnInternalServerErrorWhenOutboxStagingFails() throws Exception {
+		// Under the outbox architecture there is no synchronous Pub/Sub publish
+		// to fail inside handle(); the analogous failure mode is the outbox
+		// gateway raising during the staging write. When that happens the base
+		// class must still release the eager idempotency claim so Pub/Sub
+		// redelivery can retry the inbound message.
 		PageState pageState = new PageState();
 		AuditRecord savedRecord = mock(AuditRecord.class);
 
@@ -169,14 +179,13 @@ class AuditControllerTest {
 		when(auditRecordService.findById(3L)).thenReturn(Optional.empty());
 		when(auditRecordService.save(any())).thenReturn(savedRecord);
 		when(savedRecord.getId()).thenReturn(88L);
-		org.mockito.Mockito.doThrow(new java.util.concurrent.ExecutionException(new RuntimeException("pubsub")))
-			.when(auditRecordTopic)
-			.publish(anyString());
+		org.mockito.Mockito.doThrow(new RuntimeException("staging failed"))
+			.when(outboxGateway)
+			.enqueue(any(), any(), any());
 
 		ResponseEntity<String> response = controller.receiveMessage(buildBody("msg-pub-fail", validJson()));
 
 		assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-		// Base class releases the eager claim so Pub/Sub redelivery can retry.
 		verify(idempotencyService).release("msg-pub-fail", SERVICE);
 	}
 
@@ -210,7 +219,7 @@ class AuditControllerTest {
 
 		// The audit must be persisted + published exactly once across redeliveries.
 		verify(auditRecordService, times(1)).save(any());
-		verify(auditRecordTopic, times(1)).publish(anyString());
+		verify(outboxGateway, times(1)).enqueue(any(), any(), any());
 		verify(auditRecordService, times(1)).addPageAuditToDomainAudit(3L, 42L);
 	}
 

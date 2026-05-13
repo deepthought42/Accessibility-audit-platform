@@ -39,6 +39,7 @@ import com.looksee.services.DomainMapService;
 import com.looksee.services.ElementStateService;
 import com.looksee.services.IdempotencyService;
 import com.looksee.services.JourneyService;
+import com.looksee.services.OutboxPublishingGateway;
 import com.looksee.services.PageStateService;
 import com.looksee.services.StepService;
 import com.looksee.utils.BrowserUtils;
@@ -58,6 +59,7 @@ class AuditControllerTest {
     @Mock private PubSubPageCreatedPublisherImpl pubSubPageCreatedPublisherImpl;
     @Mock private PubSubPageAuditPublisherImpl auditRecordTopic;
     @Mock private IdempotencyService idempotencyService;
+    @Mock private OutboxPublishingGateway outboxGateway;
 
     @InjectMocks
     private AuditController controller;
@@ -136,7 +138,7 @@ class AuditControllerTest {
 
             ResponseEntity<String> resp = controller.receiveMessage(body);
             assertEquals(HttpStatus.OK, resp.getStatusCode());
-            verify(pubSubErrorPublisherImpl).publish(anyString());
+            verify(outboxGateway).enqueueOutOfBand(any(), any(), any());
         }
     }
 
@@ -152,7 +154,7 @@ class AuditControllerTest {
 
             ResponseEntity<String> resp = controller.receiveMessage(body);
             assertEquals(HttpStatus.OK, resp.getStatusCode());
-            verify(pubSubErrorPublisherImpl).publish(anyString());
+            verify(outboxGateway).enqueueOutOfBand(any(), any(), any());
         }
     }
 
@@ -190,7 +192,7 @@ class AuditControllerTest {
 
             assertEquals(HttpStatus.OK, resp.getStatusCode());
             verify(auditRecordService).addPageToAuditRecord(AUDIT_ID, 1L);
-            verify(auditRecordTopic).publish(anyString());
+            verify(outboxGateway).enqueue(any(), any(com.looksee.models.message.PageAuditMessage.class), any());
             verify(browser).close();
         }
     }
@@ -277,9 +279,9 @@ class AuditControllerTest {
             assertEquals(HttpStatus.OK, resp.getStatusCode());
             verify(auditRecordService).addDomainMap(AUDIT_ID, 10L);
             verify(domainMapService).addPageToDomainMap(10L, 5L);
-            verify(pubSubPageCreatedPublisherImpl).publish(anyString());
+            verify(outboxGateway).enqueue(any(), any(com.looksee.models.message.PageBuiltMessage.class), any());
             verify(domainMapService).addJourneyToDomainMap(eq(30L), eq(10L));
-            verify(pubSubJourneyVerifiedPublisherImpl).publish(anyString());
+            verify(outboxGateway).enqueue(any(), any(com.looksee.models.message.VerifiedJourneyMessage.class), any());
             verify(browser).close();
         }
     }
@@ -398,7 +400,7 @@ class AuditControllerTest {
             ResponseEntity<String> resp = controller.receiveMessage(body);
 
             assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, resp.getStatusCode());
-            verify(pubSubErrorPublisherImpl).publish(anyString());
+            verify(outboxGateway).enqueueOutOfBand(any(), any(), any());
             verify(browser).close();
         }
     }
@@ -420,7 +422,7 @@ class AuditControllerTest {
             ResponseEntity<String> resp = controller.receiveMessage(body);
 
             assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, resp.getStatusCode());
-            verify(pubSubErrorPublisherImpl).publish(anyString());
+            verify(outboxGateway).enqueueOutOfBand(any(), any(), any());
         }
     }
 
@@ -481,7 +483,7 @@ class AuditControllerTest {
 
             assertEquals(HttpStatus.OK, resp.getStatusCode());
             // 301 is not 404/408, so error publisher should not be called
-            verify(pubSubErrorPublisherImpl, never()).publish(anyString());
+            verify(outboxGateway, never()).enqueueOutOfBand(any(), any(), any());
             verify(browser).close();
         }
     }

@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.looksee.messaging.observability.TraceContextPropagation;
 import com.looksee.models.config.JacksonConfig;
 import com.looksee.gcp.PubSubDiscardedJourneyPublisherImpl;
 import com.looksee.gcp.PubSubJourneyVerifiedPublisherImpl;
@@ -56,6 +57,7 @@ import com.looksee.services.IdempotencyService;
 import com.looksee.services.DomainService;
 import com.looksee.services.ElementStateService;
 import com.looksee.services.JourneyService;
+import com.looksee.services.OutboxPublishingGateway;
 import com.looksee.services.PageStateService;
 import com.looksee.services.StepExecutor;
 import com.looksee.services.StepService;
@@ -122,7 +124,10 @@ public class AuditController {
 
 	@Autowired
 	private IdempotencyService idempotencyService;
-	
+
+	@Autowired
+	private OutboxPublishingGateway outboxGateway;
+
 	/**
 	 * Receives a {@link JourneyCandidateMessage} and processes it.
 	 * Only journeys with {@link JourneyStatus#CANDIDATE} status are evaluated;
@@ -159,6 +164,13 @@ public class AuditController {
 		if (idempotencyService.isAlreadyProcessed(body.getMessage().getMessageId(), "journey-executor")) {
 			return ResponseEntity.ok("Duplicate message, already processed");
 		}
+
+		// Propagate W3C trace-context from the inbound Pub/Sub attributes onto
+		// every outbox event we stage so downstream consumers join the same
+		// distributed trace. Mints a fresh id when the inbound message has no
+		// valid traceparent.
+		final String traceparent = TraceContextPropagation
+				.currentOrMintTraceparent(body.getMessage().getAttributes());
 
 		Body.Message message = body.getMessage();
 		String data = message.getData();
@@ -336,8 +348,10 @@ public class AuditController {
 																						journey_msg.getAccountId(),
 																						journey_msg.getAuditRecordId());
 
-				String discarded_journey_json = JacksonConfig.mapper().writeValueAsString(journey_message);
-				discarded_journey_topic.publish(discarded_journey_json);
+				outboxGateway.enqueue(
+					discarded_journey_topic.getTopic(),
+					journey_message,
+					traceparent);
 			}
 			else if(!final_step.getStartPage().getUrl().equals(final_step.getEndPage().getUrl()))
 			{
@@ -348,9 +362,11 @@ public class AuditController {
 																		final_page.getId(),
 																		journey_msg.getAuditRecordId());
 
-				String page_built_str = JacksonConfig.mapper().writeValueAsString(page_built_msg);
-				log.warn("SENDING page built message ...");
-				page_built_topic.publish(page_built_str);
+				log.warn("staging page built message ...");
+				outboxGateway.enqueue(
+					page_built_topic.getTopic(),
+					page_built_msg,
+					traceparent);
 				
 				//create landing step and make it the first record in a new list of steps
 				Step landing_step = new LandingStep(final_page, JourneyStatus.VERIFIED);
@@ -378,11 +394,13 @@ public class AuditController {
 				new_journey.setSteps(steps);
 				//send candidate message with new landing step journey
 				VerifiedJourneyMessage journey_message = new VerifiedJourneyMessage(new_journey,
-																					BrowserType.CHROME, 
-																					journey_msg.getAccountId(), 
+																					BrowserType.CHROME,
+																					journey_msg.getAccountId(),
 																					journey_msg.getAuditRecordId());
-				String journey_json = JacksonConfig.mapper().writeValueAsString(journey_message);
-				verified_journey_topic.publish(journey_json);
+				outboxGateway.enqueue(
+					verified_journey_topic.getTopic(),
+					journey_message,
+					traceparent);
 			}
 			else {
 				log.warn("VERIFIED Journey! "+updated_journey.getId() + " with status = "+updated_journey.getStatus());
@@ -392,8 +410,10 @@ public class AuditController {
 																					journey_msg.getAccountId(),
 																					journey_msg.getAuditRecordId());
 
-				String journey_json = JacksonConfig.mapper().writeValueAsString(journey_message);
-				verified_journey_topic.publish(journey_json);
+				outboxGateway.enqueue(
+					verified_journey_topic.getTopic(),
+					journey_message,
+					traceparent);
 
 			}
 			review_map.remove(journey_id);

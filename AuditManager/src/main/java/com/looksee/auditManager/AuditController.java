@@ -10,18 +10,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.looksee.gcp.PubSubPageAuditPublisherImpl;
+import com.looksee.messaging.observability.TraceContextPropagation;
 import com.looksee.messaging.web.PubSubAuditController;
 import com.looksee.models.PageState;
 import com.looksee.models.audit.AuditRecord;
 import com.looksee.models.audit.DomainAuditRecord;
 import com.looksee.models.audit.PageAuditRecord;
-import com.looksee.models.config.JacksonConfig;
 import com.looksee.models.enums.AuditName;
 import com.looksee.models.enums.ExecutionStatus;
 import com.looksee.models.message.PageAuditMessage;
 import com.looksee.models.message.PageBuiltMessage;
 import com.looksee.services.AuditRecordService;
+import com.looksee.services.OutboxPublishingGateway;
 import com.looksee.services.PageStateService;
+
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Pub/Sub controller that turns a {@link PageBuiltMessage} into a persisted
@@ -45,6 +48,9 @@ public class AuditController extends PubSubAuditController<PageBuiltMessage> {
 	@Autowired
 	private PageStateService pageStateService;
 
+	@Autowired
+	private OutboxPublishingGateway outboxGateway;
+
 	@Override
 	protected String serviceName() {
 		return "audit-manager";
@@ -61,6 +67,7 @@ public class AuditController extends PubSubAuditController<PageBuiltMessage> {
 	}
 
 	@Override
+	@Transactional
 	protected void handle(PageBuiltMessage pageBuiltMessage) throws Exception {
 		Set<AuditName> auditNames = buildAuditNames(pageBuiltMessage.getAuditRecordId());
 
@@ -96,9 +103,11 @@ public class AuditController extends PubSubAuditController<PageBuiltMessage> {
 
 		PageAuditMessage auditMessage = new PageAuditMessage(
 			pageBuiltMessage.getAccountId(), auditRecord.getId());
-		String auditRecordJson = JacksonConfig.mapper().writeValueAsString(auditMessage);
-		log.info("Sending PageAuditMessage to Pub/Sub for pageAuditId={}", auditRecord.getId());
-		auditRecordTopic.publish(auditRecordJson);
+		log.info("Staging PageAuditMessage in outbox for pageAuditId={}", auditRecord.getId());
+		outboxGateway.enqueue(
+			auditRecordTopic.getTopic(),
+			auditMessage,
+			TraceContextPropagation.currentTraceparent());
 	}
 
 	private Set<AuditName> buildAuditNames(long auditRecordId) {

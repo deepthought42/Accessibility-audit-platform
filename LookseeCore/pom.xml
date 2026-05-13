@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.looksee</groupId>
 	<artifactId>A11yParent</artifactId>
-	<version>1.0.0</version>
+	<version>1.1.0</version>
 	<packaging>pom</packaging>
 	<name>A11y Core Parent</name>
 	<description>Parent POM for the modularized LookseeCore library</description>

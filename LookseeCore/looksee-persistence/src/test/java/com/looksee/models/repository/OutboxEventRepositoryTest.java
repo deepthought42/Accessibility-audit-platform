@@ -169,4 +169,55 @@ class OutboxEventRepositoryTest {
         assertEquals("FAILED", event.getStatus());
         assertEquals(5, event.getRetryCount());
     }
+
+    @Test
+    @DisplayName("findDueEvents passes the provided clock as the $now bind parameter")
+    void findDueEvents_invokedWithCurrentTime() {
+        LocalDateTime now = LocalDateTime.now();
+        OutboxEvent due = new OutboxEvent(TEST_TOPIC, TEST_PAYLOAD);
+        when(repository.findDueEvents(now)).thenReturn(Collections.singletonList(due));
+
+        List<OutboxEvent> results = repository.findDueEvents(now);
+
+        assertEquals(1, results.size());
+        verify(repository).findDueEvents(now);
+    }
+
+    @Test
+    @DisplayName("countDueEvents returns the backlog size for gauge reporting")
+    void countDueEvents_returnsBacklogSize() {
+        LocalDateTime now = LocalDateTime.now();
+        when(repository.countDueEvents(now)).thenReturn(150L);
+
+        long count = repository.countDueEvents(now);
+
+        assertEquals(150L, count, "Gauge must reflect true backlog beyond the 100-row page limit");
+        verify(repository).countDueEvents(now);
+    }
+
+    @Test
+    @DisplayName("deleteOldFailedEvents is callable for the daily sweeper")
+    void deleteOldFailedEvents_isCallable() {
+        doNothing().when(repository).deleteOldFailedEvents();
+
+        repository.deleteOldFailedEvents();
+
+        verify(repository).deleteOldFailedEvents();
+    }
+
+    @Test
+    @DisplayName("OutboxEvent three-arg constructor wires correlationId and defaults nextAttemptAt to createdAt")
+    void outboxEventConstructor_withCorrelationId_setsFields() {
+        String traceparent = "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01";
+
+        OutboxEvent event = new OutboxEvent(TEST_TOPIC, TEST_PAYLOAD, traceparent);
+
+        assertEquals(TEST_TOPIC, event.getTopic());
+        assertEquals(TEST_PAYLOAD, event.getPayload());
+        assertEquals(traceparent, event.getCorrelationId());
+        assertEquals("PENDING", event.getStatus());
+        assertEquals(0, event.getRetryCount());
+        assertEquals(event.getCreatedAt(), event.getNextAttemptAt(),
+            "nextAttemptAt should default to createdAt so the first poll picks the row up");
+    }
 }

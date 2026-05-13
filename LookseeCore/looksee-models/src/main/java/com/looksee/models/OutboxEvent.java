@@ -24,16 +24,24 @@ public class OutboxEvent {
     private String topic;
     private String payload;
     private String status;
+    private String correlationId;
     private LocalDateTime createdAt;
     private LocalDateTime processedAt;
+    private LocalDateTime nextAttemptAt;
     private int retryCount;
 
     public OutboxEvent(String topic, String payload) {
+        this(topic, payload, null);
+    }
+
+    public OutboxEvent(String topic, String payload, String correlationId) {
         this.eventId = UUID.randomUUID().toString();
         this.topic = topic;
         this.payload = payload;
-        this.status = "PENDING";
+        this.status = OutboxEventStatus.PENDING.name();
+        this.correlationId = correlationId;
         this.createdAt = LocalDateTime.now();
+        this.nextAttemptAt = this.createdAt;
         this.retryCount = 0;
     }
 }
