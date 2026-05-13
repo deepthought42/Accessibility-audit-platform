@@ -3,9 +3,13 @@ package com.looksee.auditManager.config;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import com.looksee.gcp.PubSubPageAuditPublisherImpl;
 import com.looksee.services.AuditRecordService;
+import com.looksee.services.IdempotencyService;
+import com.looksee.services.OutboxEventPublisher;
+import com.looksee.services.OutboxPublishingGateway;
 import com.looksee.services.PageStateService;
 
 /**
@@ -18,6 +22,10 @@ import com.looksee.services.PageStateService;
  * {@link ConditionalOnMissingBean} so that test or profile-specific overrides
  * take precedence.
  *
+ * <p>{@link EnableScheduling} is on this config so the {@link OutboxEventPublisher}
+ * scheduled poll runs and the audit-manager service can drain its own
+ * outbox writes without depending on another deployment.</p>
+ *
  * <h3>Contract</h3>
  * <ul>
  *   <li><b>Postcondition:</b> Each factory method returns a non-null,
@@ -25,6 +33,7 @@ import com.looksee.services.PageStateService;
  * </ul>
  */
 @Configuration
+@EnableScheduling
 public class PubSubConfig {
 
     /**
@@ -59,4 +68,45 @@ public class PubSubConfig {
     public PageStateService pageStateService() {
         return new PageStateService();
     }
+
+    /**
+     * Provides the atomic idempotency guard used by the inherited
+     * {@link com.looksee.messaging.web.PubSubAuditController}. Without this
+     * bean the base class's {@code @Autowired IdempotencyGuard} cannot be
+     * satisfied, since {@link IdempotencyService} lives in
+     * {@code com.looksee.services} and is not picked up by audit-manager's
+     * narrow component scan.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public IdempotencyService idempotencyService() {
+        return new IdempotencyService();
+    }
+
+    /**
+     * Provides the transactional outbox staging gateway. Required by
+     * {@link com.looksee.auditManager.AuditController#handle(com.looksee.models.message.PageBuiltMessage)}
+     * so PageAudit publishes commit or roll back with the audit-record
+     * domain writes. Counterpart bean to {@link #outboxEventPublisher()}
+     * which drains the staged rows out to Pub/Sub.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public OutboxPublishingGateway outboxPublishingGateway() {
+        return new OutboxPublishingGateway();
+    }
+
+    /**
+     * Provides the background poller that drains the {@code OutboxEvent}
+     * table to Pub/Sub. Wired here so audit-manager processes events it
+     * has staged without relying on another service to do the draining;
+     * @{@link EnableScheduling} on this config activates the publisher's
+     * {@code @Scheduled} methods.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public OutboxEventPublisher outboxEventPublisher() {
+        return new OutboxEventPublisher();
+    }
 }
+

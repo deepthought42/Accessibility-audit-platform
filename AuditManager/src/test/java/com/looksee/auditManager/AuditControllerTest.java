@@ -74,6 +74,7 @@ class AuditControllerTest {
 		ReflectionTestUtils.setField(controller, "objectMapper", new ObjectMapper());
 		ReflectionTestUtils.setField(controller, "pubSubMetrics", pubSubMetrics);
 		ReflectionTestUtils.setField(controller, "outboxGateway", outboxGateway);
+		ReflectionTestUtils.setField(controller, "self", controller);
 
 		when(idempotencyService.claim(anyString(), anyString())).thenReturn(true);
 	}

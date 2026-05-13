@@ -69,6 +69,7 @@ class AuditControllerIntegrationTest {
 		ReflectionTestUtils.setField(controller, "objectMapper", new ObjectMapper());
 		ReflectionTestUtils.setField(controller, "pubSubMetrics", pubSubMetrics);
 		ReflectionTestUtils.setField(controller, "outboxGateway", outboxGateway);
+		ReflectionTestUtils.setField(controller, "self", controller);
 		mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
 	}
 
