@@ -441,9 +441,13 @@ class AuditControllerTest {
             when(browserService.getConnection(BrowserType.CHROME, BrowserEnvironment.DISCOVERY)).thenReturn(browser);
             when(browserService.buildPageState(any(URL.class), eq(browser), eq(true), eq(200), eq(AUDIT_ID)))
                     .thenThrow(new RuntimeException("build failure"));
-            // publish() throws RuntimeException, which is not caught by the inner
-            // catch(JsonProcessingException) and propagates out of the method
-            doThrow(new RuntimeException("publish failed")).when(pubSubErrorPublisherImpl).publish(anyString());
+            // outboxGateway.enqueueOutOfBand throws RuntimeException, which is
+            // not caught inside the controller's outer catch block and
+            // propagates out of the method (the `finally` block still closes
+            // the browser).
+            doThrow(new RuntimeException("staging failed"))
+                .when(outboxGateway)
+                .enqueueOutOfBand(any(), any(), any());
 
             assertThrows(RuntimeException.class, () -> controller.receiveMessage(body));
             verify(browser).close();
