@@ -39,7 +39,16 @@ jobs:
             exit 1
           fi
 
-          # 2. Every service pom.xml that pins LookseeCore must match the root file.
+          # 2. The legacy `<looksee-core.version>` property is forbidden;
+          #    all services must pin LookseeCore via `<core.version>`.
+          forbidden=$(grep -rn '<looksee-core\.version>' --include='pom.xml' . || true)
+          if [ -n "$forbidden" ]; then
+            echo "Forbidden property <looksee-core.version> found; use <core.version> instead:" >&2
+            echo "$forbidden" >&2
+            exit 1
+          fi
+
+          # 3. Every service pom.xml that pins LookseeCore must match the root file.
           mismatches=$(grep -rEn '<core\.version>([^<]+)</' --include='pom.xml' . \
                        | grep -v ">${expected}<" || true)
           if [ -n "$mismatches" ]; then
@@ -48,7 +57,7 @@ jobs:
             exit 1
           fi
 
-          # 3. scripts/download-core.sh must exist and be executable.
+          # 4. scripts/download-core.sh must exist and be executable.
           test -x scripts/download-core.sh || (echo "scripts/download-core.sh missing or not executable" >&2; exit 1)
 
           echo "OK: LookseeCore version $expected is unified across the monorepo."
