@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 import com.looksee.gcp.PubSubPageAuditPublisherImpl;
+import com.looksee.messaging.poison.PoisonMessagePublisher;
 import com.looksee.models.repository.OutboxEventRepository;
 import com.looksee.services.AuditRecordService;
 import com.looksee.services.IdempotencyService;
@@ -107,9 +108,15 @@ public class PubSubConfig {
      * {@code PoisonMessagePublisher} port, so the concrete adapter has
      * to be wired here for audit-manager's narrow component scan to
      * pick it up.
+     *
+     * <p>The condition is anchored to {@link PoisonMessagePublisher} (the
+     * port) rather than the default factory-method return type so that
+     * any test or profile-supplied implementation suppresses this
+     * default — otherwise the controller's {@code PoisonMessagePublisher}
+     * autowire would become ambiguous with two beans on the classpath.
      */
     @Bean
-    @ConditionalOnMissingBean
+    @ConditionalOnMissingBean(PoisonMessagePublisher.class)
     public OutboxPoisonMessagePublisher outboxPoisonMessagePublisher(
         OutboxPublishingGateway outboxGateway,
         OutboxEventRepository outboxEventRepository,
