@@ -155,6 +155,6 @@ public interface JourneyRepository extends Neo4jRepository<Journey, Long>  {
 	 * @param status the current status to match
 	 * @param goal_status the target status to set
 	 */
-	@Query("MATCH (map:DomainMap)-[]->(journey:Journey) WHERE id(map)=$map_id AND journey.status=\"CANDIDATE\" SET journey.status=\"ERROR\" RETURN journey")
+	@Query("MATCH (map:DomainMap)-[]->(journey:Journey) WHERE id(map)=$map_id AND journey.status=$status SET journey.status=$goal_status RETURN journey")
 	public void changeJourneyStatus(@Param("map_id") long map_id, @Param("status") String status, @Param("goal_status") String goal_status);
 }
