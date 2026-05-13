@@ -144,23 +144,30 @@ public abstract class PubSubAuditController<T> {
                 .setAttribute("messaging.message.id", messageId)
                 .startSpan();
             try (Scope spanScope = span.makeCurrent()) {
-                byte[] decoded = Base64.getDecoder().decode(body.getMessage().getData());
+                byte[] decoded;
+                try {
+                    decoded = Base64.getDecoder().decode(body.getMessage().getData());
+                } catch (IllegalArgumentException badBase64) {
+                    // Scope the bad-Base64 poison branch to the decode call
+                    // itself. handle() is free to throw IllegalArgumentException
+                    // for domain validation or missing state, and those must
+                    // fall through to the retryable generic catch below — not
+                    // be misclassified as a non-retryable poison message.
+                    span.recordException(badBase64);
+                    span.setStatus(StatusCode.ERROR, "invalid_base64");
+                    pubSubMetrics.recordError(serviceName(), topicName(), badBase64);
+                    log.warn("invalid base64 payload in {}, acknowledging", serviceName(), badBase64);
+                    ResponseEntity<String> poisonFailure = tryEmitPoison(
+                        body.getMessage(), badBase64, messageId, span);
+                    if (poisonFailure != null) {
+                        return poisonFailure;
+                    }
+                    return ResponseEntity.ok("Invalid payload, acknowledged");
+                }
                 T payload = objectMapper.readValue(decoded, payloadType());
                 handle(payload);
                 pubSubMetrics.recordSuccess(serviceName(), topicName());
                 return ResponseEntity.ok("ok");
-            } catch (IllegalArgumentException e) {
-                // Bad base64 — acknowledge so Pub/Sub does not retry forever.
-                span.recordException(e);
-                span.setStatus(StatusCode.ERROR, "invalid_base64");
-                pubSubMetrics.recordError(serviceName(), topicName(), e);
-                log.warn("invalid base64 payload in {}, acknowledging", serviceName(), e);
-                ResponseEntity<String> poisonFailure = tryEmitPoison(
-                    body.getMessage(), e, messageId, span);
-                if (poisonFailure != null) {
-                    return poisonFailure;
-                }
-                return ResponseEntity.ok("Invalid payload, acknowledged");
             } catch (JsonProcessingException e) {
                 // Malformed or schema-incompatible JSON — re-delivery cannot
                 // succeed, so acknowledge as poison rather than loop forever.

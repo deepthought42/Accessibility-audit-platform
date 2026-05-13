@@ -250,6 +250,25 @@ class PubSubAuditControllerTest {
     }
 
     @Test
+    void handleThrowingIllegalArgumentException_doesNotPublishPoison_andReleasesClaim() {
+        // Subclasses are free to use IllegalArgumentException for domain
+        // validation or missing-state errors. Those must fall through to
+        // the retryable generic-error path, not be misclassified as a
+        // bad-Base64 poison message and acknowledged with 200 — the
+        // decode IAE catch is scoped to the decode call itself.
+        when(idempotencyService.claim("msg-iae", SERVICE)).thenReturn(true);
+        handleFailure = new IllegalArgumentException("missing required state");
+
+        ResponseEntity<String> response = controller.receiveMessage(
+            buildBody("msg-iae", "{\"value\":\"ok\"}"));
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        verify(poisonPublisher, never()).publishPoison(any(), anyString());
+        verify(idempotencyService, times(1)).release("msg-iae", SERVICE);
+        verify(pubSubMetrics, times(1)).recordError(eq(SERVICE), eq(TOPIC), any(Throwable.class));
+    }
+
+    @Test
     void poisonPublishItselfFails_returns500_releasesClaim() {
         when(idempotencyService.claim("msg-10", SERVICE)).thenReturn(true);
         doThrow(new RuntimeException("outbox down"))
