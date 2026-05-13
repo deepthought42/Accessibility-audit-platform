@@ -210,7 +210,15 @@ public abstract class PubSubAuditController<T> {
         String originalMessageId = msg == null ? null : msg.getMessageId();
         Map<String, String> attributes = msg == null ? Collections.emptyMap() : msg.getAttributes();
         String base64Data = msg == null ? null : msg.getData();
-        String correlationId = TraceContextPropagation.currentOrMintTraceparent(attributes);
+        // Prefer the active handler span (the bad-Base64 and bad-JSON
+        // branches reach this method from inside the pubsub.handle.* span)
+        // so the poison row joins the same trace as the inbound delivery.
+        // Fall back to the inbound attributes for the empty-envelope path,
+        // which runs before the span is started.
+        String correlationId = TraceContextPropagation.currentTraceparent();
+        if (correlationId == null) {
+            correlationId = TraceContextPropagation.currentOrMintTraceparent(attributes);
+        }
         PoisonMessageEnvelope envelope = new PoisonMessageEnvelope(
             serviceName(),
             topicName(),
