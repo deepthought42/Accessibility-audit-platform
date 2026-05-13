@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import com.looksee.messaging.poison.PoisonMessagePublisher;
 import com.looksee.models.message.PoisonMessageEnvelope;
+import com.looksee.models.repository.OutboxEventRepository;
 
 /**
  * Outbox-backed adapter implementing {@link PoisonMessagePublisher}.
@@ -20,24 +21,41 @@ import com.looksee.models.message.PoisonMessageEnvelope;
  * Pub/Sub redeliver the original message so a later attempt can poison-
  * publish it. Duplicate poison rows on retry are acceptable; silent loss
  * is not.
+ *
+ * <p>{@link OutboxPublishingGateway#save} no-ops when its
+ * {@link OutboxEventRepository} autowire is null (logs a warning and
+ * returns). That would let {@link #publishPoison} return successfully
+ * while no poison row was actually staged — defeating the whole point of
+ * the path. This adapter therefore verifies the repository is wired on
+ * every call and fails closed when it is not, so the controller sees a
+ * 500 and Pub/Sub redelivers instead of silently dropping a poison
+ * message.
  */
 @Service
 public class OutboxPoisonMessagePublisher implements PoisonMessagePublisher {
 
     private final OutboxPublishingGateway outboxGateway;
+    private final OutboxEventRepository outboxEventRepository;
     private final String poisonTopic;
 
     @Autowired
     public OutboxPoisonMessagePublisher(
         OutboxPublishingGateway outboxGateway,
+        @Autowired(required = false) OutboxEventRepository outboxEventRepository,
         @Value("${pubsub.poison:looksee.poison}") String poisonTopic
     ) {
         this.outboxGateway = outboxGateway;
+        this.outboxEventRepository = outboxEventRepository;
         this.poisonTopic = poisonTopic;
     }
 
     @Override
     public void publishPoison(PoisonMessageEnvelope envelope, String correlationId) {
+        if (outboxEventRepository == null) {
+            throw new IllegalStateException(
+                "OutboxEventRepository is not wired; poison publish to topic="
+                + poisonTopic + " would be silently dropped");
+        }
         outboxGateway.enqueueOutOfBand(poisonTopic, envelope, correlationId);
     }
 }
