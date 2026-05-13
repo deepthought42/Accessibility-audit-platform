@@ -23,6 +23,7 @@ import java.util.Map;
 import javax.imageio.ImageIO;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriverException;
@@ -48,7 +49,13 @@ public class BrowserTest {
 	}
 
 	
+	// Live HTTPS smoke test against amazon.com. Amazon's anti-bot policy
+	// returns 403 for unauthenticated requests from CI IPs, so this test
+	// flakes deterministically in GitHub Actions. Disabled until it can be
+	// retargeted at a CI-friendly URL (example.com / httpbin) or moved
+	// behind the `requires-network` opt-in tag pattern used elsewhere.
 	@Test
+	@Disabled("flaky: live HTTPS request to amazon.com returns 403 from CI IPs")
 	public void verifyUrlReaderForHttps() throws MalformedURLException {
 		URL url = new URL("https://www.amazon.com");
 		try {

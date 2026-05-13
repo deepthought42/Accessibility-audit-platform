@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-05-13
+
+### Added
+
+- **`OutboxPublishingGateway`** in `looksee-persistence` — the single entry point through which every cross-service Pub/Sub publish must now flow. Two methods: `enqueue(topic, payload, correlationId)` runs `@Transactional(Propagation.MANDATORY)` so the outbox row commits or rolls back with the caller's domain transaction; `enqueueOutOfBand(...)` runs `Propagation.REQUIRES_NEW` for `catch`-block error publishes whose signal must survive a rolling-back outer tx. Eliminates the "DB committed but Pub/Sub publish failed" failure mode that previously stranded audits mid-pipeline.
+- **`OutboxEventStatus` constants enum** in `looksee-models` — `PENDING`, `PROCESSED`, `FAILED`. Used as a constants source at write/read sites; the `OutboxEvent.status` getter still returns `String`, so the LookseeCore 1.0.0 public API is preserved.
+- **`OutboxSerializationException`** in `looksee-models` — unchecked wrapper around `JsonProcessingException` thrown by the gateway when a payload cannot be serialized.
+- **`OutboxEvent.correlationId` + `nextAttemptAt` fields** — the correlation id holds the inbound W3C `traceparent` (or a freshly minted one) so downstream consumers join the same distributed trace; `nextAttemptAt` powers the new exponential-backoff retry schedule.
+- **`OutboxEventRepository.findDueEvents(now)` / `countDueEvents(now)` / `deleteOldFailedEvents()`** — `findDueEvents` honors `nextAttemptAt` so the publisher respects backoff; `countDueEvents` backs the new pending-gauge (a non-paged true count, not the limit-100 page size); `deleteOldFailedEvents` sweeps terminal-failure rows 30 days after they flip to `FAILED`.
+- **Hardened `OutboxEventPublisher`** — replaces `PubSubTemplate` injection with `TracingPubSubPublisher`; reconstructs the originator's W3C trace context from `event.correlationId` so consumers see lineage rather than the scheduler thread's span; applies exponential backoff (`5 · 2^retryCount` seconds, 10s/20s/40s/80s) on failure; flips `PENDING → FAILED` with a `processedAt` stamp on the 5th failed attempt so the daily sweeper can reap exhausted rows.
+- **`TracingPubSubPublisher.publishWithCorrelation(topic, payload, traceparent)`** in `looksee-messaging` — publishes with an explicit W3C `traceparent` as the propagated parent context. Falls back to the existing `publish(topic, payload)` path when the input is null or syntactically invalid.
+- **`TraceContextPropagation.currentTraceparent()` and `currentOrMintTraceparent(inboundAttributes)`** helpers — handlers extending `PubSubAuditController` (with an active `pubsub.handle.*` span) use the former; raw handlers without a span use the latter, which prefers the inbound `traceparent` attribute when present and otherwise mints a freshly-random, syntactically-valid W3C id.
+- **Outbox metrics** in `PubSubMetrics`: `looksee.outbox.published{topic,result}` (counter, results `success`/`retrying`/`exhausted`), `looksee.outbox.lag.seconds{topic}` (timer, write-to-publish latency), `looksee.outbox.failed{topic,reason}` (counter, reasons `pubsub_unavailable`/`serialization`/`exhausted`/`unknown`), and `looksee.outbox.pending` (gauge supplied by `countDueEvents`).
+- **`PubSubPublisher.getTopic()`** public accessor on the GCP publisher base class — migrated outbox call sites read the topic name from this rather than hardcoding strings, so the config-driven `pubsub.*` property remains the single source of truth.
+
+### Changed
+
+- The four producer-side `AuditController` classes (`PageBuilder`, `journeyExecutor`, `journeyExpander`, `AuditManager`) no longer call `PubSub*PublisherImpl.publish(...)` directly. Every cross-service publish now stages an `OutboxEvent` via `OutboxPublishingGateway` in the same Neo4j transaction as the domain write. `AuditManager.handle(...)` gained `@Transactional` so the gateway's `MANDATORY` propagation is satisfied. The publisher beans remain wired for their `getTopic()` accessor and for non-migrated services elsewhere in the monorepo.
+
+### Fixed
+
+- Cross-service publish atomicity: a graph write followed by a failed Pub/Sub publish no longer leaves the audit stranded. The outbox row commits or rolls back with the domain change; the asynchronous publisher delivers (or fails after 5 retries → `FAILED`) on its own schedule.
+- Outbox events that exhaust retries now transition `PENDING → FAILED` with a `processedAt` stamp, so the daily sweeper (`deleteOldFailedEvents`) can clean them. Previously the scaffold set `status = "FAILED"` but never `processedAt`, leaving exhausted rows in the table indefinitely.
+- `OutboxEventPublisher` previously polled every 5 seconds regardless of failure count, hammering Pub/Sub with retries. It now honors `nextAttemptAt` and spaces retries at 10s / 20s / 40s / 80s.
+
 ## [1.0.0] - 2026-05-12
 
 ### Breaking changes

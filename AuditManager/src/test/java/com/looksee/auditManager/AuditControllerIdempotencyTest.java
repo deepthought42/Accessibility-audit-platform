@@ -32,6 +32,7 @@ import com.looksee.models.audit.DomainAuditRecord;
 import com.looksee.models.audit.PageAuditRecord;
 import com.looksee.models.enums.AuditName;
 import com.looksee.services.AuditRecordService;
+import com.looksee.services.OutboxPublishingGateway;
 import com.looksee.services.PageStateService;
 
 /**
@@ -51,6 +52,7 @@ class AuditControllerIdempotencyTest {
 	private PageStateService pageStateService;
 	private IdempotencyGuard idempotencyService;
 	private PubSubMetrics pubSubMetrics;
+	private OutboxPublishingGateway outboxGateway;
 
 	@BeforeEach
 	void setUp() {
@@ -60,6 +62,7 @@ class AuditControllerIdempotencyTest {
 		pageStateService = mock(PageStateService.class);
 		idempotencyService = mock(IdempotencyGuard.class);
 		pubSubMetrics = mock(PubSubMetrics.class);
+		outboxGateway = mock(OutboxPublishingGateway.class);
 
 		ReflectionTestUtils.setField(controller, "auditRecordService", auditRecordService);
 		ReflectionTestUtils.setField(controller, "auditRecordTopic", auditRecordTopic);
@@ -67,6 +70,8 @@ class AuditControllerIdempotencyTest {
 		ReflectionTestUtils.setField(controller, "idempotencyService", idempotencyService);
 		ReflectionTestUtils.setField(controller, "objectMapper", new ObjectMapper());
 		ReflectionTestUtils.setField(controller, "pubSubMetrics", pubSubMetrics);
+		ReflectionTestUtils.setField(controller, "outboxGateway", outboxGateway);
+		ReflectionTestUtils.setField(controller, "self", controller);
 	}
 
 	@Test
@@ -78,7 +83,7 @@ class AuditControllerIdempotencyTest {
 
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 		assertTrue(response.getBody().contains("Duplicate"));
-		verify(auditRecordTopic, never()).publish(anyString());
+		verify(outboxGateway, never()).enqueue(any(), any(), any());
 		verify(auditRecordService, never()).save(any());
 		verify(idempotencyService, never()).release(anyString(), anyString());
 	}
@@ -104,7 +109,7 @@ class AuditControllerIdempotencyTest {
 			buildBody("ok-msg", "{\"accountId\":1,\"pageId\":10,\"auditRecordId\":100}"));
 
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(auditRecordTopic, times(1)).publish(anyString());
+		verify(outboxGateway, times(1)).enqueue(any(), any(), any());
 		verify(idempotencyService, never()).release(anyString(), anyString());
 	}
 
@@ -120,7 +125,7 @@ class AuditControllerIdempotencyTest {
 			buildBody("skip-msg", "{\"accountId\":1,\"pageId\":10,\"auditRecordId\":100}"));
 
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		verify(auditRecordTopic, never()).publish(anyString());
+		verify(outboxGateway, never()).enqueue(any(), any(), any());
 		verify(idempotencyService, never()).release(anyString(), anyString());
 	}
 

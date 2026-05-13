@@ -34,6 +34,7 @@ import com.looksee.services.DomainMapService;
 import com.looksee.services.ElementStateService;
 import com.looksee.services.IdempotencyService;
 import com.looksee.services.JourneyService;
+import com.looksee.services.OutboxPublishingGateway;
 import com.looksee.services.PageStateService;
 import com.looksee.services.StepService;
 
@@ -82,6 +83,9 @@ class AuditControllerIntegrationTest {
     @Mock
     private PubSubPageAuditPublisherImpl audit_record_topic;
 
+    @Mock
+    private OutboxPublishingGateway outboxGateway;
+
     private final ObjectMapper mapper = JacksonConfig.mapper();
 
     @BeforeEach
@@ -99,6 +103,7 @@ class AuditControllerIntegrationTest {
         ReflectionTestUtils.setField(controller, "pubSubJourneyVerifiedPublisherImpl", pubSubJourneyVerifiedPublisherImpl);
         ReflectionTestUtils.setField(controller, "pubSubPageCreatedPublisherImpl", pubSubPageCreatedPublisherImpl);
         ReflectionTestUtils.setField(controller, "audit_record_topic", audit_record_topic);
+        ReflectionTestUtils.setField(controller, "outboxGateway", outboxGateway);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 

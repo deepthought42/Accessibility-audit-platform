@@ -39,6 +39,7 @@ import com.looksee.services.DomainMapService;
 import com.looksee.services.DomainService;
 import com.looksee.services.IdempotencyService;
 import com.looksee.services.JourneyService;
+import com.looksee.services.OutboxPublishingGateway;
 import com.looksee.services.PageStateService;
 import com.looksee.services.StepService;
 import com.looksee.utils.BrowserUtils;
@@ -59,6 +60,7 @@ class AuditControllerTest {
     @Mock private StepService step_service;
     @Mock private PubSubJourneyCandidatePublisherImpl journey_candidate_topic;
     @Mock private IdempotencyService idempotencyService;
+    @Mock private OutboxPublishingGateway outboxGateway;
 
     // ================================================================
     // receiveMessage: input validation
@@ -384,7 +386,7 @@ class AuditControllerTest {
             verify(journey_service).save(eq(42L), any(Journey.class));
             verify(journey_service, atLeastOnce()).addStep(eq(200L), anyLong());
             verify(domain_map_service).addJourneyToDomainMap(eq(200L), eq(42L));
-            verify(journey_candidate_topic).publish(any());
+            verify(outboxGateway).enqueue(any(), any(), any());
         }
     }
 
@@ -418,7 +420,7 @@ class AuditControllerTest {
 
             ResponseEntity<String> response = controller.receiveMessage(body);
             assertEquals(HttpStatus.OK, response.getStatusCode());
-            verify(journey_candidate_topic, atLeast(2)).publish(any());
+            verify(outboxGateway, atLeast(2)).enqueue(any(), any(), any());
         }
     }
 

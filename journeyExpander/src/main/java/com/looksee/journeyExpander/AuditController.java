@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.looksee.gcp.PubSubJourneyCandidatePublisherImpl;
 import com.looksee.mapper.Body;
+import com.looksee.messaging.observability.TraceContextPropagation;
 import com.looksee.models.config.JacksonConfig;
 import com.looksee.models.Domain;
 import com.looksee.models.ElementState;
@@ -41,6 +42,7 @@ import com.looksee.services.IdempotencyService;
 import com.looksee.services.DomainMapService;
 import com.looksee.services.DomainService;
 import com.looksee.services.JourneyService;
+import com.looksee.services.OutboxPublishingGateway;
 import com.looksee.services.PageStateService;
 import com.looksee.services.StepService;
 import com.looksee.utils.BrowserUtils;
@@ -89,6 +91,9 @@ public class AuditController {
 	@Autowired
 	private IdempotencyService idempotencyService;
 
+	@Autowired
+	private OutboxPublishingGateway outboxGateway;
+
 	/**
 	 * Receives a verified journey via Pub/Sub push and expands it into candidate
 	 * journeys by appending interactive-element click steps to the journey's
@@ -123,6 +128,12 @@ public class AuditController {
 		if (idempotencyService.isAlreadyProcessed(body.getMessage().getMessageId(), "journey-expander")) {
 			return ResponseEntity.ok("Duplicate message, already processed");
 		}
+
+		// Propagate W3C trace-context from inbound Pub/Sub attributes onto
+		// every staged outbox event; mint a fresh id when the inbound message
+		// has no valid traceparent.
+		final String traceparent = TraceContextPropagation
+				.currentOrMintTraceparent(body.getMessage().getAttributes());
 
 		VerifiedJourneyMessage journey_msg;
 		try {
@@ -232,8 +243,10 @@ public class AuditController {
 																	journey_msg.getAccountId(),
 																	journey_msg.getAuditRecordId(),
 																	domain_map.getId());
-					String candidate_json = JacksonConfig.mapper().writeValueAsString(candidate);
-					journey_candidate_topic.publish(candidate_json);
+					outboxGateway.enqueue(
+						journey_candidate_topic.getTopic(),
+						candidate,
+						traceparent);
 					journey_cnt++;
 				}
 			}

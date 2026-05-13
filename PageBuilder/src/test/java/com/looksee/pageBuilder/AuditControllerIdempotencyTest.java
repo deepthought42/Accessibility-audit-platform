@@ -26,6 +26,7 @@ import com.looksee.services.DomainMapService;
 import com.looksee.services.ElementStateService;
 import com.looksee.services.IdempotencyService;
 import com.looksee.services.JourneyService;
+import com.looksee.services.OutboxPublishingGateway;
 import com.looksee.services.PageStateService;
 import com.looksee.services.StepService;
 
@@ -49,6 +50,7 @@ class AuditControllerIdempotencyTest {
     private PubSubJourneyVerifiedPublisherImpl pubSubJourneyVerifiedPublisher;
     private PubSubPageCreatedPublisherImpl pubSubPageCreatedPublisher;
     private PubSubPageAuditPublisherImpl auditRecordTopic;
+    private OutboxPublishingGateway outboxGateway;
 
     @BeforeEach
     void setUp() {
@@ -66,6 +68,7 @@ class AuditControllerIdempotencyTest {
         pubSubJourneyVerifiedPublisher = mock(PubSubJourneyVerifiedPublisherImpl.class);
         pubSubPageCreatedPublisher = mock(PubSubPageCreatedPublisherImpl.class);
         auditRecordTopic = mock(PubSubPageAuditPublisherImpl.class);
+        outboxGateway = mock(OutboxPublishingGateway.class);
 
         ReflectionTestUtils.setField(controller, "idempotencyService", idempotencyService);
         ReflectionTestUtils.setField(controller, "audit_record_service", auditRecordService);
@@ -79,6 +82,7 @@ class AuditControllerIdempotencyTest {
         ReflectionTestUtils.setField(controller, "pubSubJourneyVerifiedPublisherImpl", pubSubJourneyVerifiedPublisher);
         ReflectionTestUtils.setField(controller, "pubSubPageCreatedPublisherImpl", pubSubPageCreatedPublisher);
         ReflectionTestUtils.setField(controller, "audit_record_topic", auditRecordTopic);
+        ReflectionTestUtils.setField(controller, "outboxGateway", outboxGateway);
     }
 
     // --- Idempotency tests ---

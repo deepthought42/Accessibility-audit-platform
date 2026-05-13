@@ -28,6 +28,7 @@ import com.looksee.gcp.PubSubJourneyVerifiedPublisherImpl;
 import com.looksee.gcp.PubSubPageAuditPublisherImpl;
 import com.looksee.gcp.PubSubPageCreatedPublisherImpl;
 import com.looksee.browser.Browser;
+import com.looksee.messaging.observability.TraceContextPropagation;
 import com.looksee.models.ElementState;
 import com.looksee.models.PageState;
 import com.looksee.models.enums.AuditLevel;
@@ -46,6 +47,7 @@ import com.looksee.models.message.VerifiedJourneyMessage;
 import com.looksee.pageBuilder.schemas.BodySchema;
 import com.looksee.services.AuditRecordService;
 import com.looksee.services.IdempotencyService;
+import com.looksee.services.OutboxPublishingGateway;
 import com.looksee.services.BrowserService;
 import com.looksee.services.DomainMapService;
 import com.looksee.services.ElementStateService;
@@ -105,6 +107,9 @@ public class AuditController {
 	private DomainMapService domain_map_service;
 
 	@Autowired
+	private OutboxPublishingGateway outboxGateway;
+
+	@Autowired
 	private PubSubErrorPublisherImpl pubSubErrorPublisherImpl;
 
 	@Autowired
@@ -133,12 +138,14 @@ public class AuditController {
 	 * <h4>Postconditions</h4>
 	 * <ul>
 	 *   <li>On success (HTTP 200): at least one Pub/Sub message has been
-	 *       published to the appropriate downstream topic
-	 *       ({@code PageCreated}, {@code JourneyVerified},
-	 *       {@code PageAudit}, or {@code AuditError}).</li>
+	 *       staged in the transactional outbox for the appropriate
+	 *       downstream topic ({@code PageCreated}, {@code JourneyVerified},
+	 *       {@code PageAudit}, or {@code AuditError}). The outbox row
+	 *       commits with the same Neo4j transaction as the domain write.</li>
 	 *   <li>On validation failure (HTTP 400): no side effects occur.</li>
 	 *   <li>On processing error (HTTP 500): an {@code AuditError} message
-	 *       is published if serialisation succeeds.</li>
+	 *       is staged out-of-band so the signal survives an outer
+	 *       transaction rollback.</li>
 	 *   <li>The {@link Browser} resource, if acquired, is always closed
 	 *       in the {@code finally} block.</li>
 	 * </ul>
@@ -208,6 +215,11 @@ public class AuditController {
 
 		URL url = new URL(BrowserUtils.sanitizeUserUrl(url_msg.getUrl()));
 
+		// The BodySchema here does not surface inbound Pub/Sub attributes, so
+		// no parent traceparent is available — mint a fresh W3C-compliant id
+		// per inbound message and stamp it onto every outbox event we stage.
+		final String traceparent = TraceContextPropagation.currentOrMintTraceparent(null);
+
 	    PageState page_state = null;
 		Browser browser = null;
 
@@ -224,8 +236,10 @@ public class AuditController {
 																						  url_msg.getUrl().toString(),
 																						  "Received "+http_status+" status while building page state "+url_msg.getUrl());
 
-				String error_json = JacksonConfig.mapper().writeValueAsString(page_extraction_err);
-				pubSubErrorPublisherImpl.publish(error_json);
+				outboxGateway.enqueueOutOfBand(
+					pubSubErrorPublisherImpl.getTopic(),
+					page_extraction_err,
+					traceparent);
 
 				return new ResponseEntity<String>("Successfully sent message to page extraction error", HttpStatus.OK);
 			}
@@ -289,9 +303,11 @@ public class AuditController {
 																		page_state.getId(),
 																		url_msg.getAuditId());
 
-				String page_built_str = JacksonConfig.mapper().writeValueAsString(page_built_msg);
-				log.warn("sending page built message to PageCreated topic : "+page_built_str);
-				pubSubPageCreatedPublisherImpl.publish(page_built_str);
+				log.warn("staging page built message to PageCreated topic for auditId={}", url_msg.getAuditId());
+				outboxGateway.enqueue(
+					pubSubPageCreatedPublisherImpl.getTopic(),
+					page_built_msg,
+					traceparent);
 				List<Step> steps = new ArrayList<>();
 				Step step = new LandingStep(page_state, JourneyStatus.VERIFIED);
 				step = step_service.save(step);
@@ -308,20 +324,22 @@ public class AuditController {
 																				url_msg.getAccountId(),
 																				url_msg.getAuditId());
 				log.warn("journey steps = "+ journey.getSteps());
-				String journey_msg_str = JacksonConfig.mapper().writeValueAsString(journey_msg);
-				log.warn("Publishing to verified journey topic = "+journey_msg_str);
-
-				pubSubJourneyVerifiedPublisherImpl.publish(journey_msg_str);
+				log.warn("staging verified journey for auditId={}", url_msg.getAuditId());
+				outboxGateway.enqueue(
+					pubSubJourneyVerifiedPublisherImpl.getTopic(),
+					journey_msg,
+					traceparent);
 			}
 			else if(AuditLevel.PAGE.equals(url_msg.getType())){
 				audit_record_service.addPageToAuditRecord(url_msg.getAuditId(), page_state.getId());
 				//send message to page audit message topic
 				PageAuditMessage audit_msg = new PageAuditMessage(	url_msg.getAccountId(),
 																	url_msg.getAuditId());
-				log.warn("sending page audit message = "+audit_msg.getPageAuditId());
-				String audit_record_json = JacksonConfig.mapper().writeValueAsString(audit_msg);
-				log.warn("(PageAudit) Sending PageAuditMessage to Pub/Sub = "+audit_record_json);
-				audit_record_topic.publish(audit_record_json);
+				log.warn("staging page audit message = "+audit_msg.getPageAuditId());
+				outboxGateway.enqueue(
+					audit_record_topic.getTopic(),
+					audit_msg,
+					traceparent);
 			}
 
 			idempotencyService.markProcessed(pubsubMessageId, "page-builder");
@@ -333,13 +351,10 @@ public class AuditController {
 																						url_msg.getUrl().toString(),
 																						"An exception occurred while building page state "+url_msg.getUrl()+".\n"+e.getMessage());
 
-			try {
-				String element_extraction_str = JacksonConfig.mapper().writeValueAsString(page_extraction_err);
-				pubSubErrorPublisherImpl.publish(element_extraction_str);
-			}
-			catch(JsonProcessingException serializationException) {
-				log.error("Failed to serialize PageDataExtractionError for publication", serializationException);
-			}
+			outboxGateway.enqueueOutOfBand(
+				pubSubErrorPublisherImpl.getTopic(),
+				page_extraction_err,
+				traceparent);
 			log.error("An exception occurred that bubbled up to the page state builder", e);
 
 			return new ResponseEntity<String>("Error building page state for url "+url_msg.getUrl(), HttpStatus.INTERNAL_SERVER_ERROR);
