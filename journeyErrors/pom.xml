@@ -13,6 +13,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>17</java.version>
 	    <springboot.version>2.6.13</springboot.version>
+	    <core.version>1.1.0</core.version>
         <!-- Surefire tag filter. Default-skip the requires-docker tag so
              plain `mvn test` works without Docker. Override on the CLI to
              opt in: `-DexcludedGroups= -Dgroups=requires-docker`. -->
@@ -58,7 +59,7 @@
 	    <dependency>
 	        <groupId>com.looksee</groupId>
 	        <artifactId>A11yCore</artifactId>
-	        <version>1.1.0</version>
+	        <version>${core.version}</version>
 	    </dependency>
 	    <dependency>
 	        <groupId>com.looksee</groupId>
