@@ -36,6 +36,7 @@ import com.looksee.models.audit.PageAuditRecord;
 import com.looksee.models.config.JacksonConfig;
 import com.looksee.models.message.PageBuiltMessage;
 import com.looksee.services.AuditRecordService;
+import com.looksee.services.OutboxPublishingGateway;
 import com.looksee.services.PageStateService;
 
 /**
@@ -54,6 +55,7 @@ class AuditControllerIntegrationTest {
 	@Mock private PageStateService pageStateService;
 	@Mock private IdempotencyGuard idempotencyService;
 	@Mock private PubSubMetrics pubSubMetrics;
+	@Mock private OutboxPublishingGateway outboxGateway;
 
 	private MockMvc mockMvc;
 
@@ -66,6 +68,7 @@ class AuditControllerIntegrationTest {
 		ReflectionTestUtils.setField(controller, "idempotencyService", idempotencyService);
 		ReflectionTestUtils.setField(controller, "objectMapper", new ObjectMapper());
 		ReflectionTestUtils.setField(controller, "pubSubMetrics", pubSubMetrics);
+		ReflectionTestUtils.setField(controller, "outboxGateway", outboxGateway);
 		mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
 	}
 
@@ -117,7 +120,7 @@ class AuditControllerIntegrationTest {
 			.andExpect(status().isOk());
 
 		verify(auditRecordService, never()).wasPageAlreadyAudited(anyLong(), anyLong());
-		verify(auditRecordTopic, never()).publish(anyString());
+		verify(outboxGateway, never()).enqueue(any(), any(), any());
 	}
 
 	@Test
@@ -132,7 +135,7 @@ class AuditControllerIntegrationTest {
 				.content(invalidEnvelope))
 			.andExpect(status().isOk());
 
-		verify(auditRecordTopic, never()).publish(anyString());
+		verify(outboxGateway, never()).enqueue(any(), any(), any());
 	}
 
 	@Test
@@ -172,6 +175,6 @@ class AuditControllerIntegrationTest {
 				.content(envelopeJson))
 			.andExpect(status().isOk());
 
-		verify(auditRecordTopic, never()).publish(anyString());
+		verify(outboxGateway, never()).enqueue(any(), any(), any());
 	}
 }
