@@ -1,5 +1,6 @@
 package com.looksee.auditManager.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,6 +10,7 @@ import com.looksee.gcp.PubSubPageAuditPublisherImpl;
 import com.looksee.services.AuditRecordService;
 import com.looksee.services.IdempotencyService;
 import com.looksee.services.OutboxEventPublisher;
+import com.looksee.services.OutboxPoisonMessagePublisher;
 import com.looksee.services.OutboxPublishingGateway;
 import com.looksee.services.PageStateService;
 
@@ -94,6 +96,24 @@ public class PubSubConfig {
     @ConditionalOnMissingBean
     public OutboxPublishingGateway outboxPublishingGateway() {
         return new OutboxPublishingGateway();
+    }
+
+    /**
+     * Provides the outbox-backed adapter that lets the inherited
+     * {@link com.looksee.messaging.web.PubSubAuditController} stage
+     * unprocessable messages to the shared {@code looksee.poison} topic.
+     * The {@code looksee-messaging} module exposes only the
+     * {@code PoisonMessagePublisher} port, so the concrete adapter has
+     * to be wired here for audit-manager's narrow component scan to
+     * pick it up.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public OutboxPoisonMessagePublisher outboxPoisonMessagePublisher(
+        OutboxPublishingGateway outboxGateway,
+        @Value("${pubsub.poison:looksee.poison}") String poisonTopic
+    ) {
+        return new OutboxPoisonMessagePublisher(outboxGateway, poisonTopic);
     }
 
     /**

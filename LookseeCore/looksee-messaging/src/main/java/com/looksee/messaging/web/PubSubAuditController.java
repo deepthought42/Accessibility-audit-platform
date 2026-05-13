@@ -1,6 +1,8 @@
 package com.looksee.messaging.web;
 
 import java.util.Base64;
+import java.util.Collections;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +18,8 @@ import com.looksee.mapper.Body;
 import com.looksee.messaging.idempotency.IdempotencyGuard;
 import com.looksee.messaging.observability.PubSubMetrics;
 import com.looksee.messaging.observability.TraceContextPropagation;
+import com.looksee.messaging.poison.PoisonMessagePublisher;
+import com.looksee.models.message.PoisonMessageEnvelope;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
@@ -66,6 +70,19 @@ public abstract class PubSubAuditController<T> {
     @Autowired
     protected PubSubMetrics pubSubMetrics;
 
+    /**
+     * Optional publisher for non-retryable messages. When wired (services
+     * with {@code looksee-persistence} on the classpath and an
+     * {@code OutboxPoisonMessagePublisher} bean defined), the three
+     * poison branches below stage the original message to
+     * {@code looksee.poison} via the outbox so operators have a single
+     * subscription capturing every message the platform couldn't
+     * understand. When absent, the publish path is skipped and the
+     * existing 200 + metric behavior is unchanged.
+     */
+    @Autowired(required = false)
+    protected PoisonMessagePublisher poisonPublisher;
+
     /** Stable service name used as a metric tag and as the idempotency namespace. */
     protected abstract String serviceName();
 
@@ -95,6 +112,17 @@ public abstract class PubSubAuditController<T> {
             // instead of looping until retention.
             pubSubMetrics.recordInvalid(serviceName(), topicName());
             log.warn("invalid pubsub payload received in {}, acknowledging", serviceName());
+            // poison-publish failures intentionally escalate to 500 — see #102
+            try {
+                emitPoison(body == null ? null : body.getMessage(), "EmptyEnvelope",
+                    "envelope was null or missing data");
+            } catch (RuntimeException poisonFailure) {
+                pubSubMetrics.recordError(serviceName(), topicName(), poisonFailure);
+                log.error("failed to publish empty-envelope poison in {}", serviceName(), poisonFailure);
+                return new ResponseEntity<>(
+                    "poison publish failed: " + poisonFailure.getClass().getSimpleName(),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
+            }
             return ResponseEntity.ok("Invalid pubsub payload, acknowledged");
         }
 
@@ -127,6 +155,11 @@ public abstract class PubSubAuditController<T> {
                 span.setStatus(StatusCode.ERROR, "invalid_base64");
                 pubSubMetrics.recordError(serviceName(), topicName(), e);
                 log.warn("invalid base64 payload in {}, acknowledging", serviceName(), e);
+                ResponseEntity<String> poisonFailure = tryEmitPoison(
+                    body.getMessage(), e, messageId, span);
+                if (poisonFailure != null) {
+                    return poisonFailure;
+                }
                 return ResponseEntity.ok("Invalid payload, acknowledged");
             } catch (JsonProcessingException e) {
                 // Malformed or schema-incompatible JSON — re-delivery cannot
@@ -137,6 +170,11 @@ public abstract class PubSubAuditController<T> {
                 span.setStatus(StatusCode.ERROR, "invalid_json");
                 pubSubMetrics.recordError(serviceName(), topicName(), e);
                 log.warn("invalid json payload in {}, acknowledging", serviceName(), e);
+                ResponseEntity<String> poisonFailure = tryEmitPoison(
+                    body.getMessage(), e, messageId, span);
+                if (poisonFailure != null) {
+                    return poisonFailure;
+                }
                 return ResponseEntity.ok("Invalid payload, acknowledged");
             } catch (Exception e) {
                 span.recordException(e);
@@ -154,6 +192,60 @@ public abstract class PubSubAuditController<T> {
                 pubSubMetrics.recordDuration(serviceName(), topicName(), System.nanoTime() - start);
                 span.end();
             }
+        }
+    }
+
+    /**
+     * Build a {@link PoisonMessageEnvelope} and stage it via the optional
+     * {@link PoisonMessagePublisher}. No-op when no publisher bean is
+     * wired — services without {@code looksee-persistence} on their
+     * classpath fall back to the legacy log-and-ack behavior. Any
+     * exception thrown by the publisher is propagated; callers decide
+     * how to surface a poison-publish failure to Pub/Sub.
+     */
+    private void emitPoison(Body.Message msg, String errorClass, String errorMessage) {
+        if (poisonPublisher == null) {
+            return;
+        }
+        String originalMessageId = msg == null ? null : msg.getMessageId();
+        Map<String, String> attributes = msg == null ? Collections.emptyMap() : msg.getAttributes();
+        String base64Data = msg == null ? null : msg.getData();
+        String correlationId = TraceContextPropagation.currentOrMintTraceparent(attributes);
+        PoisonMessageEnvelope envelope = new PoisonMessageEnvelope(
+            serviceName(),
+            topicName(),
+            originalMessageId,
+            attributes,
+            base64Data,
+            errorClass,
+            errorMessage
+        );
+        poisonPublisher.publishPoison(envelope, correlationId);
+    }
+
+    /**
+     * Wrap {@link #emitPoison} so a publish failure escalates to HTTP
+     * 500 with metric + claim release, matching the contract recorded
+     * on issue #102: duplicate poison publishes on retry are acceptable;
+     * silent loss of a poison message is not. Returns {@code null} on
+     * success (caller proceeds with its own 200 response).
+     */
+    private ResponseEntity<String> tryEmitPoison(
+        Body.Message msg, Exception cause, String claimedMessageId, Span span
+    ) {
+        try {
+            emitPoison(msg, cause.getClass().getSimpleName(), cause.getMessage());
+            return null;
+        } catch (RuntimeException poisonFailure) {
+            span.recordException(poisonFailure);
+            span.setStatus(StatusCode.ERROR, "poison_publish_failed");
+            pubSubMetrics.recordError(serviceName(), topicName(), poisonFailure);
+            log.error("failed to publish poison in {} for messageId={}",
+                serviceName(), claimedMessageId, poisonFailure);
+            idempotencyService.release(claimedMessageId, serviceName());
+            return new ResponseEntity<>(
+                "poison publish failed: " + poisonFailure.getClass().getSimpleName(),
+                HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }
