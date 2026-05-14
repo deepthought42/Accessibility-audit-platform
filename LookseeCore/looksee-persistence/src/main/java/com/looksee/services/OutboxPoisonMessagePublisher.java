@@ -3,6 +3,7 @@ package com.looksee.services;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 
@@ -39,9 +40,21 @@ import com.looksee.models.repository.OutboxEventRepository;
  * this default alongside a test- or profile-supplied
  * {@link PoisonMessagePublisher} and make the controller's autowire
  * ambiguous.
+ *
+ * <p>The {@link ConditionalOnProperty} guard further requires
+ * {@code pubsub.poison} to be explicitly set in the service's
+ * configuration. Until issue #108 provisions the {@code looksee.poison}
+ * Pub/Sub topic and operators opt the relevant services in, the adapter
+ * stays unregistered: the controller's {@code poisonPublisher} autowire
+ * remains null and the legacy 200 + metric behavior continues. This
+ * prevents two failure modes during rollout: (a) staging outbox rows
+ * for a topic that does not yet exist, and (b) staging rows in services
+ * that scan {@code com.looksee*} but do not enable scheduling, where the
+ * outbox publisher would never drain them.
  */
 @Service
 @ConditionalOnMissingBean(PoisonMessagePublisher.class)
+@ConditionalOnProperty(name = "pubsub.poison")
 public class OutboxPoisonMessagePublisher implements PoisonMessagePublisher {
 
     private final OutboxPublishingGateway outboxGateway;
@@ -58,7 +71,7 @@ public class OutboxPoisonMessagePublisher implements PoisonMessagePublisher {
         // (sliced tests, Neo4j-disabled profiles), defeating the
         // fail-closed-at-call-time intent below.
         @Nullable OutboxEventRepository outboxEventRepository,
-        @Value("${pubsub.poison:looksee.poison}") String poisonTopic
+        @Value("${pubsub.poison}") String poisonTopic
     ) {
         this.outboxGateway = outboxGateway;
         this.outboxEventRepository = outboxEventRepository;

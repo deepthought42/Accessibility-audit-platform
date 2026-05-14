@@ -2,11 +2,11 @@ package com.looksee.auditManager.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.scheduling.annotation.EnableScheduling;
-
 import org.springframework.lang.Nullable;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import com.looksee.gcp.PubSubPageAuditPublisherImpl;
 import com.looksee.messaging.poison.PoisonMessagePublisher;
@@ -116,13 +116,22 @@ public class PubSubConfig {
      * any test or profile-supplied implementation suppresses this
      * default — otherwise the controller's {@code PoisonMessagePublisher}
      * autowire would become ambiguous with two beans on the classpath.
+     *
+     * <p>The {@link ConditionalOnProperty} guard requires
+     * {@code pubsub.poison} to be explicitly set in the service's
+     * configuration. Until issue #108 provisions the
+     * {@code looksee.poison} Pub/Sub topic and operators opt in by
+     * setting that property, this bean does not register and the
+     * controller falls back to its legacy 200 + metric behavior — no
+     * outbox rows are staged for a topic that does not yet exist.
      */
     @Bean
     @ConditionalOnMissingBean(PoisonMessagePublisher.class)
+    @ConditionalOnProperty(name = "pubsub.poison")
     public OutboxPoisonMessagePublisher outboxPoisonMessagePublisher(
         OutboxPublishingGateway outboxGateway,
         @Nullable OutboxEventRepository outboxEventRepository,
-        @Value("${pubsub.poison:looksee.poison}") String poisonTopic
+        @Value("${pubsub.poison}") String poisonTopic
     ) {
         return new OutboxPoisonMessagePublisher(outboxGateway, outboxEventRepository, poisonTopic);
     }
