@@ -1,14 +1,20 @@
 package com.looksee.auditManager.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.lang.Nullable;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 import com.looksee.gcp.PubSubPageAuditPublisherImpl;
+import com.looksee.messaging.poison.PoisonMessagePublisher;
+import com.looksee.models.repository.OutboxEventRepository;
 import com.looksee.services.AuditRecordService;
 import com.looksee.services.IdempotencyService;
 import com.looksee.services.OutboxEventPublisher;
+import com.looksee.services.OutboxPoisonMessagePublisher;
 import com.looksee.services.OutboxPublishingGateway;
 import com.looksee.services.PageStateService;
 
@@ -94,6 +100,42 @@ public class PubSubConfig {
     @ConditionalOnMissingBean
     public OutboxPublishingGateway outboxPublishingGateway() {
         return new OutboxPublishingGateway();
+    }
+
+    /**
+     * Provides the outbox-backed adapter that lets the inherited
+     * {@link com.looksee.messaging.web.PubSubAuditController} stage
+     * unprocessable messages to the shared {@code looksee.poison} topic.
+     * The {@code looksee-messaging} module exposes only the
+     * {@code PoisonMessagePublisher} port, so the concrete adapter has
+     * to be wired here for audit-manager's narrow component scan to
+     * pick it up.
+     *
+     * <p>The condition is anchored to {@link PoisonMessagePublisher} (the
+     * port) rather than the default factory-method return type so that
+     * any test or profile-supplied implementation suppresses this
+     * default — otherwise the controller's {@code PoisonMessagePublisher}
+     * autowire would become ambiguous with two beans on the classpath.
+     *
+     * <p>The {@link ConditionalOnProperty} guard requires
+     * {@code pubsub.poison} to be explicitly set in the service's
+     * configuration. Until issue #108 provisions the
+     * {@code looksee.poison} Pub/Sub topic and operators opt in by
+     * setting that property, this bean does not register and the
+     * controller falls back to its legacy 200 + metric behavior — no
+     * outbox rows are staged for a topic that does not yet exist.
+     */
+    @Bean
+    @ConditionalOnMissingBean(PoisonMessagePublisher.class)
+    @ConditionalOnProperty(name = "pubsub.poison")
+    public OutboxPoisonMessagePublisher outboxPoisonMessagePublisher(
+        OutboxPublishingGateway outboxGateway,
+        @Nullable OutboxEventRepository outboxEventRepository,
+        @Value("${pubsub.poison}") String poisonTopic,
+        org.springframework.context.ApplicationContext applicationContext
+    ) {
+        return new OutboxPoisonMessagePublisher(
+            outboxGateway, outboxEventRepository, poisonTopic, applicationContext);
     }
 
     /**
