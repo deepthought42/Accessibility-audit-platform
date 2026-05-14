@@ -1,10 +1,14 @@
 package com.looksee.services;
 
+import javax.annotation.PostConstruct;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.ApplicationContext;
 import org.springframework.lang.Nullable;
+import org.springframework.scheduling.config.TaskManagementConfigUtils;
 import org.springframework.stereotype.Service;
 
 import com.looksee.messaging.poison.PoisonMessagePublisher;
@@ -60,6 +64,7 @@ public class OutboxPoisonMessagePublisher implements PoisonMessagePublisher {
     private final OutboxPublishingGateway outboxGateway;
     private final OutboxEventRepository outboxEventRepository;
     private final String poisonTopic;
+    private final ApplicationContext applicationContext;
 
     @Autowired
     public OutboxPoisonMessagePublisher(
@@ -71,11 +76,38 @@ public class OutboxPoisonMessagePublisher implements PoisonMessagePublisher {
         // (sliced tests, Neo4j-disabled profiles), defeating the
         // fail-closed-at-call-time intent below.
         @Nullable OutboxEventRepository outboxEventRepository,
-        @Value("${pubsub.poison}") String poisonTopic
+        @Value("${pubsub.poison}") String poisonTopic,
+        ApplicationContext applicationContext
     ) {
         this.outboxGateway = outboxGateway;
         this.outboxEventRepository = outboxEventRepository;
         this.poisonTopic = poisonTopic;
+        this.applicationContext = applicationContext;
+    }
+
+    /**
+     * Fail loudly at startup when this bean is wired into a context that
+     * has not enabled scheduling. {@link OutboxEventPublisher}'s
+     * {@code @Scheduled} drain methods only fire when {@code @EnableScheduling}
+     * is present somewhere in the application context; without it the
+     * outbox rows we stage from {@link #publishPoison} would accumulate
+     * unsent. This is the contract a future service migration could
+     * accidentally break by setting {@code pubsub.poison} without also
+     * wiring scheduling — refuse to start rather than silently leak
+     * poison.
+     */
+    @PostConstruct
+    void verifySchedulingEnabled() {
+        if (!applicationContext.containsBean(
+                TaskManagementConfigUtils.SCHEDULED_ANNOTATION_PROCESSOR_BEAN_NAME)) {
+            throw new IllegalStateException(
+                "OutboxPoisonMessagePublisher is registered (pubsub.poison=" + poisonTopic
+                + ") but @EnableScheduling is not enabled in the application context."
+                + " OutboxEventPublisher's @Scheduled drain methods will not fire, so"
+                + " poison rows would accumulate in the outbox without ever being"
+                + " published. Add @EnableScheduling to your service configuration."
+            );
+        }
     }
 
     @Override

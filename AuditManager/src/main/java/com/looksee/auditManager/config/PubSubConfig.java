@@ -131,9 +131,11 @@ public class PubSubConfig {
     public OutboxPoisonMessagePublisher outboxPoisonMessagePublisher(
         OutboxPublishingGateway outboxGateway,
         @Nullable OutboxEventRepository outboxEventRepository,
-        @Value("${pubsub.poison}") String poisonTopic
+        @Value("${pubsub.poison}") String poisonTopic,
+        org.springframework.context.ApplicationContext applicationContext
     ) {
-        return new OutboxPoisonMessagePublisher(outboxGateway, outboxEventRepository, poisonTopic);
+        return new OutboxPoisonMessagePublisher(
+            outboxGateway, outboxEventRepository, poisonTopic, applicationContext);
     }
 
     /**
