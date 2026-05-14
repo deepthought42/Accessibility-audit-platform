@@ -1,6 +1,5 @@
 package com.looksee.auditService;
 
-import java.util.Base64;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -8,17 +7,12 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.looksee.mapper.Body;
-import com.looksee.models.config.JacksonConfig;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.looksee.messaging.web.PubSubAuditController;
 import com.looksee.models.Domain;
 import com.looksee.models.PageState;
 import com.looksee.models.audit.Audit;
@@ -34,30 +28,32 @@ import com.looksee.models.enums.JourneyStatus;
 import com.looksee.models.message.AuditProgressUpdate;
 import com.looksee.models.message.DiscardedJourneyMessage;
 import com.looksee.models.message.JourneyCandidateMessage;
+import com.looksee.models.message.Message;
 import com.looksee.models.message.PageAuditProgressMessage;
 import com.looksee.models.message.VerifiedJourneyMessage;
 import com.looksee.services.AccountService;
 import com.looksee.services.AuditRecordService;
-import com.looksee.services.IdempotencyService;
 import com.looksee.services.DomainService;
 import com.looksee.services.MessageBroadcaster;
 import com.looksee.services.PageStateService;
 import com.looksee.utils.AuditUtils;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-
 /**
- * REST controller that receives audit progress messages from a message broker
- * (via GCP Pub/Sub push subscriptions) and broadcasts real-time audit updates
- * to connected clients.
+ * Pub/Sub controller that broadcasts real-time audit progress updates to
+ * connected clients. Envelope validation, base64 decode, atomic idempotency
+ * claim, trace-context propagation, metrics emission, and the
+ * poison-vs-transient distinction are inherited from
+ * {@link PubSubAuditController}; this subclass owns only the per-message-type
+ * dispatch and broadcast logic in {@link #processInTransaction(Message)}.
  *
- * <p><b>Class invariant:</b> all {@code @Autowired} service dependencies are
- * non-null after Spring context initialization.</p>
+ * <p>Dispatch is driven by Jackson polymorphism configured on the
+ * service-local {@link com.fasterxml.jackson.databind.ObjectMapper}
+ * bean — see {@link Application#auditServiceObjectMapper()} — which routes
+ * each envelope to the correct concrete {@link Message} subclass via the
+ * {@code messageType} discriminator before {@code handle(...)} is invoked.
  */
 @RestController
-public class AuditController {
+public class AuditController extends PubSubAuditController<Message> {
 	private static Logger log = LoggerFactory.getLogger(AuditController.class);
 
 	@Autowired
@@ -75,114 +71,63 @@ public class AuditController {
 	@Autowired
 	private MessageBroadcaster messageBroadcaster;
 
+	/**
+	 * Spring-managed self-reference. Routes {@link #processInTransaction}
+	 * calls through the proxy so the {@code @Transactional} boundary is
+	 * actually applied — a direct {@code this.processInTransaction(...)}
+	 * would be self-invocation and bypass the proxy.
+	 */
 	@Autowired
-	private IdempotencyService idempotencyService;
+	@Lazy
+	private AuditController self;
+
+	@Override
+	protected String serviceName() {
+		return "audit-service";
+	}
+
+	@Override
+	protected String topicName() {
+		return "audit_update";
+	}
+
+	@Override
+	protected Class<Message> payloadType() {
+		return Message.class;
+	}
+
+	@Override
+	protected void handle(Message payload) throws Exception {
+		self.processInTransaction(payload);
+	}
 
 	/**
-	 * Receives a Pub/Sub push message, deserializes it into one of the supported
-	 * message types, and broadcasts an audit progress update to connected clients.
-	 *
-	 * <p><b>Preconditions:</b></p>
-	 * <ul>
-	 *   <li>{@code body} must be non-null with a non-null {@code message} containing
-	 *       non-null, valid Base64-encoded {@code data}.</li>
-	 * </ul>
-	 *
-	 * <p><b>Postconditions:</b></p>
-	 * <ul>
-	 *   <li>Returns {@code 200 OK} when the message is successfully deserialized and
-	 *       the audit update is broadcast.</li>
-	 *   <li>Returns {@code 400 Bad Request} when preconditions are violated or the
-	 *       message cannot be deserialized into any supported type.</li>
-	 * </ul>
-	 *
-	 * <p>Supported message types (tried in order):
-	 * {@link AuditProgressUpdate}, {@link PageAuditProgressMessage},
-	 * {@link JourneyCandidateMessage}, {@link VerifiedJourneyMessage},
-	 * {@link DiscardedJourneyMessage}.</p>
-	 *
-	 * @param body the Pub/Sub push message wrapper; must not be null
-	 * @return a response entity indicating success or failure
+	 * Transactional dispatch core. {@code public} so the Spring proxy on
+	 * {@link #self} can intercept the call from {@link #handle(Message)};
+	 * package-private or protected methods are not visible on the proxy.
 	 */
-	@Operation(summary = "Receive audit progress message", description = "Receives a message from the message broker and processes audit progress updates")
-	@ApiResponses(value = {
-		@ApiResponse(responseCode = "200", description = "Message processed successfully"),
-		@ApiResponse(responseCode = "400", description = "Bad request - invalid message format"),
-		@ApiResponse(responseCode = "500", description = "Internal server error")
-	})
 	@Transactional
-	@RequestMapping(value = "/", method = RequestMethod.POST)
-	public ResponseEntity<String> receiveMessage(@RequestBody Body body) {
-		// Precondition: body, message, and data must all be non-null
-		if (body == null || body.getMessage() == null || body.getMessage().getData() == null) {
-			log.warn("Invalid message payload received");
-			return new ResponseEntity<String>("Invalid message payload", HttpStatus.BAD_REQUEST);
-		}
-
-		if (idempotencyService.isAlreadyProcessed(body.getMessage().getMessageId(), "audit-service")) {
-			return ResponseEntity.ok("Duplicate message, already processed");
-		}
-
-		Body.Message message = body.getMessage();
-		String data = message.getData();
-		String target = "";
-		if (!data.isEmpty()) {
-			try {
-				target = new String(Base64.getDecoder().decode(data));
-			} catch (IllegalArgumentException e) {
-				log.warn("Invalid base64 payload received, acknowledging to prevent infinite retries", e);
-				return new ResponseEntity<String>("Invalid message payload", HttpStatus.OK);
-			}
-		}
-
-		try {
-			// First, read the messageType from the payload
-			JsonNode rootNode = JacksonConfig.mapper().readTree(target);
-			String messageType = rootNode.has("messageType") ? rootNode.get("messageType").asText() : null;
-
-			ResponseEntity<String> result = null;
-			if (messageType != null) {
-				switch (messageType) {
-					case "AuditProgressUpdate":
-						result = handleAuditProgressUpdate(target);
-						break;
-					case "PageAuditProgressMessage":
-						result = handlePageAuditProgressMessage(target);
-						break;
-					case "JourneyCandidateMessage":
-						result = handleJourneyCandidateMessage(target);
-						break;
-					case "VerifiedJourneyMessage":
-						result = handleVerifiedJourneyMessage(target);
-						break;
-					case "DiscardedJourneyMessage":
-						result = handleDiscardedJourneyMessage(target);
-						break;
-					default:
-						log.warn("Unknown messageType={}, attempting fallback deserialization", messageType);
-				}
-			}
-
-			if (result == null) {
-				// Fallback: try legacy cascading deserialization for messages without messageType
-				result = handleLegacyMessage(target);
-			}
-
-			idempotencyService.markProcessed(body.getMessage().getMessageId(), "audit-service");
-			return result;
-		} catch (Exception e) {
-			log.warn("Failed to process message, acknowledging to prevent infinite retries", e);
-			return new ResponseEntity<String>("Error occurred while updating audit progress", HttpStatus.OK);
+	public void processInTransaction(Message payload) throws Exception {
+		if (payload instanceof AuditProgressUpdate auditUpdate) {
+			dispatchAuditProgressUpdate(auditUpdate);
+		} else if (payload instanceof PageAuditProgressMessage pageProgress) {
+			dispatchPageAuditProgress(pageProgress);
+		} else if (payload instanceof JourneyCandidateMessage journeyCandidate) {
+			dispatchJourneyCandidate(journeyCandidate);
+		} else if (payload instanceof VerifiedJourneyMessage verified) {
+			dispatchVerifiedJourney(verified);
+		} else if (payload instanceof DiscardedJourneyMessage discarded) {
+			dispatchDiscardedJourney(discarded);
+		} else {
+			log.warn("Unhandled Message subtype: {}",
+				payload == null ? "null" : payload.getClass().getSimpleName());
 		}
 	}
 
-	private ResponseEntity<String> handleAuditProgressUpdate(String target) throws Exception {
-		AuditProgressUpdate audit_msg = JacksonConfig.mapper().readValue(target, AuditProgressUpdate.class);
-		//get AuditRecord from database
+	private void dispatchAuditProgressUpdate(AuditProgressUpdate audit_msg) throws JsonProcessingException {
 		Optional<AuditRecord> audit_record = audit_record_service.findById(audit_msg.getPageAuditId());
 
 		if(audit_record.isPresent()) {
-			//build page audit progress
 			AuditUpdateDto audit_update = buildPageAuditUpdatedDto(audit_msg.getPageAuditId());
 			messageBroadcaster.sendAuditUpdate(audit_record.get().getId()+"", audit_update);
 
@@ -211,96 +156,61 @@ public class AuditController {
 		else {
 			log.warn("Unknown record type found");
 		}
-
-		return new ResponseEntity<String>("Successfully sent audit update to user", HttpStatus.OK);
 	}
 
-	private ResponseEntity<String> handlePageAuditProgressMessage(String target) throws Exception {
-		PageAuditProgressMessage audit_msg = JacksonConfig.mapper().readValue(target, PageAuditProgressMessage.class);
-		//update audit record
+	private void dispatchPageAuditProgress(PageAuditProgressMessage audit_msg) throws JsonProcessingException {
 		Optional<AuditRecord> auditRecordOpt = audit_record_service.findById(audit_msg.getPageAuditId());
 		if (auditRecordOpt.isEmpty() || !(auditRecordOpt.get() instanceof PageAuditRecord)) {
-			return new ResponseEntity<String>("Page audit record not found", HttpStatus.OK);
+			return;
 		}
 		PageAuditRecord audit_record = (PageAuditRecord) auditRecordOpt.get();
 
 		Optional<DomainAuditRecord> domain_audit = audit_record_service.getDomainAuditRecordForPageRecord(audit_record.getId());
 
-			// If domain audit exists send a domain level audit update
 		if(domain_audit.isPresent()) {
-			 //Broadcast audit update message to messageBroadcaster
 			AuditUpdateDto audit_update = buildDomainAuditRecordDTO(domain_audit.get().getId());
 			messageBroadcaster.sendAuditUpdate(domain_audit.get().getId()+"", audit_update);
 		}
 		else {
-			 //Broadcast audit update message to messageBroadcaster
 			AuditUpdateDto audit_update = buildPageAuditUpdatedDto(audit_record.getId());
 			messageBroadcaster.sendAuditUpdate(audit_record.getId()+"", audit_update);
 		}
 
 		log.warn("successfully sent update for single page audit");
-		return new ResponseEntity<String>("Successfully sent audit update to user", HttpStatus.OK);
 	}
 
-	private ResponseEntity<String> handleJourneyCandidateMessage(String target) throws Exception {
-		JourneyCandidateMessage journey_candidate_msg = JacksonConfig.mapper().readValue(target, JourneyCandidateMessage.class);
-		AuditUpdateDto audit_update = buildDomainAuditRecordDTO(journey_candidate_msg.getAuditRecordId());
-		messageBroadcaster.sendAuditUpdate(journey_candidate_msg.getAuditRecordId()+"", audit_update);
-
-		return new ResponseEntity<String>("Successfully sent audit update to user", HttpStatus.OK);
+	private void dispatchJourneyCandidate(JourneyCandidateMessage journey_candidate_msg) throws JsonProcessingException {
+		broadcastDomainUpdateIfPresent(journey_candidate_msg.getAuditRecordId(), "JourneyCandidateMessage");
 	}
 
-	private ResponseEntity<String> handleVerifiedJourneyMessage(String target) throws Exception {
-		VerifiedJourneyMessage verified_journey_msg = JacksonConfig.mapper().readValue(target, VerifiedJourneyMessage.class);
-
-		AuditUpdateDto audit_update = buildDomainAuditRecordDTO(verified_journey_msg.getAuditRecordId());
-		messageBroadcaster.sendAuditUpdate(verified_journey_msg.getAuditRecordId()+"", audit_update);
-		return new ResponseEntity<String>("Successfully sent audit update to user", HttpStatus.OK);
+	private void dispatchVerifiedJourney(VerifiedJourneyMessage verified_journey_msg) throws JsonProcessingException {
+		broadcastDomainUpdateIfPresent(verified_journey_msg.getAuditRecordId(), "VerifiedJourneyMessage");
 	}
 
-	private ResponseEntity<String> handleDiscardedJourneyMessage(String target) throws Exception {
-		DiscardedJourneyMessage discarded_journey_msg = JacksonConfig.mapper().readValue(target, DiscardedJourneyMessage.class);
+	private void dispatchDiscardedJourney(DiscardedJourneyMessage discarded_journey_msg) throws JsonProcessingException {
 		log.warn("DiscardedJourneyMessage message deserialized");
-
-		AuditUpdateDto audit_update = buildDomainAuditRecordDTO(discarded_journey_msg.getAuditRecordId());
-		messageBroadcaster.sendAuditUpdate(discarded_journey_msg.getAuditRecordId()+"", audit_update);
-
-		return new ResponseEntity<String>("Successfully sent audit update to user", HttpStatus.OK);
+		broadcastDomainUpdateIfPresent(discarded_journey_msg.getAuditRecordId(), "DiscardedJourneyMessage");
 	}
 
-	private ResponseEntity<String> handleLegacyMessage(String target) throws Exception {
-		try {
-			return handleAuditProgressUpdate(target);
-		} catch(Exception e) {
-			log.warn("Unable to process AuditProgressUpdate message", e);
+	/**
+	 * Builds and broadcasts a domain-level audit update for the given audit
+	 * record id. If the record is missing or is not a {@link DomainAuditRecord}
+	 * (e.g., it was deleted, or the message references the wrong id), this
+	 * silently acknowledges with a log line — a missing record is a
+	 * non-retryable condition, so escalating it to HTTP 500 would just trigger
+	 * Pub/Sub redelivery up to {@code max_delivery_attempts=10} before
+	 * eventually dead-lettering. Same shape as the guard in
+	 * {@link #dispatchPageAuditProgress}.
+	 */
+	private void broadcastDomainUpdateIfPresent(long auditRecordId, String messageType) throws JsonProcessingException {
+		Optional<AuditRecord> auditRecordOpt = audit_record_service.findById(auditRecordId);
+		if (auditRecordOpt.isEmpty() || !(auditRecordOpt.get() instanceof DomainAuditRecord)) {
+			log.warn("Skipping {} for auditRecordId={} — record missing or not a DomainAuditRecord",
+				messageType, auditRecordId);
+			return;
 		}
-
-		try {
-			return handlePageAuditProgressMessage(target);
-		} catch(Exception e) {
-			// not a PageAuditProgressMessage, try next type
-		}
-
-		try {
-			return handleJourneyCandidateMessage(target);
-		} catch(Exception e) {
-			// not a JourneyCandidateMessage, try next type
-		}
-
-		try {
-			return handleVerifiedJourneyMessage(target);
-		} catch(Exception e) {
-			// not a VerifiedJourneyMessage, try next type
-		}
-
-		try {
-			return handleDiscardedJourneyMessage(target);
-		} catch(Exception e) {
-			// not a DiscardedJourneyMessage
-		}
-
-		log.warn("All handlers failed, acknowledging message to prevent infinite retries");
-		return new ResponseEntity<String>("Error occurred while updating audit progress", HttpStatus.OK);
+		AuditUpdateDto audit_update = buildDomainAuditRecordDTO(auditRecordId);
+		messageBroadcaster.sendAuditUpdate(auditRecordId + "", audit_update);
 	}
 
 	/**
