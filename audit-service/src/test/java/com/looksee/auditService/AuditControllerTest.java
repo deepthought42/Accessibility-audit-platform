@@ -278,6 +278,43 @@ class AuditControllerTest {
         verify(messageBroadcaster).sendAuditUpdate(eq("500"), any(AuditUpdateDto.class));
     }
 
+    @Test
+    void journeyCandidate_missingAuditRecord_silentlyAcknowledges() throws Exception {
+        JourneyCandidateMessage msg = new JourneyCandidateMessage();
+        msg.setAuditRecordId(999L);
+
+        when(auditRecordService.findById(999L)).thenReturn(Optional.empty());
+
+        auditController.processInTransaction(msg);
+
+        verify(messageBroadcaster, org.mockito.Mockito.never()).sendAuditUpdate(any(), any());
+    }
+
+    @Test
+    void verifiedJourney_wrongRecordType_silentlyAcknowledges() throws Exception {
+        VerifiedJourneyMessage msg = new VerifiedJourneyMessage();
+        msg.setAuditRecordId(401L);
+
+        // Record exists but is not a DomainAuditRecord
+        when(auditRecordService.findById(401L)).thenReturn(Optional.of(createPageAuditRecord(401L)));
+
+        auditController.processInTransaction(msg);
+
+        verify(messageBroadcaster, org.mockito.Mockito.never()).sendAuditUpdate(any(), any());
+    }
+
+    @Test
+    void discardedJourney_missingAuditRecord_silentlyAcknowledges() throws Exception {
+        DiscardedJourneyMessage msg = new DiscardedJourneyMessage();
+        msg.setAuditRecordId(501L);
+
+        when(auditRecordService.findById(501L)).thenReturn(Optional.empty());
+
+        auditController.processInTransaction(msg);
+
+        verify(messageBroadcaster, org.mockito.Mockito.never()).sendAuditUpdate(any(), any());
+    }
+
     // ========== Helper Methods ==========
 
     private PageAuditRecord createPageAuditRecord(long id) {

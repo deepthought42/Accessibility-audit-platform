@@ -180,20 +180,37 @@ public class AuditController extends PubSubAuditController<Message> {
 	}
 
 	private void dispatchJourneyCandidate(JourneyCandidateMessage journey_candidate_msg) throws JsonProcessingException {
-		AuditUpdateDto audit_update = buildDomainAuditRecordDTO(journey_candidate_msg.getAuditRecordId());
-		messageBroadcaster.sendAuditUpdate(journey_candidate_msg.getAuditRecordId()+"", audit_update);
+		broadcastDomainUpdateIfPresent(journey_candidate_msg.getAuditRecordId(), "JourneyCandidateMessage");
 	}
 
 	private void dispatchVerifiedJourney(VerifiedJourneyMessage verified_journey_msg) throws JsonProcessingException {
-		AuditUpdateDto audit_update = buildDomainAuditRecordDTO(verified_journey_msg.getAuditRecordId());
-		messageBroadcaster.sendAuditUpdate(verified_journey_msg.getAuditRecordId()+"", audit_update);
+		broadcastDomainUpdateIfPresent(verified_journey_msg.getAuditRecordId(), "VerifiedJourneyMessage");
 	}
 
 	private void dispatchDiscardedJourney(DiscardedJourneyMessage discarded_journey_msg) throws JsonProcessingException {
 		log.warn("DiscardedJourneyMessage message deserialized");
+		broadcastDomainUpdateIfPresent(discarded_journey_msg.getAuditRecordId(), "DiscardedJourneyMessage");
+	}
 
-		AuditUpdateDto audit_update = buildDomainAuditRecordDTO(discarded_journey_msg.getAuditRecordId());
-		messageBroadcaster.sendAuditUpdate(discarded_journey_msg.getAuditRecordId()+"", audit_update);
+	/**
+	 * Builds and broadcasts a domain-level audit update for the given audit
+	 * record id. If the record is missing or is not a {@link DomainAuditRecord}
+	 * (e.g., it was deleted, or the message references the wrong id), this
+	 * silently acknowledges with a log line — a missing record is a
+	 * non-retryable condition, so escalating it to HTTP 500 would just trigger
+	 * Pub/Sub redelivery up to {@code max_delivery_attempts=10} before
+	 * eventually dead-lettering. Same shape as the guard in
+	 * {@link #dispatchPageAuditProgress}.
+	 */
+	private void broadcastDomainUpdateIfPresent(long auditRecordId, String messageType) throws JsonProcessingException {
+		Optional<AuditRecord> auditRecordOpt = audit_record_service.findById(auditRecordId);
+		if (auditRecordOpt.isEmpty() || !(auditRecordOpt.get() instanceof DomainAuditRecord)) {
+			log.warn("Skipping {} for auditRecordId={} — record missing or not a DomainAuditRecord",
+				messageType, auditRecordId);
+			return;
+		}
+		AuditUpdateDto audit_update = buildDomainAuditRecordDTO(auditRecordId);
+		messageBroadcaster.sendAuditUpdate(auditRecordId + "", audit_update);
 	}
 
 	/**
