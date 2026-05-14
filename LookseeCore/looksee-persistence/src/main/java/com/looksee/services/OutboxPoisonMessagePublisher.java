@@ -3,6 +3,7 @@ package com.looksee.services;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 
 import com.looksee.messaging.poison.PoisonMessagePublisher;
@@ -50,7 +51,13 @@ public class OutboxPoisonMessagePublisher implements PoisonMessagePublisher {
     @Autowired
     public OutboxPoisonMessagePublisher(
         OutboxPublishingGateway outboxGateway,
-        @Autowired(required = false) OutboxEventRepository outboxEventRepository,
+        // @Nullable, not @Autowired(required=false): the latter applied to
+        // a single parameter inside an @Autowired constructor is not the
+        // documented mechanism for per-parameter optionality and may leave
+        // the bean unconstructable when the repository bean is absent
+        // (sliced tests, Neo4j-disabled profiles), defeating the
+        // fail-closed-at-call-time intent below.
+        @Nullable OutboxEventRepository outboxEventRepository,
         @Value("${pubsub.poison:looksee.poison}") String poisonTopic
     ) {
         this.outboxGateway = outboxGateway;

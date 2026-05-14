@@ -6,6 +6,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import org.springframework.lang.Nullable;
+
 import com.looksee.gcp.PubSubPageAuditPublisherImpl;
 import com.looksee.messaging.poison.PoisonMessagePublisher;
 import com.looksee.models.repository.OutboxEventRepository;
@@ -119,7 +121,7 @@ public class PubSubConfig {
     @ConditionalOnMissingBean(PoisonMessagePublisher.class)
     public OutboxPoisonMessagePublisher outboxPoisonMessagePublisher(
         OutboxPublishingGateway outboxGateway,
-        OutboxEventRepository outboxEventRepository,
+        @Nullable OutboxEventRepository outboxEventRepository,
         @Value("${pubsub.poison:looksee.poison}") String poisonTopic
     ) {
         return new OutboxPoisonMessagePublisher(outboxGateway, outboxEventRepository, poisonTopic);
