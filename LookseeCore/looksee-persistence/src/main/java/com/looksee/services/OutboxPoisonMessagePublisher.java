@@ -2,14 +2,8 @@ package com.looksee.services;
 
 import javax.annotation.PostConstruct;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationContext;
-import org.springframework.lang.Nullable;
 import org.springframework.scheduling.config.TaskManagementConfigUtils;
-import org.springframework.stereotype.Service;
 
 import com.looksee.messaging.poison.PoisonMessagePublisher;
 import com.looksee.models.message.PoisonMessageEnvelope;
@@ -38,27 +32,16 @@ import com.looksee.models.repository.OutboxEventRepository;
  * 500 and Pub/Sub redelivers instead of silently dropping a poison
  * message.
  *
- * <p>The {@link ConditionalOnMissingBean} guard scopes registration to
- * the port type rather than the concrete class. Several services
- * component-scan {@code com.looksee*}, which would otherwise register
- * this default alongside a test- or profile-supplied
- * {@link PoisonMessagePublisher} and make the controller's autowire
- * ambiguous.
- *
- * <p>The {@link ConditionalOnProperty} guard further requires
- * {@code pubsub.poison} to be explicitly set in the service's
- * configuration. Until issue #108 provisions the {@code looksee.poison}
- * Pub/Sub topic and operators opt the relevant services in, the adapter
- * stays unregistered: the controller's {@code poisonPublisher} autowire
- * remains null and the legacy 200 + metric behavior continues. This
- * prevents two failure modes during rollout: (a) staging outbox rows
- * for a topic that does not yet exist, and (b) staging rows in services
- * that scan {@code com.looksee*} but do not enable scheduling, where the
- * outbox publisher would never drain them.
+ * <p>This class is deliberately not annotated {@code @Service}. Spring's
+ * {@code @ConditionalOnMissingBean} is reliable only when evaluated
+ * against an ordered processing model — component scanning is not
+ * ordered relative to user-supplied overrides, so a {@code @Service}
+ * with that condition can race a test or profile bean. Registration is
+ * performed instead by {@link com.looksee.config.PoisonMessagingAutoConfiguration},
+ * which is loaded after user configuration and after the audit-service
+ * specific {@code @Bean} in {@code AuditManager.PubSubConfig}. The
+ * property-and-port-type gating lives on those registration sites.
  */
-@Service
-@ConditionalOnMissingBean(PoisonMessagePublisher.class)
-@ConditionalOnProperty(name = "pubsub.poison")
 public class OutboxPoisonMessagePublisher implements PoisonMessagePublisher {
 
     private final OutboxPublishingGateway outboxGateway;
@@ -66,17 +49,10 @@ public class OutboxPoisonMessagePublisher implements PoisonMessagePublisher {
     private final String poisonTopic;
     private final ApplicationContext applicationContext;
 
-    @Autowired
     public OutboxPoisonMessagePublisher(
         OutboxPublishingGateway outboxGateway,
-        // @Nullable, not @Autowired(required=false): the latter applied to
-        // a single parameter inside an @Autowired constructor is not the
-        // documented mechanism for per-parameter optionality and may leave
-        // the bean unconstructable when the repository bean is absent
-        // (sliced tests, Neo4j-disabled profiles), defeating the
-        // fail-closed-at-call-time intent below.
-        @Nullable OutboxEventRepository outboxEventRepository,
-        @Value("${pubsub.poison}") String poisonTopic,
+        OutboxEventRepository outboxEventRepository,
+        String poisonTopic,
         ApplicationContext applicationContext
     ) {
         this.outboxGateway = outboxGateway;
