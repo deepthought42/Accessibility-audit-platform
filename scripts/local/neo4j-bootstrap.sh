@@ -35,22 +35,38 @@ cypher-shell -a "bolt://${NEO4J_HOST}:${NEO4J_BOLT_PORT}" \
   -f "${DST_CQL}"
 
 # Seed an Account row for the principal that LocalSecurityConfig installs
-# (`local-dev-user`). AccountService.findByUserId queries on the `user_id`
-# Neo4j property; without this row, AuditorController throws
-# UnknownAccountException / MissingSubscriptionException on every audit
-# start under the local profile. Idempotent via MERGE.
+# (`local-dev-user`). Two naming conventions need to coexist on the node:
+#
+#   - The `@Query` in AccountRepository and the indexes in
+#     `create-indexes-and-constraints.cql` reference snake_case property
+#     names (e.g. `user_id`, `subscription_token`, `api_token`,
+#     `customer_token`, `subscription_type`), so the lookup query and
+#     index hits depend on those keys.
+#   - Spring Data Neo4j's default mapping uses Java field names verbatim
+#     (camelCase), so `Account.subscriptionToken` hydrates from a Neo4j
+#     `subscriptionToken` property, not `subscription_token`.
+#
+# Set both spellings so the account is both findable by user_id and
+# fully hydrated when SDN reads it back (otherwise `acct.getSubscriptionToken()`
+# is null and AuditorController throws MissingSubscriptionException).
+# Idempotent via MERGE.
 LOCAL_USER_ID="${LOCAL_DEV_USER_ID:-local-dev-user}"
 echo "[neo4j-bootstrap] seeding local-dev Account row for user_id=${LOCAL_USER_ID}"
 cypher-shell -a "bolt://${NEO4J_HOST}:${NEO4J_BOLT_PORT}" \
   -u "${NEO4J_USERNAME}" -p "${NEO4J_PASSWORD}" \
   "MERGE (a:Account {user_id: \$user_id})
    ON CREATE SET
+     a.userId = \$user_id,
      a.email = 'local-dev@example.test',
      a.name = 'Local Dev',
      a.subscription_type = 'pro',
+     a.subscriptionType = 'pro',
      a.subscription_token = 'local-disabled-subscription',
+     a.subscriptionToken = 'local-disabled-subscription',
      a.customer_token = 'local-disabled-customer',
-     a.api_token = 'local-disabled-api-token'
+     a.customerToken = 'local-disabled-customer',
+     a.api_token = 'local-disabled-api-token',
+     a.apiToken = 'local-disabled-api-token'
    RETURN a.user_id" \
   --param "user_id => '${LOCAL_USER_ID}'"
 

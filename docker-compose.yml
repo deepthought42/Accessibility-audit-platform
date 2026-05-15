@@ -43,7 +43,17 @@ x-java-env: &java-env
   JOURNEY_CANDIDATE_TOPIC: "${JOURNEY_CANDIDATE_TOPIC:-journey-candidate-topic}"
   ELEMENT_EXTRACTION_TOPIC: "${ELEMENT_EXTRACTION_TOPIC:-element-extraction-topic}"
   JOURNEY_MAP_CLEANUP_TOPIC: "${JOURNEY_MAP_CLEANUP_TOPIC:-journey-map-cleanup-topic}"
-  SELENIUM_URLS: "${SELENIUM_URLS:-http://selenium-chrome:4444/wd/hub}"
+  SELENIUM_URLS: "${SELENIUM_URLS:-selenium-chrome:4444}"
+  # Auth0 vars forwarded into every Java container so CrawlerAPI's
+  # non-local SecurityConfig and Auth0Config can pick up the values
+  # users supply in .env. Empty by default - only relevant when
+  # SPRING_PROFILES_ACTIVE is cleared to switch off the local bypass.
+  AUTH0_DOMAIN: "${AUTH0_DOMAIN-}"
+  AUTH0_ISSUER: "${AUTH0_ISSUER-}"
+  AUTH0_CLIENT_ID: "${AUTH0_CLIENT_ID-}"
+  AUTH0_CLIENT_SECRET: "${AUTH0_CLIENT_SECRET-}"
+  AUTH0_AUDIENCE: "${AUTH0_AUDIENCE-}"
+  AUTH0_API_AUDIENCE: "${AUTH0_API_AUDIENCE-}"
 
 x-java-depends: &java-depends
   neo4j:
