@@ -80,7 +80,7 @@ curl -s http://localhost:9080/actuator/health
 # -> {"status":"UP"}
 
 # Pub/Sub topics
-curl -s http://localhost:8085/v1/projects/change-me/topics
+curl -s http://localhost:8085/v1/projects/looksee-local/topics
 
 # Neo4j indexes (from inside the neo4j container)
 docker compose exec neo4j cypher-shell -u neo4j -p change-me 'SHOW INDEXES'

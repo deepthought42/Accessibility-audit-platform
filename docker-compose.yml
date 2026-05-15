@@ -13,16 +13,20 @@
 # The other 11 Java services stay on the internal docker network. To debug
 # any one of them, create a docker-compose.override.yml that adds a port map.
 
+x-java-volumes: &java-volumes
+  - ./scripts/local/local-overrides.properties:/etc/looksee/local-overrides.properties:ro
+
 x-java-env: &java-env
   SPRING_PROFILES_ACTIVE: "${SPRING_PROFILES_ACTIVE:-local}"
+  SPRING_CONFIG_ADDITIONAL_LOCATION: "optional:file:/etc/looksee/local-overrides.properties"
   NEO4J_BOLT_URI: "${NEO4J_BOLT_URI:-bolt://neo4j:7687}"
   NEO4J_USERNAME: "${NEO4J_USERNAME:-neo4j}"
   NEO4J_PASSWORD: "${NEO4J_PASSWORD:-change-me}"
   NEO4J_DATABASE_NAME: "${NEO4J_DATABASE_NAME:-neo4j}"
-  PROJECT_ID: "${PROJECT_ID:-change-me}"
+  PROJECT_ID: "${PROJECT_ID:-looksee-local}"
   PUBSUB_EMULATOR_HOST: "${PUBSUB_EMULATOR_HOST:-pubsub-emulator:8085}"
   SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST: "${PUBSUB_EMULATOR_HOST:-pubsub-emulator:8085}"
-  SPRING_CLOUD_GCP_PROJECT_ID: "${PROJECT_ID:-change-me}"
+  SPRING_CLOUD_GCP_PROJECT_ID: "${PROJECT_ID:-looksee-local}"
   SPRING_CLOUD_GCP_CREDENTIALS_LOCATION: ""
   GCP_CREDENTIALS_LOCATION: ""
   URL_TOPIC: "${URL_TOPIC:-url-topic}"
@@ -89,7 +93,7 @@ services:
     command: >
       gcloud beta emulators pubsub start
       --host-port=0.0.0.0:8085
-      --project=${PROJECT_ID:-change-me}
+      --project=${PROJECT_ID:-looksee-local}
     ports:
       - "8085:8085"
     healthcheck:
@@ -106,7 +110,7 @@ services:
       pubsub-emulator:
         condition: service_healthy
     environment:
-      PROJECT_ID: "${PROJECT_ID:-change-me}"
+      PROJECT_ID: "${PROJECT_ID:-looksee-local}"
       PUBSUB_EMULATOR_HOST: "${PUBSUB_EMULATOR_HOST:-pubsub-emulator:8085}"
     volumes:
       - ./scripts/local/pubsub-bootstrap.sh:/init/bootstrap.sh:ro
@@ -122,6 +126,7 @@ services:
       dockerfile: CrawlerAPI/Dockerfile.local
     depends_on: *java-depends
     environment: *java-env
+    volumes: *java-volumes
     ports:
       - "9080:9080"
     healthcheck:
@@ -138,6 +143,7 @@ services:
       dockerfile: PageBuilder/Dockerfile.local
     depends_on: *java-depends
     environment: *java-env
+    volumes: *java-volumes
     networks: [looksee-net]
 
   auditmanager:
@@ -146,6 +152,7 @@ services:
       dockerfile: AuditManager/Dockerfile.local
     depends_on: *java-depends
     environment: *java-env
+    volumes: *java-volumes
     networks: [looksee-net]
 
   contentaudit:
@@ -154,6 +161,7 @@ services:
       dockerfile: contentAudit/Dockerfile.local
     depends_on: *java-depends
     environment: *java-env
+    volumes: *java-volumes
     networks: [looksee-net]
 
   visualdesignaudit:
@@ -162,6 +170,7 @@ services:
       dockerfile: visualDesignAudit/Dockerfile.local
     depends_on: *java-depends
     environment: *java-env
+    volumes: *java-volumes
     networks: [looksee-net]
 
   informationarchitectureaudit:
@@ -170,6 +179,7 @@ services:
       dockerfile: informationArchitectureAudit/Dockerfile.local
     depends_on: *java-depends
     environment: *java-env
+    volumes: *java-volumes
     networks: [looksee-net]
 
   journeyexecutor:
@@ -178,6 +188,7 @@ services:
       dockerfile: journeyExecutor/Dockerfile.local
     depends_on: *java-depends
     environment: *java-env
+    volumes: *java-volumes
     networks: [looksee-net]
 
   journeyexpander:
@@ -186,6 +197,7 @@ services:
       dockerfile: journeyExpander/Dockerfile.local
     depends_on: *java-depends
     environment: *java-env
+    volumes: *java-volumes
     networks: [looksee-net]
 
   auditservice:
@@ -194,6 +206,7 @@ services:
       dockerfile: audit-service/Dockerfile.local
     depends_on: *java-depends
     environment: *java-env
+    volumes: *java-volumes
     networks: [looksee-net]
 
   elementenrichment:
@@ -202,6 +215,7 @@ services:
       dockerfile: element-enrichment/Dockerfile.local
     depends_on: *java-depends
     environment: *java-env
+    volumes: *java-volumes
     networks: [looksee-net]
 
   journeymapcleanup:
@@ -210,6 +224,7 @@ services:
       dockerfile: journey-map-cleanup/Dockerfile.local
     depends_on: *java-depends
     environment: *java-env
+    volumes: *java-volumes
     networks: [looksee-net]
 
   journeyerrors:
@@ -218,6 +233,7 @@ services:
       dockerfile: journeyErrors/Dockerfile.local
     depends_on: *java-depends
     environment: *java-env
+    volumes: *java-volumes
     networks: [looksee-net]
 
   broadcaster:
@@ -226,6 +242,7 @@ services:
       dockerfile: look-see-front-end-broadcaster/Dockerfile.local
     depends_on: *java-depends
     environment: *java-env
+    volumes: *java-volumes
     networks: [looksee-net]
 
   # ----- UI -----
