@@ -108,14 +108,16 @@ create_push_sub "${JOURNEY_CANDIDATE_TOPIC}" "journey-executor-subscription" "ht
 create_push_sub "${JOURNEY_VERIFIED_TOPIC}" "journey-expander-subscription" "http://journeyexpander:8080/"
 # audit-update-topic -> broadcaster (real-time UI updates)
 create_push_sub "${AUDIT_UPDATE_TOPIC}" "broadcaster-subscription" "http://broadcaster:8080/"
-# audit-error-topic -> journeyerrors (DLQ handler)
-create_push_sub "${ERROR_TOPIC}" "journey-errors-subscription" "http://journeyerrors:8080/"
 # journey-map-cleanup-topic -> journey-map-cleanup
 create_push_sub "${JOURNEY_MAP_CLEANUP_TOPIC}" "journey-map-cleanup-subscription" "http://journeymapcleanup:8080/"
 
-# Topics without a canonical single push consumer in this stack get pull
-# subscriptions so the publisher side still has a valid target. Wire a real
-# consumer here if/when those services are added to the local stack.
+# Topics without a canonical single-service push consumer in production get
+# pull subscriptions so the publisher side still has a valid target.
+# `audit-error-topic` carries `PageDataExtractionError` payloads which the
+# `journeyErrors` push controller (typed as `JourneyCandidateMessage`)
+# cannot deserialize - it's a monitoring/DLQ topic in Terraform, not a
+# service-consumed one. Wire a real consumer here if/when that changes.
+create_pull_sub "${ERROR_TOPIC}" "${ERROR_TOPIC}-pull"
 create_pull_sub "${JOURNEY_DISCARDED_TOPIC}" "${JOURNEY_DISCARDED_TOPIC}-pull"
 create_pull_sub "${ELEMENT_EXTRACTION_TOPIC}" "${ELEMENT_EXTRACTION_TOPIC}-pull"
 
