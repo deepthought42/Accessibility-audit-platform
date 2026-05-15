@@ -189,7 +189,18 @@ public class BrowserConnectionHelper {
 				"Appium URLs not configured. Set appium.urls property.");
 		}
 
-		URL server_url = new URL("http://" + APPIUM_URLS[APPIUM_SERVER_IDX % APPIUM_URLS.length] + "/wd/hub");
+		String appiumEntry = APPIUM_URLS[APPIUM_SERVER_IDX % APPIUM_URLS.length];
+		// Mirror the desktop-browser path: accept either a bare `host:port`
+		// (production form, prefixed with http:// and /wd/hub) or a fully
+		// qualified URL such as `http://appium:4723/wd/hub` (used by the local
+		// docker compose stack). Existing prod configs that pass `host:port`
+		// are unaffected.
+		URL server_url;
+		if (appiumEntry.startsWith("http://") || appiumEntry.startsWith("https://")) {
+			server_url = new URL(appiumEntry.endsWith("/wd/hub") ? appiumEntry : appiumEntry + "/wd/hub");
+		} else {
+			server_url = new URL("http://" + appiumEntry + "/wd/hub");
+		}
 		APPIUM_SERVER_IDX++;
 
 		return MobileFactory.createMobileDevice(browser.toString(), server_url);

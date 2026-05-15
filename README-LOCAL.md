@@ -23,10 +23,21 @@ Once everything is healthy:
 |---|---|---|
 | Angular UI | http://localhost:4200 | Local stack, Auth0 bypassed |
 | CrawlerAPI | http://localhost:9080 | REST API; `/actuator/health` returns `UP` |
-| Neo4j browser | http://localhost:7474 | login: `neo4j` / `change-me` |
+| Neo4j browser | http://localhost:7474 | login: `neo4j` / `change-me` (see security note) |
 | Pub/Sub emulator | http://localhost:8085 | REST API for the GCP emulator |
 
 The other 11 Java services run on the internal docker network only; they communicate via Pub/Sub and Neo4j.
+
+### Security note
+
+The stack ships with a placeholder Neo4j password (`change-me`), an
+anonymous-principal Spring profile that bypasses Auth0, and a permissive
+CORS policy. These defaults are safe only for a loopback-only `docker
+compose up`. **Rotate `NEO4J_PASSWORD` in `.env` (and re-run `docker
+compose up -d --build`) before exposing this stack to any non-loopback
+network**, and treat the `local` Spring profile as a development-only
+construct - never set `SPRING_PROFILES_ACTIVE=local` on a host reachable
+from outside your laptop.
 
 ## What the stack contains
 
@@ -116,4 +127,4 @@ docker compose exec crawlerapi sh
 
 - The Pusher real-time broadcast is a no-op locally (Pusher keys are empty). The UI still loads; live audit progress just isn't pushed.
 - Stripe, Segment, and GCP Vision/NLP integrations are not wired locally. Code paths that touch them will log warnings and short-circuit.
-- The broadcaster's upstream Dockerfile expects pre-baked GCP credentials and a Gmail credentials JSON; the local Dockerfile (`Dockerfile.local`) skips both. Email notifications from the broadcaster will be disabled locally.
+- The broadcaster's upstream Dockerfile expects pre-baked GCP credentials and a Gmail credentials JSON; the shared local Dockerfile (`scripts/local/Dockerfile.java-service.local`) skips both. Email notifications from the broadcaster will be disabled locally.

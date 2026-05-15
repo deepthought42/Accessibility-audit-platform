@@ -165,11 +165,25 @@ services:
     networks: [looksee-net]
 
   # ----- Java services -----
+  #
+  # All 13 services share a single Dockerfile
+  # (scripts/local/Dockerfile.java-service.local) and differ only by build
+  # args: which subdirectory holds the pom.xml/src, which Maven+JRE
+  # image major version, server port, and JVM heap.
 
   crawlerapi:
     build:
       context: .
-      dockerfile: CrawlerAPI/Dockerfile.local
+      dockerfile: scripts/local/Dockerfile.java-service.local
+      args:
+        SERVICE_DIR: CrawlerAPI
+        # CrawlerAPI is the only service already on Spring Boot 3 -> Java 21.
+        MAVEN_IMAGE: maven:3.9.6-eclipse-temurin-21
+        JRE_IMAGE: eclipse-temurin:21-jre
+        EXPOSE_PORT: "9080"
+        JVM_HEAP_MAX: 768M
+        # Healthcheck below hits /actuator/health via curl; need curl in runtime image.
+        INSTALL_CURL: "true"
     depends_on: *java-depends
     environment: *java-env
     volumes: *java-volumes
@@ -186,7 +200,8 @@ services:
   pagebuilder:
     build:
       context: .
-      dockerfile: PageBuilder/Dockerfile.local
+      dockerfile: scripts/local/Dockerfile.java-service.local
+      args: { SERVICE_DIR: PageBuilder }
     depends_on: *java-depends
     environment: *java-env
     volumes: *java-volumes
@@ -195,7 +210,8 @@ services:
   auditmanager:
     build:
       context: .
-      dockerfile: AuditManager/Dockerfile.local
+      dockerfile: scripts/local/Dockerfile.java-service.local
+      args: { SERVICE_DIR: AuditManager, JVM_HEAP_MAX: 768M }
     depends_on: *java-depends
     environment: *java-env
     volumes: *java-volumes
@@ -204,7 +220,8 @@ services:
   contentaudit:
     build:
       context: .
-      dockerfile: contentAudit/Dockerfile.local
+      dockerfile: scripts/local/Dockerfile.java-service.local
+      args: { SERVICE_DIR: contentAudit }
     depends_on: *java-depends
     environment: *java-env
     volumes: *java-volumes
@@ -213,7 +230,8 @@ services:
   visualdesignaudit:
     build:
       context: .
-      dockerfile: visualDesignAudit/Dockerfile.local
+      dockerfile: scripts/local/Dockerfile.java-service.local
+      args: { SERVICE_DIR: visualDesignAudit }
     depends_on: *java-depends
     environment: *java-env
     volumes: *java-volumes
@@ -222,7 +240,8 @@ services:
   informationarchitectureaudit:
     build:
       context: .
-      dockerfile: informationArchitectureAudit/Dockerfile.local
+      dockerfile: scripts/local/Dockerfile.java-service.local
+      args: { SERVICE_DIR: informationArchitectureAudit }
     depends_on: *java-depends
     environment: *java-env
     volumes: *java-volumes
@@ -231,7 +250,8 @@ services:
   journeyexecutor:
     build:
       context: .
-      dockerfile: journeyExecutor/Dockerfile.local
+      dockerfile: scripts/local/Dockerfile.java-service.local
+      args: { SERVICE_DIR: journeyExecutor, JVM_HEAP_MAX: 768M }
     depends_on: *java-depends
     environment: *java-env
     volumes: *java-volumes
@@ -240,7 +260,8 @@ services:
   journeyexpander:
     build:
       context: .
-      dockerfile: journeyExpander/Dockerfile.local
+      dockerfile: scripts/local/Dockerfile.java-service.local
+      args: { SERVICE_DIR: journeyExpander }
     depends_on: *java-depends
     environment: *java-env
     volumes: *java-volumes
@@ -249,7 +270,8 @@ services:
   auditservice:
     build:
       context: .
-      dockerfile: audit-service/Dockerfile.local
+      dockerfile: scripts/local/Dockerfile.java-service.local
+      args: { SERVICE_DIR: audit-service, JVM_HEAP_MAX: 768M }
     depends_on: *java-depends
     environment: *java-env
     volumes: *java-volumes
@@ -258,7 +280,8 @@ services:
   elementenrichment:
     build:
       context: .
-      dockerfile: element-enrichment/Dockerfile.local
+      dockerfile: scripts/local/Dockerfile.java-service.local
+      args: { SERVICE_DIR: element-enrichment }
     depends_on: *java-depends
     environment: *java-env
     volumes: *java-volumes
@@ -267,7 +290,8 @@ services:
   journeymapcleanup:
     build:
       context: .
-      dockerfile: journey-map-cleanup/Dockerfile.local
+      dockerfile: scripts/local/Dockerfile.java-service.local
+      args: { SERVICE_DIR: journey-map-cleanup }
     depends_on: *java-depends
     environment: *java-env
     volumes: *java-volumes
@@ -276,7 +300,8 @@ services:
   journeyerrors:
     build:
       context: .
-      dockerfile: journeyErrors/Dockerfile.local
+      dockerfile: scripts/local/Dockerfile.java-service.local
+      args: { SERVICE_DIR: journeyErrors }
     depends_on: *java-depends
     environment: *java-env
     volumes: *java-volumes
@@ -285,7 +310,8 @@ services:
   broadcaster:
     build:
       context: .
-      dockerfile: look-see-front-end-broadcaster/Dockerfile.local
+      dockerfile: scripts/local/Dockerfile.java-service.local
+      args: { SERVICE_DIR: look-see-front-end-broadcaster }
     depends_on: *java-depends
     environment: *java-env
     volumes: *java-volumes

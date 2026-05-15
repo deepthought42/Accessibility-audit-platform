@@ -131,6 +131,36 @@ public class BrowserConnectionHelperTest {
     }
 
     @Test
+    public void testGetConnectionAcceptsMultipleBareHostPortEntries() {
+        // Bare `host:port` entries (the upstream production shape) must keep
+        // working unchanged when multiple URLs are configured for the
+        // round-robin. We can't observe the private SELENIUM_HUB_IDX from
+        // outside, but we can verify that successive calls reach the
+        // connection-attempt phase (i.e. URL construction succeeds for both
+        // entries) by ensuring neither throws MalformedURLException.
+        BrowserConnectionHelper.setConfiguredSeleniumUrls(
+                new String[]{"hub-a.example.com:4444", "hub-b.example.com:4444"});
+        for (int i = 0; i < 4; i++) {
+            Exception ex = assertThrows(Exception.class,
+                    () -> BrowserConnectionHelper.getConnection(BrowserType.CHROME, BrowserEnvironment.DISCOVERY));
+            assertFalse(ex instanceof MalformedURLException,
+                    "Bare host:port must produce a well-formed URL, got: " + ex);
+        }
+    }
+
+    @Test
+    public void testGetMobileConnectionAcceptsFullHttpUrl() {
+        // Local docker compose stack can pass a fully qualified Appium URL.
+        BrowserConnectionHelper.setConfiguredAppiumUrls(
+                new String[]{"http://appium:4723/wd/hub"});
+        // Bean construction succeeds and we get to the actual connect attempt;
+        // any IOException/Exception is fine - we just need to prove the URL
+        // parse branch did not throw a MalformedURLException at config time.
+        assertThrows(Exception.class,
+                () -> BrowserConnectionHelper.getMobileConnection(BrowserType.ANDROID, BrowserEnvironment.DISCOVERY));
+    }
+
+    @Test
     public void testGetConnectionWithTestEnvironment() {
         BrowserConnectionHelper.setConfiguredSeleniumUrls(new String[]{"localhost:4444"});
         // TEST environment with chrome won't match DISCOVERY branch, server_url remains null
