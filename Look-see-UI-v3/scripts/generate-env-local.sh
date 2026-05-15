@@ -14,6 +14,14 @@ if [ -f "$ENV_FILE" ]; then
   set +a
 fi
 
+# When LOCAL_STACK=1 we are running inside the docker-compose dev stack and
+# should default the API URL to the CrawlerAPI port on the host that the
+# browser sees. Browser-side requests go through the host bridge.
+if [ "${LOCAL_STACK:-0}" = "1" ]; then
+  AUTH0_API_URI="${AUTH0_API_URI:-http://localhost:9080}"
+  AUTH0_APP_URI="${AUTH0_APP_URI:-http://localhost:4200}"
+fi
+
 # Generate .env file from environment variables with defaults for local dev
 cat > "$ENV_FILE" <<EOF
 # This file is auto-generated from environment variables

@@ -1,0 +1,23 @@
+# syntax=docker/dockerfile:1.6
+# Local-development Dockerfile. Builds LookseeCore from source via a
+# BuildKit cache mount shared across all service builds (id=looksee-m2).
+# Run from the repo root: build.context: . in docker-compose.yml.
+
+FROM maven:3.9.6-eclipse-temurin-21 AS build
+WORKDIR /workspace
+
+COPY LookseeCore /workspace/LookseeCore
+RUN --mount=type=cache,target=/root/.m2,id=looksee-m2 \
+    cd /workspace/LookseeCore && mvn -B -q clean install -DskipTests
+
+COPY CrawlerAPI/pom.xml /workspace/service/pom.xml
+COPY CrawlerAPI/src /workspace/service/src
+RUN --mount=type=cache,target=/root/.m2,id=looksee-m2 \
+    cd /workspace/service && mvn -B -q clean package -DskipTests \
+ && cp /workspace/service/target/*.jar /workspace/app.jar
+
+FROM eclipse-temurin:21-jre
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+COPY --from=build /workspace/app.jar /app/app.jar
+EXPOSE 9080
+ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-Xms256M","-Xmx768M","-jar","/app/app.jar"]

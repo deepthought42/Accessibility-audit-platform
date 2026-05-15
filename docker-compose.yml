@@ -1,0 +1,262 @@
+# Look-see local-development stack.
+# Usage:
+#   cp .env.local.example .env
+#   docker compose up --build
+#
+# Ports exposed on the host:
+#   4200   Angular UI
+#   9080   CrawlerAPI
+#   7474   Neo4j browser
+#   7687   Neo4j bolt
+#   8085   GCP Pub/Sub emulator REST
+#
+# The other 11 Java services stay on the internal docker network. To debug
+# any one of them, create a docker-compose.override.yml that adds a port map.
+
+x-java-env: &java-env
+  SPRING_PROFILES_ACTIVE: "${SPRING_PROFILES_ACTIVE:-local}"
+  NEO4J_BOLT_URI: "${NEO4J_BOLT_URI:-bolt://neo4j:7687}"
+  NEO4J_USERNAME: "${NEO4J_USERNAME:-neo4j}"
+  NEO4J_PASSWORD: "${NEO4J_PASSWORD:-looksee-local}"
+  NEO4J_DATABASE_NAME: "${NEO4J_DATABASE_NAME:-neo4j}"
+  PROJECT_ID: "${PROJECT_ID:-looksee-local}"
+  PUBSUB_EMULATOR_HOST: "${PUBSUB_EMULATOR_HOST:-pubsub-emulator:8085}"
+  SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST: "${PUBSUB_EMULATOR_HOST:-pubsub-emulator:8085}"
+  SPRING_CLOUD_GCP_PROJECT_ID: "${PROJECT_ID:-looksee-local}"
+  SPRING_CLOUD_GCP_CREDENTIALS_LOCATION: ""
+  GCP_CREDENTIALS_LOCATION: ""
+  URL_TOPIC: "${URL_TOPIC:-url-topic}"
+  PAGE_AUDIT_TOPIC: "${PAGE_AUDIT_TOPIC:-page-audit-topic}"
+  AUDIT_UPDATE_TOPIC: "${AUDIT_UPDATE_TOPIC:-audit-update-topic}"
+  ERROR_TOPIC: "${ERROR_TOPIC:-audit-error-topic}"
+  PAGE_CREATED_TOPIC: "${PAGE_CREATED_TOPIC:-page-created-topic}"
+  JOURNEY_VERIFIED_TOPIC: "${JOURNEY_VERIFIED_TOPIC:-journey-verified-topic}"
+  JOURNEY_DISCARDED_TOPIC: "${JOURNEY_DISCARDED_TOPIC:-journey-discarded-topic}"
+  JOURNEY_CANDIDATE_TOPIC: "${JOURNEY_CANDIDATE_TOPIC:-journey-candidate-topic}"
+  ELEMENT_EXTRACTION_TOPIC: "${ELEMENT_EXTRACTION_TOPIC:-element-extraction-topic}"
+  JOURNEY_MAP_CLEANUP_TOPIC: "${JOURNEY_MAP_CLEANUP_TOPIC:-journey-map-cleanup-topic}"
+
+x-java-depends: &java-depends
+  neo4j:
+    condition: service_healthy
+  neo4j-bootstrap:
+    condition: service_completed_successfully
+  pubsub-bootstrap:
+    condition: service_completed_successfully
+
+services:
+  # ----- Infrastructure -----
+
+  neo4j:
+    image: neo4j:5.20-community
+    environment:
+      NEO4J_AUTH: "${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:-looksee-local}"
+      NEO4J_PLUGINS: '["apoc"]'
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u $${NEO4J_USERNAME:-neo4j} -p $${NEO4J_PASSWORD:-looksee-local} 'RETURN 1' || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+    networks: [looksee-net]
+
+  neo4j-bootstrap:
+    image: neo4j:5.20-community
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    environment:
+      NEO4J_HOST: neo4j
+      NEO4J_BOLT_PORT: "7687"
+      NEO4J_USERNAME: "${NEO4J_USERNAME:-neo4j}"
+      NEO4J_PASSWORD: "${NEO4J_PASSWORD:-looksee-local}"
+      SRC_CQL: /init/create-indexes-and-constraints.cql
+    volumes:
+      - ./LookseeIaC/create-indexes-and-constraints.cql:/init/create-indexes-and-constraints.cql:ro
+      - ./scripts/local/neo4j-bootstrap.sh:/init/bootstrap.sh:ro
+    entrypoint: ["bash", "/init/bootstrap.sh"]
+    restart: "no"
+    networks: [looksee-net]
+
+  pubsub-emulator:
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:emulators
+    command: >
+      gcloud beta emulators pubsub start
+      --host-port=0.0.0.0:8085
+      --project=${PROJECT_ID:-looksee-local}
+    ports:
+      - "8085:8085"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/8085'"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+    networks: [looksee-net]
+
+  pubsub-bootstrap:
+    image: curlimages/curl:8.7.1
+    depends_on:
+      pubsub-emulator:
+        condition: service_healthy
+    environment:
+      PROJECT_ID: "${PROJECT_ID:-looksee-local}"
+      PUBSUB_EMULATOR_HOST: "${PUBSUB_EMULATOR_HOST:-pubsub-emulator:8085}"
+    volumes:
+      - ./scripts/local/pubsub-bootstrap.sh:/init/bootstrap.sh:ro
+    entrypoint: ["sh", "/init/bootstrap.sh"]
+    restart: "no"
+    networks: [looksee-net]
+
+  # ----- Java services -----
+
+  crawlerapi:
+    build:
+      context: .
+      dockerfile: CrawlerAPI/Dockerfile.local
+    depends_on: *java-depends
+    environment: *java-env
+    ports:
+      - "9080:9080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+    networks: [looksee-net]
+
+  pagebuilder:
+    build:
+      context: .
+      dockerfile: PageBuilder/Dockerfile.local
+    depends_on: *java-depends
+    environment: *java-env
+    networks: [looksee-net]
+
+  auditmanager:
+    build:
+      context: .
+      dockerfile: AuditManager/Dockerfile.local
+    depends_on: *java-depends
+    environment: *java-env
+    networks: [looksee-net]
+
+  contentaudit:
+    build:
+      context: .
+      dockerfile: contentAudit/Dockerfile.local
+    depends_on: *java-depends
+    environment: *java-env
+    networks: [looksee-net]
+
+  visualdesignaudit:
+    build:
+      context: .
+      dockerfile: visualDesignAudit/Dockerfile.local
+    depends_on: *java-depends
+    environment: *java-env
+    networks: [looksee-net]
+
+  informationarchitectureaudit:
+    build:
+      context: .
+      dockerfile: informationArchitectureAudit/Dockerfile.local
+    depends_on: *java-depends
+    environment: *java-env
+    networks: [looksee-net]
+
+  journeyexecutor:
+    build:
+      context: .
+      dockerfile: journeyExecutor/Dockerfile.local
+    depends_on: *java-depends
+    environment: *java-env
+    networks: [looksee-net]
+
+  journeyexpander:
+    build:
+      context: .
+      dockerfile: journeyExpander/Dockerfile.local
+    depends_on: *java-depends
+    environment: *java-env
+    networks: [looksee-net]
+
+  auditservice:
+    build:
+      context: .
+      dockerfile: audit-service/Dockerfile.local
+    depends_on: *java-depends
+    environment: *java-env
+    networks: [looksee-net]
+
+  elementenrichment:
+    build:
+      context: .
+      dockerfile: element-enrichment/Dockerfile.local
+    depends_on: *java-depends
+    environment: *java-env
+    networks: [looksee-net]
+
+  journeymapcleanup:
+    build:
+      context: .
+      dockerfile: journey-map-cleanup/Dockerfile.local
+    depends_on: *java-depends
+    environment: *java-env
+    networks: [looksee-net]
+
+  journeyerrors:
+    build:
+      context: .
+      dockerfile: journeyErrors/Dockerfile.local
+    depends_on: *java-depends
+    environment: *java-env
+    networks: [looksee-net]
+
+  broadcaster:
+    build:
+      context: .
+      dockerfile: look-see-front-end-broadcaster/Dockerfile.local
+    depends_on: *java-depends
+    environment: *java-env
+    networks: [looksee-net]
+
+  # ----- UI -----
+
+  ui:
+    build:
+      context: .
+      dockerfile: Look-see-UI-v3/Dockerfile.local
+    depends_on:
+      crawlerapi:
+        condition: service_healthy
+    environment:
+      LOCAL_STACK: "1"
+      NODE_ENV: development
+      AUTH0_API_URI: "${AUTH0_API_URI:-http://localhost:9080}"
+      AUTH0_APP_URI: "${AUTH0_APP_URI:-http://localhost:4200}"
+      AUTH0_DOMAIN: "${AUTH0_DOMAIN:-}"
+      AUTH0_CLIENT_ID: "${AUTH0_CLIENT_ID:-}"
+      AUTH0_AUDIENCE: "${AUTH0_AUDIENCE:-}"
+      PUSHER_APP_ID: "${PUSHER_APP_ID:-}"
+      PUSHER_KEY: "${PUSHER_KEY:-}"
+      PUSHER_SECRET: "${PUSHER_SECRET:-}"
+      PUSHER_CLUSTER: "${PUSHER_CLUSTER:-}"
+    ports:
+      - "4200:4200"
+    networks: [looksee-net]
+
+networks:
+  looksee-net:
+    driver: bridge
+
+volumes:
+  neo4j-data:
+  neo4j-logs:

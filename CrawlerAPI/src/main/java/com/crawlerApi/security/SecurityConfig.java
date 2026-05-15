@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Profile;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -33,6 +34,7 @@ import com.looksee.models.Account;
 @EnableWebSecurity
 @PropertySource("classpath:auth0.properties")
 @Component
+@Profile("!local")
 public class SecurityConfig {
 	
 	private final Auth0Config auth0Config;
