@@ -18,7 +18,7 @@ fi
 # should default the API URL to the CrawlerAPI port on the host that the
 # browser sees. Browser-side requests go through the host bridge.
 if [ "${LOCAL_STACK:-0}" = "1" ]; then
-  AUTH0_API_URI="${AUTH0_API_URI:-http://localhost:9080}"
+  AUTH0_API_URI="${AUTH0_API_URI:-http://localhost:9080/v1}"
   AUTH0_APP_URI="${AUTH0_APP_URI:-http://localhost:4200}"
 fi
 

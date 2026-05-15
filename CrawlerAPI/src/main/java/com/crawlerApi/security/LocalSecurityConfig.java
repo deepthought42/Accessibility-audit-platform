@@ -17,8 +17,18 @@ public class LocalSecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        // Install an anonymous principal so HttpServletRequest.getUserPrincipal()
+        // returns a non-null Principal whose getName() == "local-dev-user".
+        // Several controllers (e.g. AuditorController) call
+        // auth0Service.getCurrentUserAccount(principal) and then log
+        // principal.getName(); a null principal NPEs there. The anonymous
+        // authority lets Spring Security permit the request as part of the
+        // anonymous-allowed chain rather than relying on permitAll alone.
         http.csrf().disable()
             .cors().and()
+            .anonymous(anon -> anon
+                .principal("local-dev-user")
+                .authorities("ROLE_USER"))
             .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
         return http.build();
     }

@@ -39,6 +39,7 @@ x-java-env: &java-env
   JOURNEY_CANDIDATE_TOPIC: "${JOURNEY_CANDIDATE_TOPIC:-journey-candidate-topic}"
   ELEMENT_EXTRACTION_TOPIC: "${ELEMENT_EXTRACTION_TOPIC:-element-extraction-topic}"
   JOURNEY_MAP_CLEANUP_TOPIC: "${JOURNEY_MAP_CLEANUP_TOPIC:-journey-map-cleanup-topic}"
+  SELENIUM_URLS: "${SELENIUM_URLS:-http://selenium-chrome:4444/wd/hub}"
 
 x-java-depends: &java-depends
   neo4j:
@@ -47,6 +48,8 @@ x-java-depends: &java-depends
     condition: service_completed_successfully
   pubsub-bootstrap:
     condition: service_completed_successfully
+  selenium-chrome:
+    condition: service_healthy
 
 services:
   # ----- Infrastructure -----
@@ -105,6 +108,22 @@ services:
       timeout: 5s
       retries: 30
       start_period: 15s
+    networks: [looksee-net]
+
+  selenium-chrome:
+    image: selenium/standalone-chrome:125.0
+    shm_size: 2gb
+    environment:
+      SE_NODE_MAX_SESSIONS: "4"
+      SE_SESSION_REQUEST_TIMEOUT: "60"
+    ports:
+      - "4444:4444"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:4444/status | grep -q '\"ready\": true'"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
     networks: [looksee-net]
 
   pubsub-bootstrap:
@@ -270,7 +289,7 @@ services:
     environment:
       LOCAL_STACK: "1"
       NODE_ENV: development
-      AUTH0_API_URI: "${AUTH0_API_URI:-http://localhost:9080}"
+      AUTH0_API_URI: "${AUTH0_API_URI:-http://localhost:9080/v1}"
       AUTH0_APP_URI: "${AUTH0_APP_URI:-http://localhost:4200}"
       AUTH0_DOMAIN: "${AUTH0_DOMAIN:-}"
       AUTH0_CLIENT_ID: "${AUTH0_CLIENT_ID:-}"
