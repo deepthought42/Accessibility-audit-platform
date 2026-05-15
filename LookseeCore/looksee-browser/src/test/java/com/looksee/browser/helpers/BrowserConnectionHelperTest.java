@@ -21,8 +21,10 @@ public class BrowserConnectionHelperTest {
 
     @BeforeEach
     public void setUp() {
-        // Reset BrowserStack state before each test to avoid cross-test interference
+        // Reset BrowserStack state and round-robin indices before each test
+        // to avoid cross-test interference from JVM-static fields.
         BrowserConnectionHelper.clearBrowserStackConfig();
+        BrowserConnectionHelper.resetRoundRobinIndices();
     }
 
     @Test

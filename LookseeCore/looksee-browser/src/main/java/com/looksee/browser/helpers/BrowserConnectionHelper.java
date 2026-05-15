@@ -112,6 +112,17 @@ public class BrowserConnectionHelper {
 	}
 
 	/**
+	 * Resets the round-robin indices used to pick a hub URL from the
+	 * configured Selenium and Appium URL arrays. Intended for unit tests
+	 * that want a deterministic starting state - production callers should
+	 * never need to invoke this directly.
+	 */
+	public static void resetRoundRobinIndices() {
+		SELENIUM_HUB_IDX = 0;
+		APPIUM_SERVER_IDX = 0;
+	}
+
+	/**
 	 * Creates a {@link Browser} connection
 	 *
 	 * @param browser the browser to connect to

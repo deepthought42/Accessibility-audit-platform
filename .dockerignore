@@ -1,0 +1,61 @@
+# Excludes from the docker build context for the local-dev compose stack.
+# Compose services use `build.context: .` (repo root) so they can COPY
+# both LookseeCore and their own service tree. Everything below is either
+# unrelated to those builds or rebuilt inside the container anyway.
+
+# ---- VCS, IDE, OS ----
+.git
+.github
+.idea
+.kiro
+.claude
+**/*.iml
+**/.project
+**/.classpath
+**/.settings
+**/.DS_Store
+**/Thumbs.db
+
+# ---- Local .env / secrets ----
+.env
+.env.*
+!.env.example
+!.env.local.example
+**/*.pem
+**/*credentials*.json
+
+# ---- Java / Maven build artifacts (rebuilt inside the container) ----
+**/target
+**/.mvn
+**/.m2
+
+# ---- Node / Angular build artifacts ----
+**/node_modules
+**/dist
+**/.npm
+**/.next
+**/coverage
+**/npm-debug.log*
+**/yarn-error.log*
+
+# ---- Top-level directories that no local-stack image needs ----
+# Browser extensions, VS Code plugin, IaC, docs, and the QA testbed
+# are not built into any compose image. Excluding them keeps the build
+# context small.
+LookseeChromeExtension
+look-see-VSCode-plugin
+browser-service
+LookseeIaC
+docs
+qa-testbed
+tests
+page-audit-enrichment
+LEGACY_REMOTES.txt
+README.md
+*.md
+!README-LOCAL.md
+
+# ---- Terraform state, if any ----
+**/.terraform
+**/*.tfstate
+**/*.tfstate.*
