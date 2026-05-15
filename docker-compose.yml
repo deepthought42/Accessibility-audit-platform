@@ -63,7 +63,10 @@ services:
       - neo4j-data:/data
       - neo4j-logs:/logs
     healthcheck:
-      test: ["CMD-SHELL", "cypher-shell -u $${NEO4J_USERNAME:-neo4j} -p $${NEO4J_PASSWORD:-change-me} 'RETURN 1' || exit 1"]
+      # Expand at compose-up time (single $) so the password comes from .env,
+      # not from inside the neo4j container where NEO4J_PASSWORD is unset
+      # (only NEO4J_AUTH is exposed there).
+      test: ["CMD-SHELL", "cypher-shell -u ${NEO4J_USERNAME:-neo4j} -p ${NEO4J_PASSWORD:-change-me} 'RETURN 1' || exit 1"]
       interval: 5s
       timeout: 10s
       retries: 30
@@ -112,6 +115,16 @@ services:
     environment:
       PROJECT_ID: "${PROJECT_ID:-looksee-local}"
       PUBSUB_EMULATOR_HOST: "${PUBSUB_EMULATOR_HOST:-pubsub-emulator:8085}"
+      URL_TOPIC: "${URL_TOPIC:-url-topic}"
+      PAGE_AUDIT_TOPIC: "${PAGE_AUDIT_TOPIC:-page-audit-topic}"
+      AUDIT_UPDATE_TOPIC: "${AUDIT_UPDATE_TOPIC:-audit-update-topic}"
+      ERROR_TOPIC: "${ERROR_TOPIC:-audit-error-topic}"
+      PAGE_CREATED_TOPIC: "${PAGE_CREATED_TOPIC:-page-created-topic}"
+      JOURNEY_VERIFIED_TOPIC: "${JOURNEY_VERIFIED_TOPIC:-journey-verified-topic}"
+      JOURNEY_DISCARDED_TOPIC: "${JOURNEY_DISCARDED_TOPIC:-journey-discarded-topic}"
+      JOURNEY_CANDIDATE_TOPIC: "${JOURNEY_CANDIDATE_TOPIC:-journey-candidate-topic}"
+      ELEMENT_EXTRACTION_TOPIC: "${ELEMENT_EXTRACTION_TOPIC:-element-extraction-topic}"
+      JOURNEY_MAP_CLEANUP_TOPIC: "${JOURNEY_MAP_CLEANUP_TOPIC:-journey-map-cleanup-topic}"
     volumes:
       - ./scripts/local/pubsub-bootstrap.sh:/init/bootstrap.sh:ro
     entrypoint: ["sh", "/init/bootstrap.sh"]

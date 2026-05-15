@@ -9,8 +9,12 @@ SRC_CQL="${SRC_CQL:-/init/create-indexes-and-constraints.cql}"
 DST_CQL="/tmp/init-neo4j5.cql"
 
 echo "[neo4j-bootstrap] translating CQL to Neo4j 5 syntax"
-# Neo4j 5 renames ASSERT -> REQUIRE and removes CALL db.indexes()
+# Neo4j 5 changes:
+#   * Index/constraint introducer changed from ON (var:Label) to FOR (var:Label)
+#   * Constraint assertion changed from ASSERT ... IS UNIQUE to REQUIRE ... IS UNIQUE
+#   * `CALL db.indexes()` was renamed to SHOW INDEXES (and is not needed at bootstrap time)
 sed -E \
+  -e '/CREATE CONSTRAINT/ s/ ON \(/ FOR (/' \
   -e 's/ASSERT[[:space:]]+(.*)[[:space:]]+IS UNIQUE/REQUIRE \1 IS UNIQUE/g' \
   -e '/^[[:space:]]*CALL[[:space:]]+db\.indexes\(\)/d' \
   "${SRC_CQL}" > "${DST_CQL}"
