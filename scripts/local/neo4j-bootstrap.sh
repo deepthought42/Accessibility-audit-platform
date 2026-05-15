@@ -4,7 +4,7 @@ set -euo pipefail
 NEO4J_HOST="${NEO4J_HOST:-neo4j}"
 NEO4J_BOLT_PORT="${NEO4J_BOLT_PORT:-7687}"
 NEO4J_USERNAME="${NEO4J_USERNAME:-neo4j}"
-NEO4J_PASSWORD="${NEO4J_PASSWORD:-looksee-local}"
+NEO4J_PASSWORD="${NEO4J_PASSWORD:-change-me}"
 SRC_CQL="${SRC_CQL:-/init/create-indexes-and-constraints.cql}"
 DST_CQL="/tmp/init-neo4j5.cql"
 

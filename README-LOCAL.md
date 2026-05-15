@@ -23,7 +23,7 @@ Once everything is healthy:
 |---|---|---|
 | Angular UI | http://localhost:4200 | Local stack, Auth0 bypassed |
 | CrawlerAPI | http://localhost:9080 | REST API; `/actuator/health` returns `UP` |
-| Neo4j browser | http://localhost:7474 | login: `neo4j` / `looksee-local` |
+| Neo4j browser | http://localhost:7474 | login: `neo4j` / `change-me` |
 | Pub/Sub emulator | http://localhost:8085 | REST API for the GCP emulator |
 
 The other 11 Java services run on the internal docker network only; they communicate via Pub/Sub and Neo4j.
@@ -80,10 +80,10 @@ curl -s http://localhost:9080/actuator/health
 # -> {"status":"UP"}
 
 # Pub/Sub topics
-curl -s http://localhost:8085/v1/projects/looksee-local/topics
+curl -s http://localhost:8085/v1/projects/change-me/topics
 
 # Neo4j indexes (from inside the neo4j container)
-docker compose exec neo4j cypher-shell -u neo4j -p looksee-local 'SHOW INDEXES'
+docker compose exec neo4j cypher-shell -u neo4j -p change-me 'SHOW INDEXES'
 
 # UI
 open http://localhost:4200
