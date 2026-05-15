@@ -34,4 +34,24 @@ cypher-shell -a "bolt://${NEO4J_HOST}:${NEO4J_BOLT_PORT}" \
   -u "${NEO4J_USERNAME}" -p "${NEO4J_PASSWORD}" \
   -f "${DST_CQL}"
 
+# Seed an Account row for the principal that LocalSecurityConfig installs
+# (`local-dev-user`). AccountService.findByUserId queries on the `user_id`
+# Neo4j property; without this row, AuditorController throws
+# UnknownAccountException / MissingSubscriptionException on every audit
+# start under the local profile. Idempotent via MERGE.
+LOCAL_USER_ID="${LOCAL_DEV_USER_ID:-local-dev-user}"
+echo "[neo4j-bootstrap] seeding local-dev Account row for user_id=${LOCAL_USER_ID}"
+cypher-shell -a "bolt://${NEO4J_HOST}:${NEO4J_BOLT_PORT}" \
+  -u "${NEO4J_USERNAME}" -p "${NEO4J_PASSWORD}" \
+  "MERGE (a:Account {user_id: \$user_id})
+   ON CREATE SET
+     a.email = 'local-dev@example.test',
+     a.name = 'Local Dev',
+     a.subscription_type = 'pro',
+     a.subscription_token = 'local-disabled-subscription',
+     a.customer_token = 'local-disabled-customer',
+     a.api_token = 'local-disabled-api-token'
+   RETURN a.user_id" \
+  --param "user_id => '${LOCAL_USER_ID}'"
+
 echo "[neo4j-bootstrap] done"

@@ -17,7 +17,11 @@ x-java-volumes: &java-volumes
   - ./scripts/local/local-overrides.properties:/etc/looksee/local-overrides.properties:ro
 
 x-java-env: &java-env
-  SPRING_PROFILES_ACTIVE: "${SPRING_PROFILES_ACTIVE:-local}"
+  # Use `-` (not `:-`) so an *empty* SPRING_PROFILES_ACTIVE in .env is
+  # passed through unchanged - that's how the README tells users to
+  # disable the local profile when switching to real Auth0. Compose's
+  # `:-` would otherwise replace an empty value with `local`.
+  SPRING_PROFILES_ACTIVE: "${SPRING_PROFILES_ACTIVE-local}"
   SPRING_CONFIG_ADDITIONAL_LOCATION: "optional:file:/etc/looksee/local-overrides.properties"
   NEO4J_BOLT_URI: "${NEO4J_BOLT_URI:-bolt://neo4j:7687}"
   NEO4J_USERNAME: "${NEO4J_USERNAME:-neo4j}"

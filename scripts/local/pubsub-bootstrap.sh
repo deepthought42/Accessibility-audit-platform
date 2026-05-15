@@ -97,8 +97,11 @@ create_topic "${JOURNEY_MAP_CLEANUP_TOPIC}"
 create_push_sub "${URL_TOPIC}" "page-builder-subscription" "http://pagebuilder:8080/"
 # page-created-topic -> auditmanager
 create_push_sub "${PAGE_CREATED_TOPIC}" "audit-manager-subscription" "http://auditmanager:8080/"
-# page-audit-topic fans out to four auditors (each gets its own subscription)
-create_push_sub "${PAGE_AUDIT_TOPIC}" "audit-service-subscription" "http://auditservice:8080/"
+# page-audit-topic fans out to the three audit workers that actually
+# consume PageAuditMessage payloads. audit-service intentionally does NOT
+# subscribe here - its controller only handles progress/update message
+# types (AuditProgressUpdate, PageAuditProgressMessage, JourneyCandidate*,
+# *VerifiedJourney*), so it gets its own subscription on audit-update-topic.
 create_push_sub "${PAGE_AUDIT_TOPIC}" "content-audit-subscription" "http://contentaudit:8080/"
 create_push_sub "${PAGE_AUDIT_TOPIC}" "visual-design-audit-subscription" "http://visualdesignaudit:8080/"
 create_push_sub "${PAGE_AUDIT_TOPIC}" "info-arch-audit-subscription" "http://informationarchitectureaudit:8080/"
@@ -106,8 +109,11 @@ create_push_sub "${PAGE_AUDIT_TOPIC}" "info-arch-audit-subscription" "http://inf
 create_push_sub "${JOURNEY_CANDIDATE_TOPIC}" "journey-executor-subscription" "http://journeyexecutor:8080/"
 # journey-verified-topic -> journeyexpander
 create_push_sub "${JOURNEY_VERIFIED_TOPIC}" "journey-expander-subscription" "http://journeyexpander:8080/"
-# audit-update-topic -> broadcaster (real-time UI updates)
+# audit-update-topic fans out to:
+#   - broadcaster (turns updates into Pusher real-time events for the UI)
+#   - audit-service (persists progress + journey-status changes to Neo4j)
 create_push_sub "${AUDIT_UPDATE_TOPIC}" "broadcaster-subscription" "http://broadcaster:8080/"
+create_push_sub "${AUDIT_UPDATE_TOPIC}" "audit-service-subscription" "http://auditservice:8080/"
 # journey-map-cleanup-topic -> journey-map-cleanup
 create_push_sub "${JOURNEY_MAP_CLEANUP_TOPIC}" "journey-map-cleanup-subscription" "http://journeymapcleanup:8080/"
 
