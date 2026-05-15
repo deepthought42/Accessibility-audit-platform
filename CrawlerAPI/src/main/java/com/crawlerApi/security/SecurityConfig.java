@@ -34,7 +34,6 @@ import com.looksee.models.Account;
 @EnableWebSecurity
 @PropertySource("classpath:auth0.properties")
 @Component
-@Profile("!local")
 public class SecurityConfig {
 	
 	private final Auth0Config auth0Config;
@@ -47,6 +46,7 @@ public class SecurityConfig {
 	}
 	
     @Bean
+    @Profile("!local")
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf().disable()
             .authorizeHttpRequests(auth -> auth
@@ -62,8 +62,9 @@ public class SecurityConfig {
             .cors();
         return http.build();
     }
-    
+
     @Bean
+    @Profile("!local")
     public JwtDecoder jwtDecoder() {
         NimbusJwtDecoder jwtDecoder = JwtDecoders.fromOidcIssuerLocation(auth0Config.getAuth0Issuer());
         
@@ -148,6 +149,7 @@ public class SecurityConfig {
     }
 	
     @Bean
+    @Profile("!local")
 	CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.addAllowedOriginPattern("*");

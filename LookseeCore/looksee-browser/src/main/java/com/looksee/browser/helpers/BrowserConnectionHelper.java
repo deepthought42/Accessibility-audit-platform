@@ -140,7 +140,17 @@ public class BrowserConnectionHelper {
 		if (environment.equals(BrowserEnvironment.DISCOVERY)
 				&& ("chrome".equalsIgnoreCase(browser.toString())
 					|| "firefox".equalsIgnoreCase(browser.toString()))) {
-			server_url = new URL("https://" + HUB_URLS[SELENIUM_HUB_IDX % HUB_URLS.length] + "/wd/hub");
+			String entry = HUB_URLS[SELENIUM_HUB_IDX % HUB_URLS.length];
+			// Accept either a bare `host:port` (production form, prefixed with
+			// https:// and /wd/hub) or a fully qualified URL such as
+			// `http://selenium-chrome:4444/wd/hub` (used by the local docker
+			// compose stack, where the standalone-chrome image serves plain
+			// HTTP). Existing prod configs that pass `host:port` are unaffected.
+			if (entry.startsWith("http://") || entry.startsWith("https://")) {
+				server_url = new URL(entry.endsWith("/wd/hub") ? entry : entry + "/wd/hub");
+			} else {
+				server_url = new URL("https://" + entry + "/wd/hub");
+			}
 			SELENIUM_HUB_IDX++;
 		}
 

@@ -43,7 +43,7 @@ x-java-env: &java-env
   JOURNEY_CANDIDATE_TOPIC: "${JOURNEY_CANDIDATE_TOPIC:-journey-candidate-topic}"
   ELEMENT_EXTRACTION_TOPIC: "${ELEMENT_EXTRACTION_TOPIC:-element-extraction-topic}"
   JOURNEY_MAP_CLEANUP_TOPIC: "${JOURNEY_MAP_CLEANUP_TOPIC:-journey-map-cleanup-topic}"
-  SELENIUM_URLS: "${SELENIUM_URLS:-selenium-chrome:4444}"
+  SELENIUM_URLS: "${SELENIUM_URLS:-http://selenium-chrome:4444/wd/hub}"
   # Auth0 vars forwarded into every Java container so CrawlerAPI's
   # non-local SecurityConfig and Auth0Config can pick up the values
   # users supply in .env. Empty by default - only relevant when

@@ -111,6 +111,26 @@ public class BrowserConnectionHelperTest {
     }
 
     @Test
+    public void testGetConnectionAcceptsFullHttpUrl() {
+        // Local docker-compose stack passes a full http://host:port/wd/hub URL
+        // so the helper hits the standalone-chrome container without TLS.
+        BrowserConnectionHelper.setConfiguredSeleniumUrls(
+                new String[]{"http://selenium-chrome:4444/wd/hub"});
+        // Connection will fail (no hub here) but the URL parsing must accept
+        // the full form rather than concatenating https:// + ... + /wd/hub.
+        assertThrows(Exception.class,
+                () -> BrowserConnectionHelper.getConnection(BrowserType.CHROME, BrowserEnvironment.DISCOVERY));
+    }
+
+    @Test
+    public void testGetConnectionAcceptsFullHttpsUrl() {
+        BrowserConnectionHelper.setConfiguredSeleniumUrls(
+                new String[]{"https://my-selenium.example.com/wd/hub"});
+        assertThrows(Exception.class,
+                () -> BrowserConnectionHelper.getConnection(BrowserType.CHROME, BrowserEnvironment.DISCOVERY));
+    }
+
+    @Test
     public void testGetConnectionWithTestEnvironment() {
         BrowserConnectionHelper.setConfiguredSeleniumUrls(new String[]{"localhost:4444"});
         // TEST environment with chrome won't match DISCOVERY branch, server_url remains null
