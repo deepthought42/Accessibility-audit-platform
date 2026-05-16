@@ -101,6 +101,7 @@ services:
       NEO4J_USERNAME: "${NEO4J_USERNAME:-neo4j}"
       NEO4J_PASSWORD: "${NEO4J_PASSWORD:-change-me}"
       SRC_CQL: /init/create-indexes-and-constraints.cql
+      LOCAL_DEV_USER_ID: "${LOCAL_DEV_USER_ID:-local-dev-user}"
     volumes:
       - ./LookseeIaC/create-indexes-and-constraints.cql:/init/create-indexes-and-constraints.cql:ro
       - ./scripts/local/neo4j-bootstrap.sh:/init/bootstrap.sh:ro

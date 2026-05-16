@@ -49,13 +49,29 @@ cypher-shell -a "bolt://${NEO4J_HOST}:${NEO4J_BOLT_PORT}" \
 # Set both spellings so the account is both findable by user_id and
 # fully hydrated when SDN reads it back (otherwise `acct.getSubscriptionToken()`
 # is null and AuditorController throws MissingSubscriptionException).
-# Idempotent via MERGE.
+# Idempotent for both node identity AND properties: `ON CREATE` covers
+# fresh volumes; `ON MATCH` re-applies the seed values on every re-run so
+# a developer who hand-edited the Account row in the Neo4j browser sees
+# the canonical values restored after `docker compose up` (and so the
+# script is the single source of truth for the dev account shape).
 LOCAL_USER_ID="${LOCAL_DEV_USER_ID:-local-dev-user}"
 echo "[neo4j-bootstrap] seeding local-dev Account row for user_id=${LOCAL_USER_ID}"
 cypher-shell -a "bolt://${NEO4J_HOST}:${NEO4J_BOLT_PORT}" \
   -u "${NEO4J_USERNAME}" -p "${NEO4J_PASSWORD}" \
   "MERGE (a:Account {user_id: \$user_id})
    ON CREATE SET
+     a.userId = \$user_id,
+     a.email = 'local-dev@example.test',
+     a.name = 'Local Dev',
+     a.subscription_type = 'pro',
+     a.subscriptionType = 'pro',
+     a.subscription_token = 'local-disabled-subscription',
+     a.subscriptionToken = 'local-disabled-subscription',
+     a.customer_token = 'local-disabled-customer',
+     a.customerToken = 'local-disabled-customer',
+     a.api_token = 'local-disabled-api-token',
+     a.apiToken = 'local-disabled-api-token'
+   ON MATCH SET
      a.userId = \$user_id,
      a.email = 'local-dev@example.test',
      a.name = 'Local Dev',
