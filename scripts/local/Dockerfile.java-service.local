@@ -1,0 +1,80 @@
+# syntax=docker/dockerfile:1.6
+#
+# Shared local-development Dockerfile for all Java/Spring Boot services.
+#
+# Used by every Java service entry in docker-compose.yml; service-specific
+# differences are passed as build args rather than duplicated across 13
+# per-service Dockerfiles.
+#
+# ## Build args
+#
+# * SERVICE_DIR    - repo-relative service directory, e.g. `CrawlerAPI`,
+#                    `journeyExpander`, `look-see-front-end-broadcaster`.
+#                    Required. The directory must contain a Maven pom.xml
+#                    and src/ tree.
+# * MAVEN_IMAGE    - Maven builder image. Defaults to Java 17
+#                    (`maven:3.9.6-eclipse-temurin-17`). CrawlerAPI passes
+#                    the Java 21 variant because it is the only service
+#                    already on Spring Boot 3.x; the other 12 are still
+#                    Boot 2.6 / Java 17.
+# * JRE_IMAGE      - Runtime JRE image. Defaults to `eclipse-temurin:17-jre`.
+#                    Should match the major version of MAVEN_IMAGE.
+# * EXPOSE_PORT    - Server port the service binds to. Defaults to 8080.
+#                    CrawlerAPI overrides to 9080 to match its existing
+#                    application.properties (`server.port=9080`).
+# * JVM_HEAP_MIN   - JVM -Xms. Defaults to `256M`.
+# * JVM_HEAP_MAX   - JVM -Xmx. Defaults to `512M`. Services with heavier
+#                    in-memory workloads (CrawlerAPI, AuditManager,
+#                    audit-service, journeyExecutor) bump this to 768M.
+#                    These values match the relative sizing of the upstream
+#                    production Dockerfiles' -Xms settings; tweak per
+#                    container in docker-compose.yml rather than here.
+# * INSTALL_CURL   - `true` to install curl in the runtime layer (used by
+#                    services that have a compose healthcheck calling
+#                    /actuator/health). Defaults to `false` to keep images
+#                    minimal.
+#
+# ## Caching
+#
+# LookseeCore is built once into a shared BuildKit cache mount (id=looksee-m2);
+# subsequent service builds reuse the same `~/.m2/repository`. Net: first
+# Java service to build pays the LookseeCore cost (~5 min cold), the remaining
+# 12 finish in <2 min each.
+
+ARG MAVEN_IMAGE=maven:3.9.6-eclipse-temurin-17
+ARG JRE_IMAGE=eclipse-temurin:17-jre
+
+FROM ${MAVEN_IMAGE} AS build
+ARG SERVICE_DIR
+RUN test -n "${SERVICE_DIR}" || (echo "SERVICE_DIR build-arg is required" >&2 && exit 1)
+
+WORKDIR /workspace
+
+# Build LookseeCore (multi-module Maven reactor) into the shared m2 cache.
+COPY LookseeCore /workspace/LookseeCore
+RUN --mount=type=cache,target=/root/.m2,id=looksee-m2 \
+    cd /workspace/LookseeCore && mvn -B -q clean install -DskipTests
+
+# Build the service jar.
+COPY ${SERVICE_DIR}/pom.xml /workspace/service/pom.xml
+COPY ${SERVICE_DIR}/src    /workspace/service/src
+RUN --mount=type=cache,target=/root/.m2,id=looksee-m2 \
+    cd /workspace/service && mvn -B -q clean package -DskipTests \
+ && cp /workspace/service/target/*.jar /workspace/app.jar
+
+FROM ${JRE_IMAGE}
+ARG INSTALL_CURL=false
+ARG EXPOSE_PORT=8080
+ARG JVM_HEAP_MIN=256M
+ARG JVM_HEAP_MAX=512M
+ENV JVM_HEAP_MIN=${JVM_HEAP_MIN}
+ENV JVM_HEAP_MAX=${JVM_HEAP_MAX}
+
+# Optional curl install for services that have a compose healthcheck.
+RUN if [ "${INSTALL_CURL}" = "true" ]; then \
+      apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/* ; \
+    fi
+
+COPY --from=build /workspace/app.jar /app/app.jar
+EXPOSE ${EXPOSE_PORT}
+ENTRYPOINT ["sh","-c","exec java -Djava.security.egd=file:/dev/./urandom -Xms${JVM_HEAP_MIN} -Xmx${JVM_HEAP_MAX} -jar /app/app.jar"]

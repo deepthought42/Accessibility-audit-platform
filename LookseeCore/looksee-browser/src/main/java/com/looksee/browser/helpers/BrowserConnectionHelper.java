@@ -112,6 +112,17 @@ public class BrowserConnectionHelper {
 	}
 
 	/**
+	 * Resets the round-robin indices used to pick a hub URL from the
+	 * configured Selenium and Appium URL arrays. Intended for unit tests
+	 * that want a deterministic starting state - production callers should
+	 * never need to invoke this directly.
+	 */
+	public static void resetRoundRobinIndices() {
+		SELENIUM_HUB_IDX = 0;
+		APPIUM_SERVER_IDX = 0;
+	}
+
+	/**
 	 * Creates a {@link Browser} connection
 	 *
 	 * @param browser the browser to connect to
@@ -140,7 +151,17 @@ public class BrowserConnectionHelper {
 		if (environment.equals(BrowserEnvironment.DISCOVERY)
 				&& ("chrome".equalsIgnoreCase(browser.toString())
 					|| "firefox".equalsIgnoreCase(browser.toString()))) {
-			server_url = new URL("https://" + HUB_URLS[SELENIUM_HUB_IDX % HUB_URLS.length] + "/wd/hub");
+			String entry = HUB_URLS[SELENIUM_HUB_IDX % HUB_URLS.length];
+			// Accept either a bare `host:port` (production form, prefixed with
+			// https:// and /wd/hub) or a fully qualified URL such as
+			// `http://selenium-chrome:4444/wd/hub` (used by the local docker
+			// compose stack, where the standalone-chrome image serves plain
+			// HTTP). Existing prod configs that pass `host:port` are unaffected.
+			if (entry.startsWith("http://") || entry.startsWith("https://")) {
+				server_url = new URL(entry.endsWith("/wd/hub") ? entry : entry + "/wd/hub");
+			} else {
+				server_url = new URL("https://" + entry + "/wd/hub");
+			}
 			SELENIUM_HUB_IDX++;
 		}
 
@@ -179,7 +200,18 @@ public class BrowserConnectionHelper {
 				"Appium URLs not configured. Set appium.urls property.");
 		}
 
-		URL server_url = new URL("http://" + APPIUM_URLS[APPIUM_SERVER_IDX % APPIUM_URLS.length] + "/wd/hub");
+		String appiumEntry = APPIUM_URLS[APPIUM_SERVER_IDX % APPIUM_URLS.length];
+		// Mirror the desktop-browser path: accept either a bare `host:port`
+		// (production form, prefixed with http:// and /wd/hub) or a fully
+		// qualified URL such as `http://appium:4723/wd/hub` (used by the local
+		// docker compose stack). Existing prod configs that pass `host:port`
+		// are unaffected.
+		URL server_url;
+		if (appiumEntry.startsWith("http://") || appiumEntry.startsWith("https://")) {
+			server_url = new URL(appiumEntry.endsWith("/wd/hub") ? appiumEntry : appiumEntry + "/wd/hub");
+		} else {
+			server_url = new URL("http://" + appiumEntry + "/wd/hub");
+		}
 		APPIUM_SERVER_IDX++;
 
 		return MobileFactory.createMobileDevice(browser.toString(), server_url);

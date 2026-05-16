@@ -1,0 +1,13 @@
+# syntax=docker/dockerfile:1.6
+FROM node:20-bookworm-slim
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends bash ca-certificates curl && rm -rf /var/lib/apt/lists/*
+
+COPY Look-see-UI-v3/package.json Look-see-UI-v3/package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
+
+COPY Look-see-UI-v3/ ./
+
+EXPOSE 4200
+CMD ["bash", "-c", "bash scripts/generate-env-local.sh && bash scripts/generate-config-local.sh && npx ng serve --host 0.0.0.0 --disable-host-check --port 4200"]

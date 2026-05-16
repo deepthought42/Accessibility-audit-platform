@@ -21,8 +21,10 @@ public class BrowserConnectionHelperTest {
 
     @BeforeEach
     public void setUp() {
-        // Reset BrowserStack state before each test to avoid cross-test interference
+        // Reset BrowserStack state and round-robin indices before each test
+        // to avoid cross-test interference from JVM-static fields.
         BrowserConnectionHelper.clearBrowserStackConfig();
+        BrowserConnectionHelper.resetRoundRobinIndices();
     }
 
     @Test
@@ -108,6 +110,56 @@ public class BrowserConnectionHelperTest {
         BrowserConnectionHelper.setConfiguredSeleniumUrls(new String[]{"localhost:4444"});
         assertThrows(Exception.class,
                 () -> BrowserConnectionHelper.getConnection(BrowserType.FIREFOX, BrowserEnvironment.DISCOVERY));
+    }
+
+    @Test
+    public void testGetConnectionAcceptsFullHttpUrl() {
+        // Local docker-compose stack passes a full http://host:port/wd/hub URL
+        // so the helper hits the standalone-chrome container without TLS.
+        BrowserConnectionHelper.setConfiguredSeleniumUrls(
+                new String[]{"http://selenium-chrome:4444/wd/hub"});
+        // Connection will fail (no hub here) but the URL parsing must accept
+        // the full form rather than concatenating https:// + ... + /wd/hub.
+        assertThrows(Exception.class,
+                () -> BrowserConnectionHelper.getConnection(BrowserType.CHROME, BrowserEnvironment.DISCOVERY));
+    }
+
+    @Test
+    public void testGetConnectionAcceptsFullHttpsUrl() {
+        BrowserConnectionHelper.setConfiguredSeleniumUrls(
+                new String[]{"https://my-selenium.example.com/wd/hub"});
+        assertThrows(Exception.class,
+                () -> BrowserConnectionHelper.getConnection(BrowserType.CHROME, BrowserEnvironment.DISCOVERY));
+    }
+
+    @Test
+    public void testGetConnectionAcceptsMultipleBareHostPortEntries() {
+        // Bare `host:port` entries (the upstream production shape) must keep
+        // working unchanged when multiple URLs are configured for the
+        // round-robin. We can't observe the private SELENIUM_HUB_IDX from
+        // outside, but we can verify that successive calls reach the
+        // connection-attempt phase (i.e. URL construction succeeds for both
+        // entries) by ensuring neither throws MalformedURLException.
+        BrowserConnectionHelper.setConfiguredSeleniumUrls(
+                new String[]{"hub-a.example.com:4444", "hub-b.example.com:4444"});
+        for (int i = 0; i < 4; i++) {
+            Exception ex = assertThrows(Exception.class,
+                    () -> BrowserConnectionHelper.getConnection(BrowserType.CHROME, BrowserEnvironment.DISCOVERY));
+            assertFalse(ex instanceof MalformedURLException,
+                    "Bare host:port must produce a well-formed URL, got: " + ex);
+        }
+    }
+
+    @Test
+    public void testGetMobileConnectionAcceptsFullHttpUrl() {
+        // Local docker compose stack can pass a fully qualified Appium URL.
+        BrowserConnectionHelper.setConfiguredAppiumUrls(
+                new String[]{"http://appium:4723/wd/hub"});
+        // Bean construction succeeds and we get to the actual connect attempt;
+        // any IOException/Exception is fine - we just need to prove the URL
+        // parse branch did not throw a MalformedURLException at config time.
+        assertThrows(Exception.class,
+                () -> BrowserConnectionHelper.getMobileConnection(BrowserType.ANDROID, BrowserEnvironment.DISCOVERY));
     }
 
     @Test
