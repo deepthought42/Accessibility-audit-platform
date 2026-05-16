@@ -40,10 +40,16 @@ done
 http_put() {
   url="$1"
   body="$2"
+  # `|| true` keeps `set -e` from aborting on transport-level failures so
+  # we can inspect the http_code ourselves. curl writes "000" to %{http_code}
+  # when no HTTP response was received (DNS, refused, timeout) - treat that
+  # as fatal alongside 4xx/5xx (except 409 = already exists, which is
+  # acceptable for idempotent re-runs).
   resp_code=$(curl -s -o /tmp/resp.out -w "%{http_code}" -X PUT \
-    -H 'Content-Type: application/json' --data "${body}" "${url}")
-  code="${resp_code}"
-  if [ "${code}" -ge 400 ] && [ "${code}" -ne 409 ]; then
+    -H 'Content-Type: application/json' --data "${body}" "${url}") || true
+  code="${resp_code:-000}"
+  if [ "${code}" = "000" ] || \
+     { [ "${code}" -ge 400 ] && [ "${code}" -ne 409 ]; }; then
     echo "[pubsub-bootstrap] FAIL ${code} on PUT ${url}" >&2
     cat /tmp/resp.out >&2 || true
     echo >&2
